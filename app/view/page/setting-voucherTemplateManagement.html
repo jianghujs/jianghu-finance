@@ -1,0 +1,587 @@
+{% extends 'template/jhTemplateV4.html'%}
+
+{% block vueTemplate %}
+
+<script type="text/html" id="app-template">
+  <div>
+    <v-app mobile-breakpoint="sm">
+      <jh-menu />
+      <v-main class="mt-15">
+        <!-- 头部内容 >>>>>>>>>>>>> -->
+        <div class="jh-page-second-bar px-8">
+          <v-row class="align-center pt-4" no-gutters>
+            <v-col cols="12" xs="12" sm="12" md="4" xl="3">
+              <div class="text-body-1 font-weight-bold d-flex align-center">凭证模板
+                <!-- 帮助页按钮 -->
+                <span role="button" class="success--text font-weight-regular jh-font-size-13 mx-2" @click="jumpToUrl">
+                  <v-icon size="13" class="success--text">mdi-help-circle-outline</v-icon>帮助
+                </span>
+                <select-appaId/>
+              </div>
+            </v-col>
+            <!-- pc端的搜索条件表单 >>>>>>>> -->
+            <v-col cols="12" xs="12" sm="12" md="8" xl="9" class="mt-3 mt-md-0">
+              <v-row class="justify-md-end align-center flex-wrap" no-gutters>
+                <v-col cols="5" md="10" xs="12" class="text-md-right pr-md-2">
+                  <v-btn-toggle class="transparent d-md-inline-flex d-block" v-model="searchVoucherTypeSwitch" mandatory dense color="success"> 
+                    <v-btn class="mb-2 mb-md-0" small value="所有的">所有的</v-btn> 
+                    <v-btn class="mb-2 mb-md-0" small v-for="voucherTypeItem, index in constantObj.voucherType" :value="voucherTypeItem.text" :key="index">{{voucherTypeItem.text}}</v-btn> 
+                  </v-btn-toggle>
+                </v-col>
+
+                <v-btn class="elevation-0 w-sm-full" color="success" small @click="doUiAction('refreshTableData')">
+                  <v-icon size="14">mdi-magnify</v-icon>查询
+                </v-btn>
+              </v-row>
+            </v-col>
+            <!-- <<<<<<<< pc端的搜索条件表单 -->  
+          </v-row>
+        </div>
+        <!-- <<<<<<<<<<<<< 头部内容 -->
+
+        <div class="jh-page-body-container px-8 mt-4">
+
+        <!-- 页面主要内容 -->
+          <v-card class="rounded-lg">
+            <v-row class="ma-0 pa-4">
+              <!-- 新增按钮 -->
+              <v-btn color="success" class="elevation-0 mr-2 d-none d-md-inline-block"@click="doUiAction('startCreateItem')" small>
+                <v-icon size="14">mdi-plus</v-icon>
+                新增模板</v-btn>
+              <v-btn class="elevation-0 mr-2 green" color="primary" small outlined @click="doUiAction('exportExcel')"><v-icon size="14">mdi-export-variant</v-icon>导出excel</v-btn>
+              <v-spacer></v-spacer>
+              <v-col cols="12" xs="6" sm="4" md="4" xl="3" class="pa-0 d-flex">
+                <v-text-field color="success" v-model="searchInput" prefix="搜索：" class="jh-v-input" dense filled single-line></v-text-field>
+              </v-col>
+            </v-row>
+            <v-data-table fixed-header
+              :headers="headers"
+              :items="tableDataFilter"
+              :search="searchInput"
+              :footer-props="{ itemsPerPageOptions: [20, 40, 60, 100, -1] }"
+              :items-per-page="-1"
+              mobile-breakpoint="0"
+              :class="{'zebraLine': isTableZebraLineShown }"
+              :loading="isTableLoading"
+              checkbox-color="success"
+              class="elevation-0 mt-0 mb-xs-4 flex-fill d-flex flex-column">
+              <template v-slot:item.action="{ item }">
+                <span role="button" class="hidden-xs-only success--text jh-font-size-3 pr-2" @click="doUiAction('startUpdateItem', {item})">
+                  <v-icon size="14" class="success--text">mdi-note-edit-outline</v-icon>编辑
+                </span>
+              </template>
+
+              <!-- 没有数据 -->
+              <template v-slot:loading>
+                <div class="jh-no-data">数据加载中</div>
+              </template>
+              <template v-slot:no-data>
+                <div class="jh-no-data">暂无数据</div>
+              </template>
+              <template v-slot:no-results>
+                <div class="jh-no-data">暂无数据</div>
+              </template>
+              <!-- 表格分页 -->
+              <template v-slot:footer.page-text="pagination">
+                <span>{{pagination.pageStart}}-{{pagination.pageStop}}</span>
+                <span class="ml-1">共{{pagination.itemsLength}}条</span>
+              </template>
+            </v-data-table>
+          </v-card>
+        </div>
+
+        <!-- 编辑抽屉 >>>>>>>>>>>>> -->
+        <v-dialog v-model="isEditDrawerShow" transition="dialog-bottom-transition" max-width="800">
+          <template v-slot:default="dialog">
+            <v-card>
+              <v-card-title class="pa-4">
+                <v-row class="justify-space-between pt-3 px-3 pb-1">
+                  <span class="text-h7 font-weight-bold">{{ editItem.voucherTemplateName }}-编辑</span>
+                  <v-spacer></v-spacer>
+                  <v-btn class="elevation-0" fab x-small @click="isEditDrawerShow = false">
+                    <v-icon dark>mdi-close</v-icon>
+                  </v-btn>
+                </v-row>
+              </v-card-title>
+              <v-divider class="jh-divider"></v-divider>
+              
+              <v-form v-model="isFormValid" ref="form" lazy-validation>
+
+                <v-card-text class="pt-0 px-2" v-if="editItem.voucherTemplateName == '结转损益-本期'">  
+                  <v-row class="px-3">
+                    <v-col cols="6">
+                      <span class="jh-input-label">凭证日期</span>
+                      <v-text-field class="jh-v-input " dense filled single-line disabled
+                        v-model="editItem.voucherAt"></v-text-field>
+                    </v-col>
+                    <v-col cols="6"></v-col>
+                    <v-col cols="12">
+                      <span class="title">本期损益</span>
+                    </v-col>
+                    <v-col cols="6">
+                      <span class="jh-input-label">凭证字</span>
+                      <v-text-field class="jh-v-input " dense filled single-line 
+                        v-model="editItem.voucherTemplateConfig.voucherName"></v-text-field>
+                    </v-col>        
+                    <v-col cols="6">
+                      <span class="jh-input-label">凭证摘要</span>
+                      <v-text-field class="jh-v-input " dense filled single-line 
+                        v-model="editItem.voucherTemplateConfig.entryAbstract"></v-text-field>
+                    </v-col>
+                    <v-col cols="6">
+                      <span class="jh-input-label">损益科目</span>
+                      <v-text-field class="jh-v-input " dense filled single-line disabled
+                        v-model="editItem.voucherTemplateConfig.profitLossSubjectTip"></v-text-field>
+                    </v-col>
+                    <v-col cols="6">
+                      <span class="jh-input-label">损益科目的结转科目</span>
+                      <v-autocomplete class="jh-v-input " disabled :items="subjectList" item-text="subjectIdLabel" item-value="subjectId" dense filled single-line 
+                        v-model="editItem.voucherTemplateConfig.carrySubjectId"> </v-autocomplete>
+                    </v-col>
+                  </v-row>
+                </v-card-text>
+
+                <v-card-text class="pt-0 px-2" v-else-if="editItem.voucherTemplateName == '结转损益-以前年度'">  
+                  <v-row class="px-3">
+                    <v-col cols="6">
+                      <span class="jh-input-label">凭证字</span>
+                      <v-text-field class="jh-v-input " dense filled single-line 
+                        v-model="editItem.voucherTemplateConfig.voucherName"></v-text-field>
+                    </v-col>       
+                    <v-col cols="6">
+                      <span class="jh-input-label">凭证摘要</span>
+                      <v-text-field class="jh-v-input " dense filled single-line 
+                        v-model="editItem.voucherTemplateConfig.entryAbstract"></v-text-field>
+                    </v-col>
+                    <v-col cols="6">
+                      <span class="jh-input-label">损益科目</span>
+                      <v-autocomplete class="jh-v-input " disabled :items="subjectList" item-text="subjectIdLabel" item-value="subjectId" dense filled single-line 
+                        v-model="editItem.voucherTemplateConfig.profitLossSubjectId"> </v-autocomplete>
+                    </v-col>
+                    <v-col cols="6">
+                      <span class="jh-input-label">损益科目的结转科目</span>
+                      <v-autocomplete class="jh-v-input " disabled :items="subjectList" item-text="subjectIdLabel" item-value="subjectId" dense filled single-line 
+                        v-model="editItem.voucherTemplateConfig.carrySubjectId"> </v-autocomplete>
+                    </v-col>
+                  </v-row>
+                </v-card-text>
+
+                <v-card-text class="py-0 px-2" v-else-if="editItem.voucherTemplateName == '计提地税'">
+                  <voucher-template-compute-edit-form ref="editForm" v-model="editItem.voucherTemplateConfig" :edit-item="editItem" :subject-list="subjectList"/>
+                </v-card-text>
+                <v-card-text class="pt-0 px-2" v-else-if="editItem.voucherType == '日记账凭证'">
+                  <voucher-template-fund-account-edit-form ref="editForm" v-model="editItem.voucherTemplateConfig" :edit-item="editItem" :subject-list="subjectList"/>
+                </v-card-text>
+                <v-card-text class="pt-0 px-2" v-else-if="editItem.voucherType == '进项发票' || editItem.voucherType == '销项发票'">
+                  <voucher-template-invoice-edit-form ref="editForm" v-model="editItem.voucherTemplateConfig" :edit-item="editItem" :subject-list="subjectList"/>
+                </v-card-text>
+                <v-card-text class="pt-0 px-2" v-else-if="editItem.voucherType == '工资凭证'">
+                  <voucher-template-salary-edit-form ref="editForm" v-model="editItem.voucherTemplateConfig" :edit-item="editItem" :subject-list="subjectList"/>
+                </v-card-text>
+                <v-card-text class="pt-0 px-2" v-else-if="editItem.voucherType == '普通凭证'">
+                  <voucher-template-edit-form ref="editForm" v-model="editItem.voucherTemplateConfig" :edit-item="editItem" :subject-list="subjectList"/>
+                </v-card-text>
+                
+
+              </v-form>
+              <v-card-actions class="justify-end pb-4">
+                <v-btn color="success" @click="doUiAction('updateItem')"><v-icon size="14">mdi-content-save-check-outline</v-icon>保存</v-btn>
+                <v-btn class="ml-2" @click="isEditDrawerShow = false"><v-icon size="14">mdi-close</v-icon>取消</v-btn>
+              </v-card-actions>
+            </v-card>
+          </template>
+        </v-dialog>
+        <!-- <<<<<<<<<<<<< 编辑抽屉 -->
+
+        <!-- 创建页抽屉 >>>>>>>>>>>>> -->
+        <v-dialog v-model="isCreateDrawerShow" transition="dialog-bottom-transition" max-width="800">
+          <template v-slot:default="dialog">
+            <v-card>
+              <v-card-title class="pa-4">
+                <v-row class="justify-space-between pt-3 px-3 pb-1">
+                  <span class="text-h7 font-weight-bold">{{searchVoucherTypeSwitch == '所有的' ? '日记账' : searchVoucherTypeSwitch}}-创建</span>
+                  <v-spacer></v-spacer>
+                  <v-btn class="elevation-0" fab x-small @click="isCreateDrawerShow = false">
+                    <v-icon dark>mdi-close</v-icon>
+                  </v-btn>
+                </v-row>
+              </v-card-title>
+              <v-divider class="jh-divider"></v-divider>
+              
+              <v-form v-model="isFormValid" ref="form" lazy-validation>
+                <v-card-text class="pt-0 px-2">
+                  <voucher-template-edit-form v-if="['普通凭证'].includes(searchVoucherTypeSwitch)" v-model="createItem.voucherTemplateConfig" :subject-list="subjectList" :edit-item="createItem" ref="createForm" />
+
+                  <voucher-template-fund-account-edit-form v-else ref="createForm" v-model="createItem.voucherTemplateConfig" :edit-item="createItem" :subject-list="subjectList"/>
+                </v-card-text>
+              </v-form>
+              <v-card-actions class="justify-end pb-4">
+                <v-btn color="success" @click="doUiAction('doCreateItem')"><v-icon size="14">mdi-content-save-check-outline</v-icon>保存</v-btn>
+                <v-btn class="ml-2" @click="isCreateDrawerShow = false"><v-icon size="14">mdi-close</v-icon>取消</v-btn>
+              </v-card-actions>
+            </v-card>
+          </template>
+        </v-dialog>
+        <!-- <<<<<<<<<<<<< 创建页抽屉 -->
+        
+        <!-- 帮助页抽屉 >>>>>>>>>>>>> -->
+        <!-- <<<<<<<<<<<<< 帮助页抽屉 -->
+
+      </v-main>
+          
+    </v-app>
+    <jh-toast />
+    <jh-mask />
+    <jh-confirm-dialog />
+  </div>
+</script>
+<div id="app">
+</div>
+
+{% endblock %}
+
+{% block vueScript %}
+{% include 'component/jianghuJs/select-appaId.html' %}
+{% include 'component/select-period.html' %}
+{% include 'common/excelUtil.html' %}
+{% include 'common/vueFilters.html' %}
+{% include 'component/voucher/voucherPaper.html' %}
+{% include 'component/voucher/voucherEntry.html' %}
+{% include 'component/voucher/voucherTemplateComputeEditForm.html' %}
+{% include 'component/voucher/voucherTemplateFundAccountEditForm.html' %}
+{% include 'component/voucher/voucherTemplateInvoiceEditForm.html' %}
+{% include 'component/voucher/voucherTemplateSalaryEditForm.html' %}
+{% include 'component/voucher/voucherTemplateEditForm.html' %}
+{% include 'common/constantUtil.html' %}
+
+<script type="module">
+  new Vue({
+    el: '#app',
+    template: '#app-template',
+    vuetify: new Vuetify(),
+    data: () => ({
+      isMobile: window.innerWidth < 500,
+      // 面包屑
+      breadcrumbs: [
+        {
+          text: '设置',
+          disabled: true,
+        },
+        {
+          text: '凭证模版',
+          disabled: true,
+        }
+      ],
+
+      // 表格相关数据
+      isTableZebraLineMenuShown: false,
+      tableZebraLineMenuPosition: { x: null, y: null },
+      isTableZebraLineShown: true,
+      isFormValid: true,
+      validationRules: {
+        requireRules: [
+          v => !!v || '必填',
+        ],
+      },
+      constantObj: {
+        isShown: ['全部', '显示', '隐藏'],
+        voucherType: constantObj.voucherType,
+        incomeExpendType: ['收入', '支出'],
+        subjectBalanceDirection: [
+          { text: "借", value: "借" },
+          { text: "贷", value: "贷" }
+        ]
+      },
+      isShownInput: '显示',
+
+      serverSearchInput: {
+        period: {
+          periodId: null,
+          currentPeriodId: null,
+        },
+      },
+      searchInput: null,
+      searchVoucherTypeSwitch: '所有的', // 所有的 、 销项发票  、 进项发票  、 工资凭证？
+      isTableLoading: true,
+      tableData: [],
+      headers: [
+        {text: "模板名称", value: "voucherTemplateName", width: 120}, 
+        {text: "模板类型", value: "voucherType", width: 120}, 
+        // {text: "操作者", value: "operationByUser", width: 120},
+        // {text: "操作时间", value: "operationAt", width: 250},
+        {text: '操作', value: 'action', align: 'center', sortable: false, width: 120},
+      ],
+      subjectList: [],
+
+      voucherTemplateConfigHeaders: [
+        { text: "科目", value: "subject-id" },
+        { text: "借/贷", value: "subject-balance-direction", width: 200 },
+      ],
+
+      isCreateDrawerShow: false,
+      createItem: {},
+
+      isEditDrawerShow: false,
+      editItem: {},
+    }),
+    computed: {
+      voucherSubjectList(){
+        const cloneSubjectList = _.cloneDeep(this.subjectList);
+        for (const subject of cloneSubjectList) {
+            subject.disabled = !['库存现金', '银行存款'].includes(subject.subjectName);
+        }
+        return cloneSubjectList;
+      },
+      tableDataFilter(){
+        if (this.searchVoucherTypeSwitch == '所有的') {
+          return this.tableData;
+        }
+        return _.filter(this.tableData, { voucherType: this.searchVoucherTypeSwitch });
+      },
+      voucherType() {
+        return this.searchVoucherTypeSwitch == '所有的' ? '日记账凭证' : this.searchVoucherTypeSwitch;
+      }
+    },
+    watch: {
+    },
+    async created() {
+      await this.doUiAction('getSubjectList');
+      await this.doUiAction('refreshTableData');
+    },
+    mounted() { },
+    methods: {
+      async doUiAction(uiActionId, uiActionData) {
+        switch (uiActionId) {
+          case 'refreshTableData':
+            await this.refreshTableData();
+            break;
+          case 'getSubjectList': 
+            await this.getSubjectList();
+            break;
+          case 'startCreateItem':
+            await this.prepareCreateItemData();
+            await this.openCreateItemDialog();
+            break;
+          case 'doCreateItem':
+            await this.prepareAddItemValidate();
+            await this.confirmCreateItemDialog();
+            await this.doCreateItem();
+            await this.closeCreateItem();
+            await this.refreshTableData();
+            break;
+          case 'startUpdateItem':
+            await this.prepareItemData(uiActionData);
+            await this.openUpdateDialog();
+            break;
+          case 'updateItem':
+            await this.prepareValidate();
+            await this.confirmUpdateItemDialog();
+            await this.doUpdateItem();
+            await this.closeDrawerShow();
+            await this.refreshTableData();
+            break;    
+          case 'exportExcel':
+            await this.exportExcel();
+            break;
+          default:
+            console.error("[doUiAction] uiActionId not find", { uiActionId });
+            break;
+        }
+      },
+
+      // ---------- 预备数据 uiAction >>>>>>>>>>>> --------
+      async getSubjectList() {
+        this.loadingSubjectList = true;
+        const result = await window.jianghuAxios({
+          data: {
+            appData: {
+              pageId: 'checkout-periodCheckout',
+              actionId: 'voucherTemplate-selectSubjectList',
+              actionData: {},
+              orderBy: [{column: 'subjectCategory', order: 'desc'}, {column: 'subjectId', order: 'asc'}]
+            }
+          }
+        });
+        const { rows } = result.data.appData.resultData;
+        this.subjectList = rows;
+        this.loadingSubjectList = false;
+      },
+      // ---------- <<<<<<<<<<< 预备数据 uiAction ---------
+
+      // ---------- 获取数据 uiAction >>>>>>>>>> --------
+      async refreshTableData() {
+        this.isTableLoading = true;
+        const result = await window.jianghuAxios({
+          data: {
+            appData: {
+              pageId: 'setting-voucherTemplateManagement',
+              actionId: 'selectVoucherTemplateList',
+              actionData: {},
+              where: {},
+              orderBy: [{column: 'id', order: 'esc'}]
+            }
+          }
+        });
+        const { rows } = result.data.appData.resultData;
+        rows.forEach(row => { row.voucherTemplateConfig = JSON.parse(row.voucherTemplateConfig || '{}'); })
+        this.tableData = rows;
+        this.isTableLoading = false;
+      },
+      // ---------- <<<<<<<<<<< 获取数据 uiAction  --------
+
+      // ---------- 创建数据 uiAction >>>>>>>>>> --------
+      async openCreateItemDialog(){
+        this.isCreateDrawerShow = true;
+      },
+
+      async prepareCreateItemData(item){
+        this.createItem = {
+          voucherTemplateName: null,
+          voucherType: this.voucherType,
+          voucherTemplateConfig: {
+              incomeExpendType: "收入",
+              voucherEntryList: [{
+                  subjectBalanceDirection: "借",
+              },{
+                  subjectBalanceDirection: "贷",
+              }],
+          }
+        };
+      },
+
+      async prepareAddItemValidate() {
+        if (this.$refs.form.validate() === false) {
+          window.vtoast.fail({ message: "输入有误, 请检查!" });
+          throw new Error("[prepareValidate] false");
+        }
+      },
+
+      async confirmCreateItemDialog() {
+        if (await window.confirmDialog({ title: "新增", content: "确定新增吗？" }) === false) {
+          throw new Error("取消");
+        }
+      },
+
+      async doCreateItem() {
+        console.log('doCreateItem', this.createItem)
+        const { id, voucherType, voucherTemplateName, voucherTemplateConfig } = this.createItem;
+        const incomeExpendType = voucherTemplateConfig.incomeExpendType;
+        voucherTemplateConfig.voucherEntryList = _.filter(voucherTemplateConfig.voucherEntryList, item => item.subjectId);
+
+        for (const item of voucherTemplateConfig.voucherEntryList) {
+          const subject = _.find(this.subjectList, {subjectId: item.subjectId});
+          item.subjectName = subject.subjectName;
+
+          if ((item.subjectBalanceDirection === '借' && incomeExpendType === '收入') || (item.subjectBalanceDirection === '贷' && incomeExpendType === '支出')){
+            if (!['库存现金', '银行存款'].includes(item.subjectName)) {
+              window.vtoast.fail({ message: "收入支出类型与科目借贷方向不匹配!" });
+              throw new Error("收入支出类型与科目借贷方向不匹配");
+              return;
+            }
+          }
+        }
+        await window.vtoast.loading("修改数据");
+        await window.jianghuAxios({
+          data: {
+            appData: {
+              pageId: 'checkout-periodCheckout',
+              actionId: 'voucherTemplate-insertItem',
+              actionData: { 
+                voucherType: this.voucherType,
+                voucherTemplateName,
+                voucherTemplateConfig: JSON.stringify(voucherTemplateConfig, null, 4)
+              },
+              bizIdGenerate: {
+                type: "idSequence",
+                prefix: "V",
+                bizId: "voucherTemplateId",
+                tableName: "voucher_template",
+              },
+            }
+          }
+        })
+        await window.vtoast.success("新增数据成功");
+      },
+
+      async closeCreateItem() {
+        this.isCreateDrawerShow = false;
+      },
+      // ----------- <<<<<<<<<< 创建数据 uiAction --------
+
+      // ---------- 修改数据 uiAction >>>>>>>>>>>> --------
+      async prepareItemData({item}) {
+        this.editItem = _.cloneDeep({
+          ...item,
+          periodId: this.periodId,
+          voucherAt: dayjs(this.periodId).endOf('month').format('YYYY-MM-DD'),
+        });
+      },
+      async openUpdateDialog() {
+        this.isEditDrawerShow = true;
+      },
+      async prepareValidate() {
+        if (this.$refs.form.validate() === false) {
+          window.vtoast.fail({ message: "输入有误, 请检查!" });
+          throw new Error("[prepareValidate] false");
+        }
+      },
+
+      async confirmUpdateItemDialog() {
+        if (await window.confirmDialog({title: "修改", content: "确定修改吗？"}) === false) {
+          throw new Error("取消");
+        }
+      },
+      async doUpdateItem() {
+        const { id, voucherTemplateConfig, voucherTemplateName } = this.editItem;
+        const incomeExpendType = voucherTemplateConfig.incomeExpendType;
+        
+        voucherTemplateConfig.voucherEntryList = _.filter(voucherTemplateConfig.voucherEntryList, item => item.subjectId);
+        for (const item of voucherTemplateConfig.voucherEntryList) {
+          if ((item.subjectBalanceDirection === '借' && incomeExpendType === '收入') || (item.subjectBalanceDirection === '贷' && incomeExpendType === '支出')){
+            if (!['库存现金', '银行存款'].includes(item.subjectName)) {
+              window.vtoast.fail({ message: "收入支出类型与科目借贷方向不匹配!" });
+              throw new Error("收入支出类型与科目借贷方向不匹配");
+              return;
+            }
+          }
+
+          const subject = _.find(this.subjectList, {subjectId: item.subjectId});
+          item.subjectName = subject.subjectName;
+        }
+        await window.vtoast.loading("修改数据");
+        await window.jianghuAxios({
+          data: {
+            appData: {
+              pageId: 'checkout-periodCheckout',
+              actionId: 'voucherTemplate-updateItem',
+              actionData: { voucherTemplateName, voucherTemplateConfig: JSON.stringify(voucherTemplateConfig, null, 4) },
+              where: {id}
+            }
+          }
+        })
+        await window.vtoast.success("修改数据成功");
+      },
+      async closeDrawerShow() {
+        this.isEditDrawerShow = false;
+        this.isAddDrawerShow = false;
+      },
+      // ---------- <<<<<<<<<<< 修改数据 uiAction ---------
+
+      // =================================uiAction 公共方法 end ======================================
+      async exportExcel() {
+        const params = {
+          header: this.headers.filter(header => header.text != '操作').map(header => header.text),
+          key: this.headers.filter(header => header.text != '操作').map(header => header.value),
+          data: this.tableData,
+          filename: dayjs().format('YYYYMMDDHHmmss') + '_' + '凭证模版'
+        };
+        excelUtil.exportData(params);
+      },
+      jumpToUrl() {
+        window.open('https://cn.jianghujs.org/doc/page/article/11603', '_blank');
+      }
+    }   
+  })
+</script>
+
+{% endblock %}

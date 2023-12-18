@@ -1,0 +1,48 @@
+{
+  "name": "jianghujs-finance",
+  "version": "1.0.0",
+  "description": "",
+  "private": true,
+  "egg": {
+    "declarations": true,
+    "framework": "@jianghujs/jianghu"
+  },
+  "dependencies": {
+    "@jianghujs/jianghu": "5.0.7",
+    "currency.js": "^2.0.4",
+    "egg": "^2.15.1",
+    "egg-scripts": "^2.11.0",
+    "exceljs": "^4.4.0",
+    "fparser": "^2.0.2",
+    "inquirer": "^7.3.3",
+    "lodash": "4.17.21",
+    "nzh": "^1.0.9"
+  },
+  "devDependencies": {
+    "autod": "^3.0.1",
+    "autod-egg": "^1.1.0",
+    "dotenv": "^16.0.2"
+  },
+  "engines": {
+    "node": ">=10.0.0"
+  },
+  "scripts": {
+    "start": "egg-scripts start --workers=2 --daemon --port=7302 --title=jianghu-finance",
+    "dev": "egg-bin dev --port=7302",
+    "stop": "egg-scripts stop --title=jianghu-finance",
+    "debug": "egg-bin debug",
+    "test": "npm run lint -- --fix && npm run test-local",
+    "test-local": "egg-bin test",
+    "cov": "egg-bin cov",
+    "lint": "eslint .",
+    "ci": "npm run lint && npm run cov",
+    "autod": "autod",
+    "script:mbAppAccountData": "node script/mbAppAccountData.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jianghujs/jianghujs-finance.git"
+  },
+  "author": "",
+  "license": "Apache-2.0"
+}

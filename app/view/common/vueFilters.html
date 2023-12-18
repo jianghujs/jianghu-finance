@@ -1,0 +1,49 @@
+<!-- excelUtil.html start -->
+<script src="/<$ ctx.app.config.appId $>/public/js/lib/currency/currency.min.js"></script>
+<script>
+  const filterObj = {
+    // 空值处理，变成'-'
+    empty(value) {
+      if (!value) return '-'
+      return value
+    },
+    formatMoney(money) {
+      if (!money) return '-'
+      return currency(money, { symbol: '', decimal: '.', separator: ',' }).format()
+    },
+    // 金额留两位小数
+    formatMoney2(money) {
+      if (!money) return '0.00'
+      return currency(money, { symbol: '', decimal: '.', separator: ',' }).format()
+    },
+    // 日期格式化
+    dateFormat(value, format = 'YYYY-MM-DD HH:mm:ss') {
+      if (!value) return '-'
+      return dayjs(value).format(format);
+    },
+    directionColor(value) {
+      if (value === '借') {
+        return 'success--text';
+      } else if (value === '贷') {
+        return 'error--text'
+      } else {
+        return 'default--text'
+      }
+    },
+    directionBgColor(value) {
+      if (value === '借') {
+        return 'primary';
+      } else if (value === '贷') {
+        return 'red'
+      } else {
+        return ''
+      }
+    }
+  }
+  for (let value in filterObj) {
+    // value是filter名称（字符串）
+    // filters[value] 对象里面的某个元素，就是filters中定义的方法
+    Vue.filter(value, filterObj[value])
+  }
+</script>
+<!-- excelUtil.html end -->

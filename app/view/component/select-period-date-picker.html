@@ -1,0 +1,132 @@
+<template id="select-period-date-picker">
+  <v-menu v-model="menu" :close-on-content-click="false" :return-value.sync="value"
+    transition="scale-transition" offset-y min-width="auto">
+    <template v-slot:activator="{ on, attrs }">
+      <v-text-field v-bind="attrs" v-on="on" prefix="会计期间" readonly dense filled single-line class="jh-v-input bg-white"
+        v-model="value"></v-text-field>
+    </template>
+    <v-card>
+      <v-date-picker v-model="value" :type="'month'" color="primary" :min="minDate" :max="maxDate"
+        @change="onChange" no-title range></v-date-picker>
+    </v-card>
+  </v-menu>
+</template>
+
+<script>
+
+function completeDateRange(dateRange) {
+    const startDate = dateRange[0];
+    const endDate = dateRange[1] ? dateRange[1] : dateRange[0];
+    // 提取起始年份和月份
+    const startYear = parseInt(startDate.split('-')[0]);
+    const startMonth = parseInt(startDate.split('-')[1]);
+
+    // 提取结束年份和月份
+    const endYear = parseInt(endDate.split('-')[0]);
+    const endMonth = parseInt(endDate.split('-')[1]);
+
+    // 存储完整的日期列表
+    const completeDateList = [];
+
+    // 循环遍历起始年份到结束年份之间的每一年
+    for (let year = startYear; year <= endYear; year++) {
+      // 如果当前年份等于起始年份，则从起始月份开始循环
+      // 否则从第一月开始循环
+      let month = (year === startYear) ? startMonth : 1;
+
+      // 如果当前年份等于结束年份，则循环到结束月份即可
+      // 否则循环到12月
+      const lastMonth = (year === endYear) ? endMonth : 12;
+
+      // 循环遍历当前年份的每一个月
+      for (; month <= lastMonth; month++) {
+        // 格式化为 "YYYY-MM" 的形式，并加入完整的日期列表
+        completeDateList.push(`${year}-${month.toString().padStart(2, '0')}`);
+      }
+    }
+
+    return completeDateList;
+  }
+
+  Vue.component('select-period-date-picker', {
+    template: '#select-period-date-picker',
+    props: {
+      value: [],
+      disabled: {
+        type: Boolean,
+        default: false,
+      },
+      clearable: {
+        type: Boolean,
+        default: false,
+      },
+    },
+    vuetify: new Vuetify(),
+    data: () => ({
+      menu: false,
+      selectPeriodAllSwitch: JSON.parse('<$ ctx.app.config.selectPeriodAllSwitch | dump | safe $>'),
+      items: [],
+      currentPeriod: null,
+      isPeriodListLoading: true
+    }),
+    computed: {
+      maxDate() {
+        // items是这种格式[{periodId: "2023-01"}, {periodId: "2023-02"}]
+        // 取出最大日期
+        const maxDate = this.items.reduce((max, item) => {
+          return item.periodId > max ? item.periodId : max;
+        }, '0000-00');
+        return maxDate
+      },
+      minDate() {
+        // items是这种格式[{periodId: "2023-01"}, {periodId: "2023-02"}]
+        // 取出最小日期
+        const minDate = this.items.reduce((min, item) => {
+          return item.periodId < min ? item.periodId : min;
+        }, '9999-99');
+        return minDate
+      }
+    },
+    async created() {
+      await this.getItems()
+      await this.selectDefaultPeriod()
+    },
+    methods: {
+      async getItems() {
+        const result = await window.jianghuAxios({
+          data: {
+            appData: {
+              pageId: 'allPage',
+              actionId: 'selectPeriodList',
+              actionData: {},
+              where: {},
+              orderBy: [{ column: 'periodId', order: 'desc' }]
+            }
+          }
+        });
+        const { rows } = result.data.appData.resultData;
+        this.currentPeriod = rows[0].periodId;
+        this.items = rows;
+        this.isPeriodListLoading = false;
+      },
+      selectDefaultPeriod() {
+        // 已经有值==》什么都不用做
+        if ((!this.multiple && this.value && this.value.periodId) ||  (this.value && this.value.length > 0)) {
+          this.onChange(this.value);
+          return;
+        }
+        // 设置默认值
+        
+        this.onChange([this.currentPeriod]);
+      },
+
+      onChange(val) {
+        // val是这种格式["2023-01", "2023-05"]，自动补全月份，如["2023-01", "2023-02", "2023-03", "2023-04", "2023-05"]
+        val = completeDateRange(val)
+        this.$emit('input', val)
+      }
+    }
+  })
+
+  
+</script>

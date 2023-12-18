@@ -1,0 +1,1592 @@
+{% extends 'template/jhTemplateV4.html'%}
+
+{% block vueTemplate %}
+
+<!-- 3 table 下  的单表 crud 页面 -->
+
+<!-- SQL START
+-- 以下为 jianghu init 工具生成的参考 SQL，使用后删除
+-- 创建 page
+INSERT INTO `_page` (`pageId`,`pageName`,`pageType`,`sort`,`operation`,`operationByUserId`,`operationByUser`,`operationAt`) SELECT 'voucher-voucherManagement','页面','showInMenu','5','jhInsert',NULL,NULL,NULL FROM DUAL WHERE NOT EXISTS (SELECT `pageId` FROM `_page` WHERE `pageId`='voucher-voucherManagement');
+
+-- 创建 resource
+INSERT INTO `_resource` (`accessControlTable`,`resourceHook`,`pageId`,`actionId`,`desc`,`resourceType`,`appDataSchema`,`resourceData`,`requestDemo`,`responseDemo`,`operation`,`operationByUserId`,`operationByUser`,`operationAt`) SELECT NULL,NULL,'voucher-voucherManagement','selectItemList','✅查询-查询列表','sql','{}','{ \"table\": \"voucher\", \"operation\": \"select\" }','','','insert',NULL,NULL,NULL FROM DUAL WHERE NOT EXISTS (SELECT `pageId` FROM `_resource` WHERE `pageId`='voucher-voucherManagement' AND `actionId`='selectItemList');
+INSERT INTO `_resource` (`accessControlTable`,`resourceHook`,`pageId`,`actionId`,`desc`,`resourceType`,`appDataSchema`,`resourceData`,`requestDemo`,`responseDemo`,`operation`,`operationByUserId`,`operationByUser`,`operationAt`) SELECT NULL,NULL,'voucher-voucherManagement','insertItem','✅查询-添加成员','sql','{}','{ \"table\": \"voucher\", \"operation\": \"insert\" }','','','insert',NULL,NULL,NULL FROM DUAL WHERE NOT EXISTS (SELECT `pageId` FROM `_resource` WHERE `pageId`='voucher-voucherManagement' AND `actionId`='insertItem');
+INSERT INTO `_resource` (`accessControlTable`,`resourceHook`,`pageId`,`actionId`,`desc`,`resourceType`,`appDataSchema`,`resourceData`,`requestDemo`,`responseDemo`,`operation`,`operationByUserId`,`operationByUser`,`operationAt`) SELECT NULL,NULL,'voucher-voucherManagement','updateItem','✅查询-更新成员','sql','{}','{ \"table\": \"voucher\", \"operation\": \"update\" }','','','insert',NULL,NULL,NULL FROM DUAL WHERE NOT EXISTS (SELECT `pageId` FROM `_resource` WHERE `pageId`='voucher-voucherManagement' AND `actionId`='updateItem');
+INSERT INTO `_resource` (`accessControlTable`,`resourceHook`,`pageId`,`actionId`,`desc`,`resourceType`,`appDataSchema`,`resourceData`,`requestDemo`,`responseDemo`,`operation`,`operationByUserId`,`operationByUser`,`operationAt`) SELECT NULL,NULL,'voucher-voucherManagement','doDeleteItem','✅查询-删除信息','sql','{}','{ \"table\": \"voucher\", \"operation\": \"delete\" }','','','insert',NULL,NULL,NULL FROM DUAL WHERE NOT EXISTS (SELECT `pageId` FROM `_resource` WHERE `pageId`='voucher-voucherManagement' AND `actionId`='doDeleteItem');
+SQL END! -->
+<script type="text/html" id="app-template">
+<div>
+  <v-app mobile-breakpoint="sm">
+    <jh-menu />
+    <v-main class="mt-15">
+      <!-- 头部内容 >>>>>>>>>>>>> -->
+      <div class="jh-page-second-bar px-8">
+        <v-row align="center" no-gutters>
+          <v-col cols="12" xs="12" sm="12" md="4" xl="3">
+            <div class="py-4 text-body-1 font-weight-bold d-flex align-center">工资管理
+              <!-- 帮助页按钮 -->
+              <span role="button" class="success--text font-weight-regular jh-font-size-13 mx-2" @click="jumpToUrl">
+                  <v-icon size="13" class="success--text">mdi-help-circle-outline</v-icon>帮助
+                </span>
+              <select-appaId/>
+            </div>
+          </v-col>
+          <!-- pc端的搜索条件表单 >>>>>>>> -->
+          <v-col cols="12" xs="12" sm="12" md="8" xl="9">
+            <v-row no-gutters class="align-center justify-end ma-0 pb-xs-2">
+              <v-col cols="12" xs="6" sm="6" md="4" xl="4" class="px-0 pr-md-2 mb-2 mb-md-0">
+                <select-period v-model="serverSearchInput.period" @change="doUiAction('refreshTableData')"/>
+              </v-col>
+              <v-btn class="elevation-0 w-sm-full" color="success" small @click="doUiAction('refreshTableData')">
+                查询
+              </v-btn>
+            </v-row>
+          </v-col>
+          <!-- <<<<<<<< pc端的搜索条件表单 -->
+
+          <!-- <v-col cols="12" xs="12" sm="12" md="3" xl="3" class="d-flex">
+            <v-menu :close-on-content-click="false"
+                    :nudge-right="40"
+                    transition="scale-transition"
+                    max-width="500px"
+                    offset-y>
+              <template v-slot:activator="{ on, attrs }">
+                <v-text-field
+                  :value="`开票月份：${serverSearchInput.yearMonth}`"
+                  prefix="查询条件：" v-bind="attrs" v-on="on" readonly class="jh-v-input bg-white search-group-input" dense filled single-line></v-text-field>
+              </template>
+              <v-row class="jh-backend-form-container justify-start ma-0 py-1 pb-xs-2">
+                <v-col cols="12" xs="6" sm="6" md="12" xl="12" class=" pb-2 pl-1">
+                  <v-menu
+                    ref="invoiceTypeMenu"
+                    :close-on-content-click="false"
+                    :nudge-right="40"
+                    transition="scale-transition"
+                    offset-y
+                  >
+                    <template v-slot:activator="{ on, attrs }">
+                      <v-text-field v-model="serverSearchInput.yearMonth" prefix="开票月份：" v-bind="attrs" v-on="on" readonly class="jh-v-input ml-2" dense filled
+                                    single-line></v-text-field>
+                    </template>
+                    <v-date-picker
+                      v-model="serverSearchInput.yearMonth"
+                      type="month"
+                      locale="zh-CN"
+                    ></v-date-picker>
+                  </v-menu>
+                </v-col>
+              </v-row>
+            </v-menu>
+            <v-btn :class="!isMobile ? 'jh-backend-search-btn mt-0 ml-1' : 'ml-1'" color="success" small @click="doUiAction('refreshTableData')">
+              查询
+            </v-btn>
+          </v-col> -->
+        </v-row>
+      </div>
+      <!-- <<<<<<<<<<<<< 头部内容 -->
+
+      <div class="jh-page-body-container px-8">
+
+        <!-- 页面主要内容 -->
+        <v-container class="fullScreen d-flex flex-column pa-xs-0 pa-0">
+          <v-card class="rounded-lg">
+            <v-row class="ma-0 pa-4 align-center">
+
+              <v-col cols="12" xs="6" sm="6" md="6" xl="6" class="pa-0">
+                <v-btn v-if="!showAllField" color="success" :disabled="isCreateVoucherDialogLoading" class="elevation-0 mr-2 d-none d-md-inline-block" small @click="doUiAction('startCreateVoucher')">
+                  <v-progress-circular
+                    v-if="isCreateVoucherDialogLoading"
+                    :size="14"
+                    width="3"
+                    color="white"
+                    indeterminate
+                  ></v-progress-circular>
+                  {{isCreateVoucherDialogLoading ? '加载中' : '生成凭证'}}
+                </v-btn>
+                <v-btn color="primary" class="elevation-0 mr-2 d-none d-md-inline-block" small v-if="!showAllField" @click="doUiAction('createListFromEmployee')">生成工资表</v-btn>
+                <v-btn dark color="red" class="elevation-0 mr-2 d-none d-md-inline-block" small v-if="!showAllField" @click="doUiAction('deleteSelected')"><v-icon size="14">mdi-trash-can-outline</v-icon>删除选中</v-btn>
+                <v-btn color="primary" class="elevation-0 mr-2 d-none d-md-inline-block" small @click="doUiAction('printSalary')">
+                  <v-icon size="14">mdi-printer</v-icon>
+                  打印</v-btn>
+                <v-btn color="primary" class="elevation-0 mr-2" small @click="doUiAction('exportExcel')" outlined><v-icon size="14">mdi-export-variant</v-icon>导出</v-btn>
+                <v-btn color="primary" class="elevation-0 mr-2 d-none d-md-inline-block" small outlined @click="doUiAction('startImportExcel')"><v-icon size="14">mdi-import</v-icon>导入</v-btn>
+              </v-col>
+
+              <v-spacer></v-spacer>
+              <span style="color: dodgerblue; line-height: 24px; cursor: pointer" v-if="!showAllField" @click="openCustomSalaryProject">自定义工资项目</span>
+              <v-btn class="elevation-0 mr-2 d-none d-md-inline-block" color="success" small v-else @click="showAllField = false"><v-icon size="14">mdi-content-save-check-outline</v-icon>保存修改</v-btn>
+              <v-switch
+                class="table-switch ma-0 mr-4 pt-0 ml-4 d-none d-md-inline-block"
+                v-model="showAllField"
+                small
+                label="编辑、显示工资明细"
+                :true-value="true"
+                :false-value="false"
+              ></v-switch>
+              <v-col cols="12" xs="6" sm="4" md="3" xl="2" class="pa-0">
+                <v-text-field v-model="searchInput" prefix="搜索：" class="jh-v-input" dense filled single-line></v-text-field>
+              </v-col>
+            </v-row>
+            <v-simple-table id="salaryTable" class="salaryTable" :class="{'showAllField': showAllField}" dense fixed-header>
+              <template v-slot:default>
+                <thead v-if="!isBaseLoading">
+                  <tr>
+                    <th :rowspan="key.child && showAllField ? 1 : 2" :colspan="key.child && showAllField ? key.child : 1" class="text-center" v-for="key in tableHeader" :class="key.cellClass"
+                        :width="key.width">
+                      <template v-if="key.value === 'action'">
+                        <v-checkbox
+                          class="ma-0"
+                          hide-details
+                          v-model="tableAllSelected"
+                          label=""
+                        ></v-checkbox>
+                      </template>
+                      <template v-else>{{key.text}}</template>
+                    </th>
+                  </tr>
+                  <tr v-if="showAllField">
+                    <th class="text-left" v-for="key in secondTableHeader" :class="key.cellClass" :width="key.width">
+                      {{key.text}}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody v-if="isTableLoading">
+                <tr>
+                  <td :colspan="tableHeader.length">
+                    <div style="text-align: center">
+                              <span><v-progress-circular
+                                :size="20"
+                                color="primary"
+                                indeterminate
+                              ></v-progress-circular></span>
+                      <span>数据加载中</span>
+                    </div>
+                  </td>
+                </tr>
+                </tbody>
+                <tbody v-if="!tableData || tableData.length == 0">
+                <tr>
+                  <td :colspan="tableHeader.length">
+                    <div style="text-align: center">
+                      <span>暂无员工工资条数据</span>
+                    </div>
+                  </td>
+                </tr>
+                </tbody>
+                <tbody v-if="!isTableLoading">
+                <tr
+                  v-for="(item, index) in tableData"
+                  :key="item.tempId"
+                >
+                  <td v-for="key in tableDataHeader" :key="key"
+                      :class="{'canEdit': key.formType === 'text' && showAllField}"
+                      :key="key.value + item.id"
+                      :style="{'text-align': key.value === 'action' ? 'center' : 'left'}"
+                      :contentEditable="key.formType === 'text' && showAllField"
+                      @blur="blurTd(item, index, key, $event)"
+                      @focus="focusTd(item, key, $event)">
+                    <template v-if="key.value === 'action'">
+                      <v-checkbox
+                        class="ma-0"
+                        hide-details
+                        v-model="item.isSelected"
+                        label=""
+                      ></v-checkbox>
+                    </template>
+                    <template v-else>{{item[key.value]}}</template>
+                  </td>
+                </tr>
+                <tr v-if="computedTableData">
+                  <td v-for="key in tableDataHeader" :key="key"
+                      :key="key.value"
+                      :style="{'text-align': key.value === 'action' ? 'center' : 'left'}">
+                    <template>{{computedTableData[key.value]}}</template>
+                  </td>
+                </tr>
+                </tbody>
+              </template>
+            </v-simple-table>
+          </v-card>
+        </v-container>
+
+        <v-dialog
+          v-model="isCreateVoucherDialogShown"
+          persistent
+          scrollable
+          width="900px"
+        >
+          <v-card color="grey lighten-5" class="pb-5">
+            <v-card-title>
+              <span class="text-h5">工资生成凭证</span>
+            </v-card-title>
+            <v-card-text style="max-height: 70vh;">
+              <v-card v-for="(item, index) of salaryVoucherTemplate" :key="item.invoiceId" class="my-3 d-flex" style="overflow: hidden">
+                <div style="flex: 1">
+                  <div style="padding: 10px 20px; font-size: 16px;">{{item.voucherTemplateName}}凭证</div>
+                  <div class="invoiceCreateCardMinTitle py-2 px-4 d-flex align-center">
+                    <span>凭证字-</span>
+                    <div style="width: 80px; display: inline-block; ">
+                      <v-autocomplete :rules=validationRules.requireRules
+                                dense outlined hide-details single-line
+                                class="jh-v-input bg-white"
+                                :items="constantObj.voucherName"
+                                :menu-props="{ button: true, offsetY: true }"
+                                v-model="item.voucherName"></v-autocomplete>
+                    </div>
+                    <div style="width: 70px; display: inline-block">
+                      <v-text-field class="jh-v-input bg-white" dense outlined hide-details single-line type="number" min="0" v-model="item.voucherNumber"></v-text-field>
+                    </div>
+                    <span>号</span>
+                    <v-spacer></v-spacer>
+
+                    <span>日期-</span>
+                    <div style="width: 150px; display: inline-block">
+                      <v-menu
+                        v-model="item.menuShown"
+                        :close-on-content-click="false"
+                        :nudge-right="40"
+                        transition="scale-transition"
+                        offset-y
+                        min-width="auto"
+                      >
+                        <template v-slot:activator="{ on, attrs }">
+                          <v-text-field class="jh-v-input bg-white" readonly v-bind="attrs" v-on="on" dense filled single-line v-model="item.voucherAt"></v-text-field>
+                        </template>
+                        <v-date-picker
+                          v-model="item.voucherAt"
+                          locale="zh-CN"
+                          class="cus-date-picker"
+                          @input="item.menuShown = false"
+                        ></v-date-picker>
+                      </v-menu>
+                    </div>
+                  </div>
+                  <salary-voucher-entry v-if="item.entryList && item.entryList.length" v-model="item.entryList" :subjectList="constantObj.subjectList" :voucherTemplate="item"></salary-voucher-entry>
+                </div>
+              </v-card>
+            </v-card-text>
+            <v-card-actions>
+              <span>制单人：{{username}}</span>
+              <v-spacer></v-spacer>
+              <v-btn @click="doUiAction('closeCreateVoucher')"><v-icon size="14">mdi-close</v-icon>取消</v-btn>
+              <v-btn @click="doUiAction('doCreateVoucher')" color="primary"><v-icon size="14">mdi-content-save-check-outline</v-icon>保存凭证</v-btn>
+            </v-card-actions>
+          </v-card>
+        </v-dialog>
+
+        <v-dialog
+          v-model="isCustomSalaryProjectShown"
+          persistent
+          scrollable
+          width="600px"
+        >
+          <v-card color="grey lighten-5" class="pb-5">
+            <v-card-title>
+              <span class="text-h5">自定义工资项目</span>
+            </v-card-title>
+            <v-card-text style="max-height: 70vh;">
+              <div>工资总项:</div>
+              <v-row class="pb-2 mb-2">
+                <v-col cols="12" sm="12" md="4" v-for="(item, index) of customSalaryProject.totalSalaryContent">
+                  <v-text-field class="jh-v-input " clearable dense filled single-line @click:clear="removeCustomSalaryProjectItem('totalSalaryContent', index)"
+                                v-model="customSalaryProject.totalSalaryContent[index]"></v-text-field>
+                </v-col>
+                <v-col cols="12" sm="12" md="4">
+                  <v-btn class="elevation-0 mr-2" small @click="addCustomSalaryProjectItem('totalSalaryContent')">添加项目</v-btn>
+                </v-col>
+              </v-row>
+              <div>应扣工资:</div>
+              <v-row class="pb-2 mb-2">
+                <v-col cols="12" sm="12" md="4" v-for="(item, index) of customSalaryProject.totalDeductSalaryContent">
+                  <v-text-field class="jh-v-input " clearable dense filled single-line @click:clear="removeCustomSalaryProjectItem('totalDeductSalaryContent', index)"
+                                v-model="customSalaryProject.totalDeductSalaryContent[index]"></v-text-field>
+                </v-col>
+                <v-col cols="12" sm="12" md="4">
+                  <v-btn class="elevation-0 mr-2" small @click="addCustomSalaryProjectItem('totalDeductSalaryContent')">添加项目</v-btn>
+                </v-col>
+              </v-row>
+              <div>实发工资调整:</div>
+              <v-row class="pb-2 mb-2">
+                <v-col cols="12" sm="12" md="4" v-for="(item, index) of customSalaryProject.realPaySalaryAdjustmentContent">
+                  <v-text-field class="jh-v-input " clearable dense filled single-line @click:clear="removeCustomSalaryProjectItem('realPaySalaryAdjustmentContent', index)"
+                                v-model="customSalaryProject.realPaySalaryAdjustmentContent[index]"></v-text-field>
+                </v-col>
+                <v-col cols="12" sm="12" md="4">
+                  <v-btn class="elevation-0 mr-2" small @click="addCustomSalaryProjectItem('realPaySalaryAdjustmentContent')">添加项目</v-btn>
+                </v-col>
+              </v-row>
+            </v-card-text>
+            <v-card-actions>
+              <v-spacer></v-spacer>
+              <v-btn @click="isCustomSalaryProjectShown = false"><v-icon size="14">mdi-close</v-icon>取消</v-btn>
+              <v-btn @click="doUiAction('saveCustomSalaryProject')" color="primary"><v-icon size="14">mdi-content-save-check-outline</v-icon>保存数据</v-btn>
+            </v-card-actions>
+          </v-card>
+        </v-dialog>
+
+        <v-dialog
+          v-model="isImportExcelDialogShown"
+          persistent
+          scrollable
+          width="300px"
+        >
+          <v-card color="grey lighten-5" class="pb-5">
+            <v-card-title>
+              <span class="text-h5">导入工资表</span>
+            </v-card-title>
+            <v-card-text style="max-height: 70vh;">
+              点击下载工资表模板，按照模板格式进行数据整理再导入。
+              <a href="/<$ ctx.app.config.appId $>/public/工资列表模板.xlsx">下载模板</a>
+            </v-card-text>
+            <v-card-actions>
+              <v-spacer></v-spacer>
+              <v-btn @click="isImportExcelDialogShown = false"><v-icon size="14">mdi-close</v-icon>取消</v-btn>
+              <v-btn @click="doUiAction('importExcel')" color="primary">开始导入</v-btn>
+            </v-card-actions>
+          </v-card>
+        </v-dialog>
+
+      </div>
+
+      <!-- 帮助页抽屉 >>>>>>>>>>>>> -->
+      <!-- <<<<<<<<<<<<< 帮助页抽屉 -->
+
+    </v-main>
+  </v-app>
+  <jh-toast />
+  <jh-mask />
+  <jh-confirm-dialog />
+</div>
+</script>
+<div id="app">
+</div>
+
+{% endblock %}
+
+{% block vueScript %}
+{% include 'component/jianghuJs/select-appaId.html' %}
+{% include 'component/select-period.html' %}
+{% include 'common/jianghuJs/fixedTableHeightV4.html' %}
+{% include 'common/jianghuJs/fixedTableColV4.html' %}
+{% include 'component/voucher/salaryVoucherEntry.html' %}
+{% include 'common/excelUtil.html' %}
+{% include 'common/vueFilters.html' %}
+
+<script type="module">
+new Vue({
+  el: '#app',
+  template: '#app-template',
+  vuetify: new Vuetify(),
+  data: () => ({
+    isMobile: window.innerWidth < 500,
+
+    // 面包屑
+    breadcrumbs: [
+      {
+        text: '首页',
+        disabled: true,
+      },
+      {
+        text: '工资管理',
+        disabled: true,
+      }
+    ],
+    username: window.userInfo.username,
+    createInvoiceBtnStatus: false,
+    // 表格相关数据
+    isTableZebraLineMenuShown: false,
+    tableZebraLineMenuPosition: {x: null, y: null},
+    isTableZebraLineShown: true,
+    tableAllSelected: false,
+    // 表格相关数据
+    isFormValid: true,
+    validationRules: {
+      requireRules: [
+        v => !!v || '必填',
+      ],
+      voucherEntryRules: [
+        v => v.length > 0 || '姓名必须少于10个字符',
+      ],
+    },
+    customSalaryProject: {
+      totalSalaryContent: ['工资'],
+      totalDeductSalaryContent: [],
+      realPaySalaryAdjustmentContent: [],
+    },
+    constantObj: {
+      voucherName: ['记', '收', '付', '转'],
+      hasVoucher: ['全部', '已生成', '未生成'],
+      subjectList: [],
+      employeeList: []
+    },
+
+    serverSearchInput: {
+      yearMonth: dayjs().format('YYYY-MM'),
+      hasVoucher: '全部',
+      period: { periodId: null },
+    },
+    searchInput: null,
+    isBaseLoading: true,
+    isTableLoading: true,
+    tableDataFromBackend: null,
+    headers: [
+      {text: "选择", value: "action", defaultShown: true, export: false},
+      {text: "员工编号", value: "employeeId", defaultShown: true},
+      {text: "员工姓名", value: "employeeName", defaultShown: true},
+      {text: "部门", value: "appaId", defaultShown: true},
+      {text: "手机号", value: "phone", sortable: true},
+      {text: "身份证号码", value: "icNumber", required: true},
+      {text: "个税免征额", value: "taxExemption", defaultShown: true, required: true},
+      {text: "工资总额", value: "totalSalary", child: 1, defaultShown: true, required: true},
+      {text: "应扣工资", value: "totalDeductSalary", child: 1, defaultShown: true, required: true},
+
+      {text: "应发工资", value: "expectedPaySalary", defaultShown: true, required: true},
+      {text: "代扣个人款项", value: "personalInsuranceAmount", child: 5, defaultShown: true, required: true},
+      {text: "其他扣除", value: "otherDeduct", formType: 'text', required: true},
+
+      {text: "累计收入额", value: "accumulatedIncome", formType: 'text', sortable: true},
+      {text: "累计减除费用", value: "accumulatedDeductExpenses", formType: 'text'},
+      {text: "累计代扣额", value: "accumulatedWithholding", formType: 'text'},
+      {text: "累计专项附加扣除", value: "accumulatedSpecialAdditionalDeduction", child: 7},
+      {text: "累计其他扣除", value: "accumulatedOtherDeduction", required: true, formType: 'text', invoiceType: '销项发票'},
+      {text: "累计应缴个税", value: "accumulatedTaxableIncome", formType: 'text'},
+      {text: "已缴个税", value: "accumulatedPaidTax", formType: 'text'},
+      {text: "本月应缴个税", value: "currentMonthTaxableIncome", defaultShown: true},
+      {text: "个税调整", value: "taxAdjustment"},
+      {text: "实发工资调整", value: "realPaySalaryAdjustment", child: 1, defaultShown: true},
+      {text: "实发工资", value: "realPaySalary", defaultShown: true},
+      {text: "公司承担款项", value: "companyInsuranceAmount", child: 7, defaultShown: true},
+      {text: "员工成本合计", value: "employeeCostTotal", defaultShown: true},
+
+      {text: "操作者", value: "operationByUser", export: false},
+      {text: "操作时间", value: "operationAt", export: false},
+    ],
+
+    // 生成凭证
+    createVoucherItemList: [],
+    createVoucherItemListClone: [],
+    isCreateVoucherDialogShown: false,
+    isCreateVoucherDialogLoading: false,
+    monthSalaryRecord: null,
+    baseVoucherNumber: 1,
+    salaryVoucherTemplate: [],
+
+    showAllField: true, // defalut false
+    isCustomSalaryProjectShown: false,
+    hasChangedIdList: [],
+    willDeleteItemList: [],
+    isImportExcelDialogShown: false
+  }),
+  computed: {
+    tableHeader() {
+      // child 数量要根据 constant 设置
+      return this.headers.filter(item => this.showAllField || item.defaultShown);
+    },
+    tableData() {
+      return this.tableDataFromBackend;
+    },
+    secondTableHeader() {
+      const tSecondTableHeader = [];
+
+      // 工资总项
+      this.customSalaryProject.totalSalaryContent.forEach(item => {
+        tSecondTableHeader.push({text: item, value: item, parent: 'totalSalary', formType: 'text'})
+      });
+      tSecondTableHeader.push({text: "工资小计", value: "totalSalary", parent: 'totalSalary', computed: true})
+
+      // 应扣工资
+      this.customSalaryProject.totalDeductSalaryContent.forEach(item => {
+        tSecondTableHeader.push({text: item, value: item, parent: 'totalDeductSalary', formType: 'text'})
+      });
+      tSecondTableHeader.push({text: "应扣工资小计", value: "totalDeductSalary", parent: 'totalDeductSalary', computed: true})
+
+      // 代扣个人款项
+      tSecondTableHeader.push({text: '养老保险', value: 'personalEndowmentInsurance', parent: 'personalInsuranceAmount', formType: 'text'})
+      tSecondTableHeader.push({text: '医疗保险', value: 'personalMedicalInsurance', parent: 'personalInsuranceAmount', formType: 'text'})
+      tSecondTableHeader.push({text: '失业保险', value: 'personalUnemploymentInsurance', parent: 'personalInsuranceAmount', formType: 'text'})
+      tSecondTableHeader.push({text: '住房公积金', value: 'personalHousingFund', parent: 'personalInsuranceAmount', formType: 'text'})
+      tSecondTableHeader.push({text: '代扣个人款项小计', value: 'personalInsuranceAmount', parent: 'personalInsuranceAmount', computed: true})
+
+      // 专项附加扣除
+      tSecondTableHeader.push({text: '子女教育', value: 'childrenEducation', parent: 'accumulatedSpecialAdditionalDeduction', formType: 'text'})
+      tSecondTableHeader.push({text: '赡养老人', value: 'supportingTheElderly', parent: 'accumulatedSpecialAdditionalDeduction', formType: 'text'})
+      tSecondTableHeader.push({text: '住房贷款利息', value: 'housingLoanInterest', parent: 'accumulatedSpecialAdditionalDeduction', formType: 'text'})
+      tSecondTableHeader.push({text: '住房租金', value: 'housingRent', parent: 'accumulatedSpecialAdditionalDeduction', formType: 'text'})
+      tSecondTableHeader.push({text: '继续教育', value: 'continuingEducation', parent: 'accumulatedSpecialAdditionalDeduction', formType: 'text'})
+      tSecondTableHeader.push({text: '3岁以下婴幼儿照护', value: 'infantCare', parent: 'accumulatedSpecialAdditionalDeduction', formType: 'text'})
+      tSecondTableHeader.push({text: '累计专项附加扣除小计', value: 'accumulatedSpecialAdditionalDeduction', parent: 'accumulatedSpecialAdditionalDeduction', computed: true})
+
+      // 实发工资调整
+      this.customSalaryProject.realPaySalaryAdjustmentContent.forEach(item => {
+        tSecondTableHeader.push({text: item, value: item, formType: 'text', parent: 'realPaySalaryAdjustment'})
+      });
+      tSecondTableHeader.push({text: "实发工资调整小计", value: "realPaySalaryAdjustment", parent: 'realPaySalaryAdjustment', computed: true});
+
+      // 代扣个人款项
+      tSecondTableHeader.push({text: '养老保险', value: 'companyEndowmentInsurance', formType: 'text', parent: 'companyInsuranceAmount'})
+      tSecondTableHeader.push({text: '医疗保险', value: 'companyMedicalInsurance', formType: 'text', parent: 'companyInsuranceAmount'})
+      tSecondTableHeader.push({text: '失业保险', value: 'companyUnemploymentInsurance', formType: 'text', parent: 'companyInsuranceAmount'})
+      tSecondTableHeader.push({text: '工伤保险', value: 'companyInjuryInsurance', formType: 'text', parent: 'companyInsuranceAmount'})
+      tSecondTableHeader.push({text: '生育保险', value: 'companyMaternityInsurance', formType: 'text', parent: 'companyInsuranceAmount'})
+      tSecondTableHeader.push({text: '住房公积金', value: 'companyHousingFund', formType: 'text', parent: 'companyInsuranceAmount'})
+      tSecondTableHeader.push({text: '公司承担款项小计', value: 'companyInsuranceAmount', parent: 'companyInsuranceAmount', computed: true})
+
+      return tSecondTableHeader;
+    },
+    fullTableHeader() {
+      const tempHeaders = _.cloneDeep(this.headers);
+      const replaceChildren = () => {
+        if (tempHeaders.some(item => item.child)) {
+          tempHeaders.some((item, index) => {
+            if (item.child) {
+              const children = this.secondTableHeader.filter(key => key.parent === item.value);
+              tempHeaders.splice(index, 1, ...children);
+              return true;
+            }
+            return false;
+          })
+          replaceChildren();
+        }
+      }
+      replaceChildren();
+      return tempHeaders;
+    },
+    tableDataHeader() {
+      return this.showAllField? this.fullTableHeader: this.tableHeader;
+    },
+    computedTableData() {
+      const cloneList = _.cloneDeep(this.tableDataFromBackend);
+      if (cloneList.length) {
+        const newObject = {};
+        cloneList.forEach(item => {
+          Object.keys(cloneList[0]).forEach(key => {
+            if (item[key] === null) return;
+            if (isNaN(item[key])) return;
+            newObject[key] = newObject[key] ? parseFloat(newObject[key]) + parseFloat(item[key]) : item[key];
+          })
+        })
+        newObject.appaId = '合计';
+        newObject.employeeId = null;
+        newObject.phone = null;
+        newObject.icNumber = null;
+        newObject.operationByUser = null;
+        newObject.operationAt = null;
+        return newObject;
+      }
+      return null;
+    },
+  },
+  watch: {
+    tableAllSelected(value, oValue) {
+      if (value === oValue) return;
+      this.tableDataFromBackend.forEach(item => {
+        item.isSelected = value;
+      })
+      this.tableDataFromBackend = [...this.tableDataFromBackend];
+    },
+    serverSearchInput: {
+      deep: true,
+      handler(value, oValue) {
+      }
+    },
+    'customSalaryProject.totalSalaryContent'() {
+      this.headers.forEach(item => {
+        if (item.value === 'totalSalary') {
+          item.child = this.customSalaryProject.totalSalaryContent.length + 1;
+        }
+      })
+      this.headers = [...this.headers];
+      this.syncCustomSalaryProjectToTableData();
+    },
+    'customSalaryProject.totalDeductSalaryContent'() {
+      this.headers.forEach(item => {
+        if (item.value === 'totalDeductSalary') {
+          item.child = this.customSalaryProject.totalDeductSalaryContent.length + 1;
+        }
+      })
+      this.headers = [...this.headers];
+      this.syncCustomSalaryProjectToTableData();
+    },
+    'customSalaryProject.realPaySalaryAdjustmentContent'() {
+      this.headers.forEach(item => {
+        if (item.value === 'realPaySalaryAdjustment') {
+          item.child = this.customSalaryProject.realPaySalaryAdjustmentContent.length + 1;
+        }
+      })
+      this.headers = [...this.headers];
+      this.syncCustomSalaryProjectToTableData();
+    },
+    showAllField(value, oValue) {
+      if (!value && oValue) {
+        if (this.hasChangedIdList.length) {
+          this.doUiAction("saveChanged");
+        }
+      }
+    }
+  },
+  async created() {
+    this.doUiAction('getBaseDataList');
+    this.doUiAction('refreshTableData');
+    this.doUiAction('checkHasEmployee');
+  },
+  mounted() {
+  },
+  methods: {
+    async doUiAction(uiActionId, uiActionData) {
+      switch (uiActionId) {
+        case 'printSalary':
+          await this.printSalary();
+          break;
+        case 'saveChanged':
+          await this.saveChanged();
+          break;
+        case 'checkHasEmployee':
+          await this.checkHasEmployee();
+          break;
+        case 'createListFromEmployee':
+          await this.createListFromEmployee();
+          await this.refreshTableData();
+          break;
+        case 'refreshTableData':
+          await this.refreshTableData();
+          break;
+        case 'getBaseDataList':
+          await this.getConstantObj();
+          await this.getTemplateList();
+          await this.getSubjectList();
+          break;
+        case 'openTableZebraLineMenu':
+          await this.openTableZebraLineMenu(uiActionData);
+          break;
+        case 'deleteSelected':
+          await this.prepareDeleteSelected();
+          await this.confirmDeleteItemDialog();
+          await this.doDeleteSelected();
+          await this.refreshTableData();
+          break;
+        case 'exportExcel':
+          await this.doUiAction('checkHasEmployee');
+          await this.exportExcel();
+          break;
+        case 'importExcel':
+          await this.importExcel();
+          await this.refreshTableData();
+          break;
+        case 'startImportExcel':
+          await this.startImportExcel();
+          break;
+        case 'startCreateVoucher':
+          await this.getMontSalaryRecord();
+          await this.getLastVouCherNumber();
+          await this.prepareCreateVoucher(uiActionData);
+          await this.openCreateVoucherDialog();
+          break;
+        case 'doCreateVoucher':
+          await this.confirmCreateVoucherDialog();
+          await this.prepareDoCreateVoucher();
+          await this.doCreateVoucher();
+          await this.closeCreateVoucher();
+          await this.refreshTableData();
+          break;
+        case 'closeCreateVoucher':
+          await this.closeCreateVoucher();
+          break;
+        case 'changeVoucherDataList':
+          await this.changeVoucherDataList(uiActionData);
+          break;
+        case 'saveCustomSalaryProject':
+          await this.saveCustomSalaryProject();
+          break;
+        default:
+          console.error("[doUiAction] uiActionId not find", {uiActionId});
+          break;
+      }
+    },
+    addCustomSalaryProjectItem(key) {
+      this.customSalaryProject[key].push(null);
+      this.customSalaryProject = {...this.customSalaryProject};
+    },
+    removeCustomSalaryProjectItem(key, index) {
+      this.customSalaryProject[key].splice(index, 1);
+      this.customSalaryProject = {...this.customSalaryProject};
+    },
+    openCustomSalaryProject() {
+      this.isCustomSalaryProjectShown = true;
+    },
+    // =================================uiAction 公共方法 start ======================================
+    async saveCustomSalaryProject() {
+      window.vtoast.loading({message: "正在保存自定义工资配置", item: -1})
+      await window.jianghuAxios({
+        data: {
+          appData: {
+            pageId: 'salary-salaryManagement',
+            actionId: 'saveCustomSalaryProject',
+            actionData: this.customSalaryProject
+          }
+        }
+      });
+      this.isCustomSalaryProjectShown = false;
+      window.vtoast.success({message: "保存工资配置成功"})
+    },
+    async getTemplateList() {
+      const result = await window.jianghuAxios({
+        data: {
+          appData: {
+            pageId: 'salary-salaryManagement',
+            actionId: 'selectTemplateList',
+            actionData: {},
+            where: {'voucherType': '工资凭证'}
+          }
+        }
+      });
+      const {rows} = result.data.appData.resultData;
+      rows.forEach(item => {
+        item.voucherTemplateConfig = JSON.parse(item.voucherTemplateConfig);
+      })
+      this.salaryVoucherTemplate = rows;
+      this.constantObj.salaryVoucherTemplate = rows;
+    },
+    async getConstantObj() {
+      this.isBaseLoading = true;
+      const result = await window.jianghuAxios({
+        data: {
+          appData: {
+            pageId: 'allPage',
+            actionId: 'getConstantList',
+            where: {},
+          }
+        }
+      });
+      const {rows} = result.data.appData.resultData;
+      const customSalaryProject = rows.find(item => item.constantKey === 'customSalarySubject').constantValue;
+      if (customSalaryProject) {
+        this.customSalaryProject = JSON.parse(customSalaryProject);
+        this.headers.forEach(item => {
+          if (item.value === 'totalSalary') {
+            item.child = this.customSalaryProject.totalSalaryContent.length + 1;
+          }
+          if (item.value === 'totalDeductSalary') {
+            item.child = this.customSalaryProject.totalDeductSalaryContent.length + 1;
+          }
+          if (item.value === 'realPaySalaryAdjustment') {
+            item.child = this.customSalaryProject.realPaySalaryAdjustmentContent.length + 1;
+          }
+        })
+        this.headers = [...this.headers];
+      }
+      this.isBaseLoading = false;
+    },
+    async createListFromEmployee() {
+      window.vtoast.loading({message: '正在创建工资表', time: -1})
+      const where = {};
+      const yearMonthSplit = this.serverSearchInput.yearMonth.split('-');
+      if (this.serverSearchInput.yearMonth && yearMonthSplit.length === 2) {
+        where.year = yearMonthSplit[0];
+        where.month = yearMonthSplit[1];
+      }
+      const result = (await window.jianghuAxios({
+        data: {
+          appData: {
+            pageId: 'salary-salaryManagement',
+            actionId: 'createListFromEmployee',
+            where
+          }
+        }
+      })).data.appData.resultData;
+      if (!result.rows) {
+        window.vtoast.fail({message: "当月所有员工已存在工资表了"});
+        throw new Error("[checkHasNeedBuildSalary] false");
+      }
+      window.vtoast.success({message: "工资表创建好了"});
+    },
+    async printSalary() {
+      this.showAllField = false;
+      setTimeout(() => {
+        const obj = document.getElementById("salaryTable"); //print表示所要打印的区域
+        const tempWin = window.open("", "", "top=-10,left=-10,toolbar=no,menubar=no,location=no,status=no"); //重新打开一个窗口，
+        window.top.moveTo(-10, -10);
+        window.top.resizeTo(screen.availWidth, screen.availHeight);
+        tempWin.document.open("text/html");
+        tempWin.document.write(obj.innerHTML);
+        tempWin.document.querySelectorAll("tr").forEach(item => {
+          item.removeChild(item.firstChild)
+        });
+        tempWin.document.querySelectorAll("table").forEach(item => {
+          item.style.cssText = "border-collapse:collapse; width: 100%";
+        });
+        tempWin.document.querySelectorAll("th").forEach(item => {
+          item.style.cssText = "border: 1px solid #CCCCCC;; font-size: 12px; background-color: #F3F3F3";
+        });
+        tempWin.document.querySelectorAll("td").forEach(item => {
+          item.style.cssText = "border: 1px solid #CCCCCC; font-size: 12px;";
+        });
+        const style = tempWin.document.createElement('style');
+        tempWin.document.head.appendChild(style);
+        style.innerHTML = "@page { size: landscape; }";
+
+        tempWin.document.close();
+        tempWin.print(); //调用打印机
+        tempWin.close();//关闭窗口
+      }, 300)
+
+    },
+    async saveChanged() {
+      window.vtoast.loading({'message': '正在保存变动', time: -1})
+      const where = {};
+      const yearMonthSplit = this.serverSearchInput.yearMonth.split('-');
+      if (this.serverSearchInput.yearMonth && yearMonthSplit.length === 2) {
+        where.year = yearMonthSplit[0];
+        where.month = yearMonthSplit[1];
+      }
+      let willSaveDataList = _.cloneDeep(this.tableDataFromBackend.filter(item => this.hasChangedIdList.includes(item.id)));
+      willSaveDataList = willSaveDataList.map(item => {
+        item.totalSalaryContent = JSON.stringify(item.totalSalaryContent);
+        item.totalDeductSalaryContent = JSON.stringify(item.totalDeductSalaryContent);
+        item.realPaySalaryAdjustmentContent = JSON.stringify(item.realPaySalaryAdjustmentContent);
+        return _.omit(item, ['isSelected', 'menuShown', ...this.customSalaryProject.totalSalaryContent, ...this.customSalaryProject.totalDeductSalaryContent, ...this.customSalaryProject.realPaySalaryAdjustmentContent])
+      })
+      console.log(willSaveDataList)
+      await window.jianghuAxios({
+        data: {
+          appData: {
+            pageId: 'salary-salaryManagement',
+            actionId: 'saveChanged',
+            actionData: {
+              dataList: willSaveDataList
+            },
+            where
+          }
+        }
+      });
+      window.vtoast.success({'message': '保存成功'})
+    },
+    async checkHasEmployee() {
+      const result = await window.jianghuAxios({
+        data: {
+          appData: {
+            pageId: 'salary-salaryManagement',
+            actionId: 'selectEmployeeList',
+            actionData: {},
+            where: {}
+          }
+        }
+      });
+      this.constantObj.employeeList = result.data.appData.resultData.rows;
+      if (!this.constantObj.employeeList.length) {
+        const result = await window.confirmDialog({
+          title: '提示',
+          content: '您还没有员工信息，请先录入员工信息',
+          confirmText: '去录入',
+          cancelText: '取消',
+        })
+        if (result) {
+          window.open(`/${window.appInfo.appId}/page/salary-insuranceConfigManagement`)
+        }
+      }
+    },
+    async refreshTableData() {
+      this.isTableLoading = true;
+      const result = await window.jianghuAxios({
+        data: {
+          appData: {
+            pageId: 'salary-salaryManagement',
+            actionId: 'selectItemList',
+            where: { salaryMonthRecordId: this.serverSearchInput.period.periodId },
+          }
+        }
+      });
+
+      const {rows} = result.data.appData.resultData;
+      rows.forEach(item => {
+        if (item.totalSalaryContent) {
+          item.totalSalaryContent = JSON.parse(item.totalSalaryContent);
+        }
+        if (item.totalDeductSalaryContent) {
+          item.totalDeductSalaryContent = JSON.parse(item.totalDeductSalaryContent);
+        }
+        if (item.realPaySalaryAdjustmentContent) {
+          item.realPaySalaryAdjustmentContent = JSON.parse(item.realPaySalaryAdjustmentContent);
+        }
+      })
+      this.tableDataFromBackend = rows;
+      this.syncCustomSalaryProjectToTableData();
+      this.isTableLoading = false;
+    },
+    syncCustomSalaryProjectToTableData() {
+      if (!this.tableDataFromBackend) return;
+      this.tableDataFromBackend.forEach(item => {
+        if (item.totalSalaryContent) {
+          const newMap = {};
+          this.customSalaryProject.totalSalaryContent.forEach(key => {
+            newMap[key] = Array.isArray(item.totalSalaryContent) ? 0 : (item.totalSalaryContent && item.totalSalaryContent.hasOwnProperty(key) ? item.totalSalaryContent[key] : 0);
+            item[key] = newMap[key];
+          })
+          item.totalSalaryContent = newMap;
+        }
+        if (item.totalDeductSalaryContent) {
+          const newMap = {};
+          this.customSalaryProject.totalDeductSalaryContent.forEach(key => {
+            newMap[key] = Array.isArray(item.totalDeductSalaryContent) ? 0 : (item.totalDeductSalaryContent && item.totalDeductSalaryContent.hasOwnProperty(key) ? item.totalDeductSalaryContent[key] : 0);
+            item[key] = newMap[key];
+          })
+          item.totalDeductSalaryContent = newMap;
+        }
+        if (item.realPaySalaryAdjustmentContent) {
+          const newMap = {};
+          this.customSalaryProject.realPaySalaryAdjustmentContent.forEach(key => {
+            newMap[key] = Array.isArray(item.realPaySalaryAdjustmentContent) ? 0 : (item.realPaySalaryAdjustmentContent && item.realPaySalaryAdjustmentContent.hasOwnProperty(key) ? item.realPaySalaryAdjustmentContent[key] : 0);
+            item[key] = newMap[key];
+          })
+          item.realPaySalaryAdjustmentContent = newMap;
+        }
+      })
+      this.tableDataFromBackend = [...this.tableDataFromBackend];
+    },
+    // ---------- 斑马纹开关 uiAction >>>>>>>>>> --------
+    async openTableZebraLineMenu(funObj) {
+      this.tableZebraLineMenuPosition.x = funObj.x - funObj.offsetX + 10;
+      this.tableZebraLineMenuPosition.y = window.innerHeight - 50;
+      this.isTableZebraLineMenuShown = !this.isTableZebraLineMenuShown;
+    },
+    // ---------- <<<<<<<<<< 斑马纹开关 uiAction --------
+    // =================================uiAction 公共方法 end ======================================
+    async getSubjectList() {
+      const result = await window.jianghuAxios({
+        data: {
+          appData: {
+            pageId: 'voucher-voucherManagement',
+            actionId: 'selectSubjectList',
+            actionData: {},
+            where: {subjectHasChildren: '无下级科目'},
+            orderBy: [{column: 'subjectCategory', order: 'desc'}, {column: 'subjectId', order: 'asc'}]
+          }
+        }
+      });
+      const {rows} = result.data.appData.resultData;
+      rows.forEach(row => {
+        row.assistList = row.assistList ? row.assistList.split(',') : [];
+      })
+      this.constantObj.subjectList = rows;
+    },
+
+    async prepareDeleteSelected() {
+      this.willDeleteItemList = this.tableData.filter(item => item.isSelected);
+      if (!this.willDeleteItemList.length) {
+        window.vtoast.fail("请选择要删除的工资条");
+        throw new Error("请选择要删除的工资条");
+      }
+    },
+    async confirmDeleteItemDialog() {
+      if (await window.confirmDialog({title: "删除工资条", content: `确定删除该工资条吗？`}) === false) {
+        throw new Error("取消");
+      }
+    },
+
+    async doDeleteSelected() {
+      window.vtoast.loading({message: '删除全中的凭证', time: -1});
+      await window.jianghuAxios({
+        data: {
+          appData: {
+            pageId: 'salary-salaryManagement',
+            actionId: 'deleteSelected',
+            where: {idList: this.willDeleteItemList.map(item => item.id)},
+          }
+        }
+      });
+      window.vtoast.success("删除凭证成功");
+    },
+
+    async startImportExcel() {
+      const employeeIdList = this.constantObj.employeeList.map(item => item.employeeId);
+      const notSalaryId = employeeIdList.filter(item => !this.tableDataFromBackend.some(data => data.employeeId === item));
+      if(!notSalaryId.length) {
+        window.vtoast.fail("已存在全部员工工资信息，切勿重复导入");
+        throw new Error("已存在全部员工工资信息，切勿重复导入");
+      }
+      this.isImportExcelDialogShown = true;
+    },
+    async importExcel() {
+      this.isImportExcelDialogShown = false;
+      const excelData = await excelUtil.importData();
+      if(!excelData.length) {
+        window.vtoast.fail("表格数据不能为空");
+        throw new Error("表格数据不能为空");
+      }
+      window.vtoast.loading({message: '正在导入员工工资条', time: -1})
+      const willImportJson = [];
+      const where = {};
+      const yearMonthSplit = this.serverSearchInput.yearMonth.split('-');
+      if (this.serverSearchInput.yearMonth && yearMonthSplit.length === 2) {
+        where.year = yearMonthSplit[0];
+        where.month = yearMonthSplit[1];
+      }
+      for(const item of excelData) {
+        const newJson = {};
+        this.fullTableHeader.forEach(item => {
+          if(item.value === 'action' || item.value === 'operationAt' || item.value === 'operationByUser') return;
+          // 先得到数据编号
+          newJson[item.value] = excelData[0][item.text];
+        })
+        newJson.totalSalaryContent = {};
+        this.customSalaryProject.totalSalaryContent.forEach(key => {
+          newJson.totalSalaryContent[key] = newJson[key];
+          delete newJson[key];
+        })
+        newJson.totalDeductSalaryContent = {};
+        this.customSalaryProject.totalDeductSalaryContent.forEach(key => {
+          newJson.totalDeductSalaryContent[key] = newJson[key];
+          delete newJson[key];
+        })
+        newJson.realPaySalaryAdjustmentContent = {};
+        this.customSalaryProject.realPaySalaryAdjustmentContent.forEach(key => {
+          newJson.realPaySalaryAdjustmentContent[key] = newJson[key];
+          delete newJson[key];
+        })
+
+        newJson.totalSalary = this.customSalaryProject.totalSalaryContent.reduce((pre, cur) => {
+          return pre + parseFloat(newJson.totalSalaryContent[cur]);
+        }, 0)
+        newJson.totalDeductSalary = this.customSalaryProject.totalDeductSalaryContent.reduce((pre, cur) => {
+          return pre + parseFloat(newJson.totalDeductSalaryContent[cur]);
+        }, 0)
+        newJson.realPaySalaryAdjustment = this.customSalaryProject.realPaySalaryAdjustmentContent.reduce((pre, cur) => {
+          return pre + parseFloat(newJson.realPaySalaryAdjustmentContent[cur]);
+        }, 0)
+        newJson.totalSalaryContent = JSON.stringify(newJson.totalSalaryContent);
+        newJson.totalDeductSalaryContent = JSON.stringify(newJson.totalDeductSalaryContent);
+        newJson.realPaySalaryAdjustmentContent = JSON.stringify(newJson.realPaySalaryAdjustmentContent);
+        willImportJson.push(newJson);
+      }
+      await window.jianghuAxios({
+        data: {
+          appData: {
+            pageId: 'salary-salaryManagement',
+            actionId: 'importExcel',
+            actionData: {willImportJson},
+            where
+          }
+        }
+      });
+      window.vtoast.success("导入成功")
+    },
+
+    async exportExcel() {
+      if (!(this.tableData.filter(item => item.isSelected)).length) {
+        return window.vtoast.fail('请先选择要导出的数据');
+      }
+      const params = {
+        header: this.fullTableHeader.filter(header => header.export !== false).map(header => header.text),
+        key: this.fullTableHeader.filter(header => header.export !== false).map(header => header.value),
+        data: this.tableData.filter(item => item.isSelected),
+        filename: dayjs().format('YYYYMMDDHHmmss') + '_' + '工资列表',
+      };
+      excelUtil.exportData(params);
+      this.createVoucherItemList = [];
+    },
+    // =================================uiAction 创建凭证 start ======================================
+    async getLastVouCherNumber() {
+      const periodId = dayjs().format("YYYY-MM");
+      // Tip: 当会计期间 没有改变时 ===> 不触发更新
+      const result = await window.jianghuAxios({
+        data: {
+          appData: {
+            pageId: 'voucher-voucherManagement',
+            actionId: 'selectNextVoucherNumber',
+            actionData: {periodId},
+          }
+        }
+      });
+      const {voucherNumber} = result.data.appData.resultData;
+      this.baseVoucherNumber = voucherNumber;
+    },
+    async getMontSalaryRecord() {
+      this.isCreateVoucherDialogLoading = true;
+      const where = {};
+      const yearMonthSplit = this.serverSearchInput.yearMonth.split('-');
+      if (this.serverSearchInput.yearMonth && yearMonthSplit.length === 2) {
+        where.year = yearMonthSplit[0];
+        where.month = parseInt(yearMonthSplit[1]);
+      }
+      const result = (await window.jianghuAxios({
+        data: {
+          appData: {
+            pageId: 'salary-salaryManagement',
+            actionId: 'selectMonthItemList',
+            actionData: {},
+            where,
+          }
+        }
+      })).data.appData.resultData.rows;
+      this.monthSalaryRecord = result[0];
+      if(result[0].voucherId) {
+        this.isCreateVoucherDialogLoading = false;
+        window.vtoast.fail({message: "凭证已经生成，切勿重复生成！"});
+        throw new Error("凭证已经生成，切勿重复生成！");
+      }
+    },
+    async prepareCreateVoucher(item) {
+      this.salaryVoucherTemplate.forEach((item, index) => {
+        item.voucherNumber = this.baseVoucherNumber + index;
+        item.voucherName = '记';
+        item.voucherAt = dayjs().format('YYYY-MM-DD');
+        item.entryList = [_.cloneDeep(this.computedTableData)];
+      })
+      console.log(this.salaryVoucherTemplate)
+    },
+    async openCreateVoucherDialog() {
+      this.isCreateVoucherDialogLoading = false;
+      this.isCreateVoucherDialogShown = true;
+    },
+    async confirmCreateVoucherDialog() {
+      if (await window.confirmDialog({title: "创建凭证", content: "确定创建凭证吗？"}) === false) {
+        throw new Error("取消");
+      }
+    },
+    async prepareDoCreateVoucher() {
+      this.salaryVoucherTemplate.forEach(item => {
+        // 凭证信息补全
+        if (!item.voucherType) {
+          item.voucherType = '工资凭证';
+        }
+        if (!item.voucherTemplateId) {
+          window.vtoast.fail({message: "缺少凭证模板"});
+          throw new Error("缺少凭证模板");
+        }
+        if (!item.voucherTemplateName) {
+          window.vtoast.fail({message: "缺少凭证模板"});
+          throw new Error("缺少凭证模板");
+        }
+        if (!item.voucherAccountant) {
+          item.voucherAccountant = this.username;
+        }
+        if (!item.voucherAt) {
+          item.voucherAt = dayjs().format('YYYY-MM-DD');
+        }
+        if (!item.periodId) {
+          item.periodId = dayjs().format('YYYY-MM');
+        }
+        // 凭证信息验证
+        if (!item.voucherName) {
+          window.vtoast.fail({message: "保存失败，请完善凭证字！"});
+          throw new Error("请完善凭证信息");
+        }
+        if (!item.voucherNumber) {
+          window.vtoast.fail({message: "保存失败，请完善凭证号！"});
+          throw new Error("请完善凭证信息");
+        }
+        item.entryList.forEach(entry => {
+          if (!entry.entryAbstract) {
+            window.vtoast.fail({message: "保存失败，请完善凭证的摘要！"});
+            throw new Error("请完善凭证的摘要");
+          }
+          if (!entry.subjectId) {
+            window.vtoast.fail({message: "保存失败，请完善凭证的科目ID！"});
+            throw new Error("请完善凭证的科目ID");
+          }
+        })
+        item.entryList.forEach(v => {
+          v.debit = v.debit || 0;
+          v.credit = v.credit || 0;
+        })
+        // 借贷平衡验证
+        const creditTotal = parseFloat(item.entryList.reduce((total, item) => {
+          return total + parseFloat(item.credit || '0')
+        }, 0));
+        const debitTotal = parseFloat(item.entryList.reduce((total, item) => {
+          return total + parseFloat(item.debit || '0')
+        }, 0));
+        if (creditTotal !== debitTotal) {
+          window.vtoast.fail({message: "保存失败，借贷不平衡！"});
+          throw new Error("错误");
+        }
+      })
+    },
+    async doCreateVoucher() {
+      window.vtoast.loading({message: "正在录入凭证", time: -1});
+      for (const voucherItem of this.salaryVoucherTemplate) {
+        const {entryList, id, ...data} = voucherItem;
+        await this.doCreateVoucherForItem(entryList, data);
+      }
+      window.vtoast.success("录入凭证成功");
+    },
+    async doCreateVoucherForItem(entryList, data) {
+      const voucherEntryList = entryList
+        .filter(v => v.subjectId)
+        .map(voucherEntry => {
+          const pickKey = [
+            'entryAbstract', 'subjectId', 'debit', 'credit',
+            'assistIdOfCustomer', 'assistIdOfSupplier', 'assistIdOfStaff', 'assistIdOfProject', 'assistIdOfDepart', 'assistIdOfExtend1', 'assistIdOfExtend2'
+          ];
+          return _.pick(voucherEntry, pickKey)
+        })
+      await window.jianghuAxios({
+        data: {
+          appData: {
+            pageId: 'salary-salaryManagement',
+            actionId: 'createVoucherAndVoucherEntry',
+            actionData: {
+              id: this.monthSalaryRecord.id,
+              ...data,
+              voucherEntryList
+            }
+          }
+        }
+      })
+    },
+    async closeCreateVoucher() {
+      this.createVoucherItemList = [];
+      this.isCreateVoucherDialogShown = false;
+    },
+    async changeVoucherDataList({list, id}) {
+      this.salaryVoucherTemplate.forEach(item => {
+        if (item.id === id) {
+          item.entryList = [...list];
+        }
+      })
+    },
+    // =================================uiAction 创建凭证 end ======================================
+
+    blurTd(item, index, key, $event) {
+      console.log(item, key, $event)
+      let diff = false;
+      diff = `${isNaN(this.tableDataFromBackend[index][key.value]) ? 0 : this.tableDataFromBackend[index][key.value]}` !== `${isNaN($event.target.innerText) ? 0 : $event.target.innerText}`;
+      this.tableDataFromBackend[index][key.value] = parseFloat($event.target.innerText);
+      $event.target.innerText = this.tableDataFromBackend[index][key.value];
+
+      // 工资总额、工资小计
+      if (this.customSalaryProject.totalSalaryContent.includes(key.value)) {
+        this.tableDataFromBackend[index].totalSalary = this.customSalaryProject.totalSalaryContent.reduce((total, key) => {
+          return total + parseFloat(this.tableDataFromBackend[index][key] || 0);
+        }, 0);
+        this.tableDataFromBackend[index].totalSalaryContent[key.value] = this.tableDataFromBackend[index][key.value];
+      }
+
+      // 应扣工资、应扣工资小计
+      if (this.customSalaryProject.totalDeductSalaryContent.includes(key.value)) {
+        this.tableDataFromBackend[index].totalDeductSalary = this.customSalaryProject.totalDeductSalaryContent.reduce((total, key) => {
+          return total + parseFloat(this.tableDataFromBackend[index][key] || 0);
+        }, 0);
+        this.tableDataFromBackend[index].totalDeductSalaryContent[key.value] = this.tableDataFromBackend[index][key.value];
+      }
+
+      // 实发工资调整
+      if (this.customSalaryProject.realPaySalaryAdjustmentContent.includes(key.value)) {
+        this.tableDataFromBackend[index].realPaySalaryAdjustment = this.customSalaryProject.realPaySalaryAdjustmentContent.reduce((total, key) => {
+          return total + parseFloat(this.tableDataFromBackend[index][key] || 0);
+        }, 0);
+        this.tableDataFromBackend[index].realPaySalaryAdjustmentContent[key.value] = this.tableDataFromBackend[index][key.value];
+      }
+
+      // 代扣个人款项
+      if (['personalEndowmentInsurance', 'personalMedicalInsurance', 'personalUnemploymentInsurance', 'personalHousingFund'].includes(key.value)) {
+        this.tableDataFromBackend[index].personalInsuranceAmount = this.customSalaryProject.totalDeductSalaryContent.reduce((total, key) => {
+          return total + parseFloat(this.tableDataFromBackend[index][key] || 0);
+        }, 0);
+      }
+
+      // 累计专项附加扣除
+      const accumulatedSpecialAdditionalDeductionChildren = ['childrenEducation', 'supportingTheElderly', 'housingLoanInterest', 'housingRent', 'continuingEducation', 'infantCare'];
+      if (accumulatedSpecialAdditionalDeductionChildren.includes(key.value)) {
+        this.tableDataFromBackend[index].accumulatedSpecialAdditionalDeduction = accumulatedSpecialAdditionalDeductionChildren.reduce((total, key) => {
+          return total + parseFloat(this.tableDataFromBackend[index][key] || 0)
+        }, 0);
+      }
+
+      // 个税
+      const currentMonthTaxableIncomeChildren = ["accumulatedTaxableIncome", "accumulatedPaidTax"];
+      if (currentMonthTaxableIncomeChildren.includes(key.value)) {
+        this.tableDataFromBackend[index].currentMonthTaxableIncome = currentMonthTaxableIncomeChildren.reduce((total, key) => {
+          return total + parseFloat(this.tableDataFromBackend[index][key] || 0)
+        }, 0);
+      }
+      // 个税减免：代交说 currentMonthTaxableIncome -  累计专项附加扣除 accumulatedSpecialAdditionalDeduction
+      this.tableDataFromBackend[index].currentMonthTaxableIncome = Math.max(0, this.tableDataFromBackend[index].currentMonthTaxableIncome - this.tableDataFromBackend[index].accumulatedSpecialAdditionalDeduction);
+
+      // 应发工资 = (基本工资 + 其他) totalSalary - (扣款) totalDeductSalary
+      this.tableDataFromBackend[index].expectedPaySalary = this.tableDataFromBackend[index].totalSalary - this.tableDataFromBackend[index].totalDeductSalary;
+
+      // 员工成本合计 = 应发工资 expectedPaySalary + 公司承担款项 companyInsuranceAmount
+      this.tableDataFromBackend[index].employeeCostTotal = this.tableDataFromBackend[index].expectedPaySalary + this.tableDataFromBackend[index].companyInsuranceAmount;
+
+      // 实发工资 = 应发工资 expectedPaySalary - (个人社保 + 个人公积金 personalInsuranceAmount) - (个人所得税 currentMonthTaxableIncome) + 实发工资调整 realPaySalaryAdjustment
+      this.tableDataFromBackend[index].realPaySalary = this.tableDataFromBackend[index].expectedPaySalary - this.tableDataFromBackend[index].personalInsuranceAmount - this.tableDataFromBackend[index].currentMonthTaxableIncome + this.tableDataFromBackend[index].realPaySalaryAdjustment;
+
+      console.log(this.tableDataFromBackend);
+      this.tableDataFromBackend = [...this.tableDataFromBackend];
+      this.hasEdit = this.hasEdit || diff;
+      if (diff) {
+        $event.target.classList.add('changed');
+        this.hasChangedIdList = this.hasChangedIdList || [];
+        if (!this.hasChangedIdList.includes(item.id)) {
+          this.hasChangedIdList.push(item.id);
+        }
+      }
+      $event.target.classList.remove('active');
+    },
+    focusTd(item, key, $event) {
+      $event.target.innerText = $event.target.innerText || '';
+      $event.target.classList.add('active');
+      if (key === 'adjustCreditFormula' || key === 'adjustDebitFormula' || key === 'adjustAmountFormula') {
+
+      }
+    },
+    findTemplate(invoice) {
+      // 返回对应的模板
+      return this.constantObj.salaryVoucherTemplate.find(item => item.voucherTemplateId === invoice.invoiceTemplateId);
+    },
+    jumpToUrl() {
+        window.open('https://cn.jianghujs.org/doc/page/article/11603', '_blank');
+      }
+  }
+})
+</script>
+
+<style scoped>
+  .invoiceDataType:hover {
+    background: #ebecf0;
+    cursor: pointer;
+  }
+
+  .noWrap {
+    white-space: nowrap !important;
+  }
+
+  .salaryTable.v-data-table--fixed-header > .v-data-table__wrapper {
+    border-top: 1px solid #cccccc;
+  }
+
+  .salaryTable.v-data-table--fixed-header table {
+    position: relative;
+    transform: translateY(-1px);
+  }
+
+  body .salaryTable.v-data-table--fixed-header thead th {
+    border: 1px solid #cccccc !important;
+  }
+
+  .salaryTable {
+    padding: 10px;
+    min-width: 100%;
+  }
+
+  .salaryTable table {
+    border-collapse: collapse;
+  }
+
+  .salaryTable tbody {
+    padding-top: 30px;
+  }
+
+  body .salaryTable td.changed.canEdit {
+    background-color: aliceblue !important;
+  }
+
+  body .salaryTable td.active {
+    background: aliceblue;
+    line-height: 40px;
+  }
+
+  body .salaryTable td:not(body .salaryTable td[contenteditable="true"]):not(body .salaryTable tr.isFull td) {
+    color: #666;
+    white-space: nowrap !important;
+  }
+
+  body .salaryTable.showAllField td.canEdit {
+    cursor: text;
+    background-color: #FFFFFF !important;
+  }
+
+  body .salaryTable.showAllField.theme--light.v-data-table > .v-data-table__wrapper > table > tbody > tr,
+  body .salaryTable.showAllField.theme--light.v-data-table > .v-data-table__wrapper > table > tbody > tr:hover:not(.v-data-table__expanded__content):not(.v-data-table__empty-wrapper) {
+    /* background-color: #F3F3F3 !important; */
+  }
+
+  body .salaryTable tr td:last-child .deletedBtn {
+    display: none;
+  }
+
+  body .salaryTable tr:hover td:last-child .deletedBtn {
+    display: inline-block;
+  }
+
+  body .salaryTable tr.isFull {
+    background: rgba(76, 175, 80, 0.13) !important;
+  }
+
+  body .salaryTable.theme--light.v-data-table thead th {
+    border-bottom: none !important;
+  }
+
+  body .salaryTable th {
+    position: sticky;
+    line-height: 40px;
+    top: 0;
+  }
+
+  body .salaryTable table tr th,
+  body .salaryTable table tr td {
+    border: 1px solid #cccccc !important;
+    border-bottom: 1px solid #cccccc !important;
+  }
+
+  body .salaryTable table tr th .v-input--selection-controls.v-input--checkbox,
+  body .salaryTable table tr td .v-input--selection-controls.v-input--checkbox {
+    display: inline-block;
+    vertical-align: middle;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .cus-date-picker.v-picker table td,
+  .cus-date-picker.v-picker table th {
+    border: none !important;
+  }
+
+  .invoiceCreateCardMinTitle {
+    background: #EEEEEE;
+    height: 50px;
+  }
+
+  @media screen and (max-width: 960px) {
+    .jh-backend-search-btn-group {
+      position: absolute;
+      top: 50px;
+      right: 30px;
+    }
+
+    .search-group-input {
+      margin-bottom: 10px !important;
+    }
+  }
+
+  .enhancer-voucher {
+    overflow-x: auto;
+  }
+
+  .enhancer-voucher .v-card {
+    margin: 0 20px;
+  }
+
+  .enhancer-voucher .v-card.hasError {
+    border-color: red
+  }
+
+  .enhancer-voucher-table {
+    width: 100%;
+    background: #fff;
+    color: #333;
+    text-align: center;
+  }
+
+  .enhancer-voucher-table td {
+    position: relative;
+    border: 1px solid #eee;
+  }
+
+  .enhancer-voucher-table thead td:nth-child(1), .enhancer-voucher-table thead td:nth-child(2) {
+    width: 200px;
+  }
+
+  .enhancer-voucher-digit .enhancer-voucher-digit-wrap {
+    display: flex;
+  }
+
+  .enhancer-voucher-digit .enhancer-voucher-digit-wrap div {
+    position: relative;
+    padding: 2px 4px;
+    flex: 1;
+    border-right: 1px solid #eee;
+  }
+
+  .enhancer-voucher-digit .enhancer-voucher-digit-wrap div:nth-child(3)::after,
+  .enhancer-voucher-digit .enhancer-voucher-digit-wrap div:nth-child(6)::after,
+  .enhancer-voucher-digit .enhancer-voucher-digit-wrap div:nth-child(9)::after {
+    content: '';
+    background-color: #0070ee;
+    height: 31px;
+    width: 1px;
+    position: absolute;
+    top: -3px;
+    right: -1px;
+  }
+
+  .enhancer-voucher-digit .enhancer-voucher-digit-wrap div:nth-child(9)::after {
+    background-color: #ff107e;
+  }
+
+  .enhancer-voucher-digit .enhancer-voucher-digit-wrap div:last-child {
+    border-right: none;
+  }
+
+  .enhancer-voucher-digit.enhancer-voucher-digit-value .enhancer-voucher-digit-wrap div {
+    height: 29px;
+    padding: 6px 0;
+    font-weight: 900;
+    font-family: 'Helvetica Neue', Helvetica, 'Microsoft Yahei', sans-serif;
+  }
+
+  .enhancer-voucher-digit.enhancer-voucher-digit-value .enhancer-voucher-digit-wrap div::after {
+    height: 35px;
+  }
+
+  .enhancer-voucher-table .enhancer-voucher-item-row .enhancer-voucher-digit.enhancer-voucher-digit-value input {
+    display: none;
+  }
+
+  .enhancer-voucher-table .enhancer-voucher-item-row .enhancer-voucher-digit.enhancer-voucher-digit-value.focus .enhancer-voucher-digit-wrap {
+    display: none;
+  }
+
+  .enhancer-voucher-table .enhancer-voucher-item-row .enhancer-voucher-digit.enhancer-voucher-digit-value.focus input {
+    display: block;
+  }
+
+  .enhancer-voucher-table .enhancer-voucher-item-row .v-input {
+    padding: 0;
+    margin: 0;
+    height: 32px;
+  }
+
+  .enhancer-voucher-table .enhancer-voucher-item-row input {
+    padding: 6px;
+    border: none;
+    outline: none;
+    width: 100%;
+    text-align: left;
+  }
+
+  .enhancer-voucher-table .enhancer-voucher-item-row .operate-btn {
+    opacity: 0;
+    pointer-events: revert;
+    position: absolute;
+    left: -20px;
+    top: 50%;
+    transform: translateY(-50%);
+    flex-direction: column;
+  }
+
+  .enhancer-voucher-table .enhancer-voucher-item-row .operate-btn i {
+    color: black;
+    font-size: 17px;
+    cursor: pointer;
+    padding-right: 10px;
+    text-align: center;
+  }
+
+  .enhancer-voucher-table .enhancer-voucher-item-row:hover .operate-btn {
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  .total-title {
+    padding-right: 6px !important;
+    text-align: right;
+  }
+
+  .table-switch {
+    margin: 9px; 
+    height: 25px;
+  }
+</style>
+{% endblock %}

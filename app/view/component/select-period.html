@@ -1,0 +1,101 @@
+<template id="select-period">
+    <v-select
+      class="jh-v-input bg-white"
+      v-model="value"
+      :items="items"
+      prefix="会计期间"
+      dense filled single-line
+      :clearable="clearable"
+      item-text="periodId" 
+      item-value="periodId" 
+      :return-object="true"
+      :menu-props="{ button: true, offsetY: true }"
+      :multiple="multiple"
+      :disabled="disabled"
+      :loading="isPeriodListLoading"
+      @change="onChange">
+      <!-- <template v-slot:selection="{ item, index }">
+        <div class="v-select__selection v-select__selection--comma">
+          
+          <span v-if="index === 0">{{ item.periodId }}</span>
+          <span v-if="index === 1" class="grey--text text-caption">
+            (+{{ value.length - 1 }} others)
+          </span>
+        </div>
+      </template> -->
+    </v-select>
+  </template>
+  
+  <script>
+    Vue.component('select-period', {
+      template: '#select-period',
+      props: {
+        value: {}, // Object/Array
+        disabled: {
+          type: Boolean,
+          default: false,
+        },
+        clearable: {
+          type: Boolean,
+          default: false,
+        },
+        multiple: {
+          type: Boolean,
+          default: false,
+        },
+      },
+      vuetify: new Vuetify(),
+      data: () => ({
+        selectPeriodAllSwitch: JSON.parse('<$ ctx.app.config.selectPeriodAllSwitch | dump | safe $>'),
+        items: [ ],
+        currentPeriod: null,
+        isPeriodListLoading: true
+      }),
+      computed: {
+      },
+      watch: {},
+      async created() {
+        await this.getItems()
+        await this.selectDefaultPeriod()
+      },
+      methods: {
+        async getItems() {
+          const result = await window.jianghuAxios({
+            data: {
+              appData: {
+                pageId: 'allPage',
+                actionId: 'selectPeriodList',
+                actionData: {},
+                where: {},
+                orderBy: [{column: 'periodId', order: 'desc'}]
+              }
+            }
+          });
+          const { rows } = result.data.appData.resultData;
+          this.currentPeriod = rows.find(row => row.isCheckout == '待结账') || rows[0];
+          rows.forEach(row => {
+            row.currentPeriodId = this.currentPeriod.periodId;
+          });
+          this.items = rows;
+          this.isPeriodListLoading = false;
+        },
+        selectDefaultPeriod() {
+          // 已经有值==》什么都不用做
+          if ((!this.multiple && this.value && this.value.periodId) || (this.multiple && this.value && this.value.length > 0)) {
+            this.onChange(this.value);
+            return;
+          }
+          // 设置默认值
+          if (this.multiple) {
+            this.onChange(this.selectPeriodAllSwitch ? this.items : [this.currentPeriod]);
+          } else {
+            this.onChange(this.currentPeriod);
+          }
+        },
+        onChange(val) {
+          this.$emit('input', val)
+          this.$emit('change')
+        }
+      }
+    })
+  </script>

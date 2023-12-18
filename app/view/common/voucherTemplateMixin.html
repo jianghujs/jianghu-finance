@@ -1,0 +1,112 @@
+<script>
+  var voucherTemplateMixin = {
+    data: () => ({
+      importVoucherHeaders: [
+        {text: "行号", value: "rowNumber", width: 50, class: 'fixed', cellClass: 'fixed', exportDisabled: true}, 
+        {text: "凭证-年", value: "year", width: 60, importRequire: true}, 
+        {text: "凭证-月", value: "month", width: 60, importRequire: true}, 
+        {text: "凭证-日", value: "day", width: 60, importRequire: true}, 
+        {text: "凭证-字", value: "voucherName", width: 60, importRequire: true}, 
+        {text: "凭证-号", value: "voucherNumber", width: 60, importRequire: true}, 
+
+        {text: "摘要", value: "entryAbstract", width: 180}, 
+        {text: "科目编码", value: "subjectId", width: 80, importRequire: true}, 
+        {text: "科目名称", value: "subject-lable", width: 220, exportDisabled: true}, 
+
+        {text: "借方金额", value: "debit", width: 80}, 
+        {text: "贷方金额", value: "credit", width: 80}, 
+
+        {text: "客户", value: "assistNameOfCustomer", width: 150}, 
+        {text: "供应商", value: "assistNameOfSupplier", width: 150}, 
+        {text: "员工", value: "assistNameOfStaff", width: 100}, 
+        {text: "项目", value: "assistNameOfProject", width: 100}, 
+        {text: "部门", value: "assistNameOfDepart", width: 100}, 
+      ],
+      importVoucherHeadersTpl1: [
+        {text: "行号", value: "rowNumber", width: 50, class: 'fixed', cellClass: 'fixed', exportDisabled: true}, 
+        {text: "凭证-年月日", value: "year", width: 60, importRequire: true}, 
+        {text: "凭证-字", value: "voucherName", width: 60, importRequire: true}, 
+        {text: "凭证-号", value: "voucherNumber", width: 60, importRequire: true}, 
+
+        {text: "摘要", value: "entryAbstract", width: 180}, 
+        {text: "科目编码", value: "subjectId", width: 80, importRequire: true}, 
+        {text: "科目名称", value: "subject-lable", width: 220, exportDisabled: true}, 
+
+        {text: "借方金额", value: "debit", width: 80}, 
+        {text: "贷方金额", value: "credit", width: 80}, 
+
+        {text: "客户", value: "assistNameOfCustomer", width: 150}, 
+        {text: "供应商", value: "assistNameOfSupplier", width: 150}, 
+        {text: "员工", value: "assistNameOfStaff", width: 100}, 
+        {text: "项目", value: "assistNameOfProject", width: 100}, 
+        {text: "部门", value: "assistNameOfDepart", width: 100}, 
+      ],
+      importVoucherHeadersTpl2: [
+        {text: "行号", value: "rowNumber", width: 50, class: 'fixed', cellClass: 'fixed', exportDisabled: true}, 
+        {text: "凭证-年月日", value: "year", width: 60, importRequire: true}, 
+        {text: "凭证-字号", value: "voucherName", width: 60, importRequire: true}, 
+
+        {text: "摘要", value: "entryAbstract", width: 180}, 
+        {text: "科目编码", value: "subjectId", width: 80, importRequire: true}, 
+        {text: "科目名称", value: "subject-lable", width: 220, exportDisabled: true}, 
+
+        {text: "借方金额", value: "debit", width: 80}, 
+        {text: "贷方金额", value: "credit", width: 80}, 
+
+        {text: "客户", value: "assistNameOfCustomer", width: 150}, 
+        {text: "供应商", value: "assistNameOfSupplier", width: 150}, 
+        {text: "员工", value: "assistNameOfStaff", width: 100}, 
+        {text: "项目", value: "assistNameOfProject", width: 100}, 
+        {text: "部门", value: "assistNameOfDepart", width: 100}, 
+      ],
+      importVoucherTemplateList: [
+        {
+          filename: '默认凭证模板',
+          headers: 'importVoucherHeaders',
+          excelData: [
+            { 'rowNumber': 2, 'year': 2022, 'month': '1', 'day': '1', 'voucherName': '记', 'voucherNumber': '1', 'entryAbstract': '工行手续费', 'subjectId': '660304', 'debit': 10, 'credit': '' },
+            {
+              'rowNumber': 3, 'year': 2022, 'month': '1', 'day': '1', 'voucherName': '记', 'voucherNumber': '1', 'entryAbstract': '工行手续费', 'subjectId': '100201', 'debit': '', 'credit': 10,
+              'assistNameOfCustomer': '客户名1',
+              'assistNameOfSupplier': '供应商名1',
+              'assistNameOfStaff': '员工名1',
+              'assistNameOfProject': '项目名1',
+              'assistNameOfDepart': '部门名1',
+            }
+          ]
+        },
+        {
+          filename: '凭证模板1',
+          headers: 'importVoucherHeadersTpl1',
+          excelData: [
+            { 'rowNumber': 2, 'year': '2022-1-1', 'voucherName': '记', 'voucherNumber': '1', 'entryAbstract': '工行手续费', 'subjectId': '660304', 'debit': 10, 'credit': '' },
+            {
+              'rowNumber': 3, 'year': '2022-1-1', 'voucherName': '记', 'voucherNumber': '1', 'entryAbstract': '工行手续费', 'subjectId': '100201', 'debit': '', 'credit': 10,
+              'assistNameOfCustomer': '客户名1',
+              'assistNameOfSupplier': '供应商名1',
+              'assistNameOfStaff': '员工名1',
+              'assistNameOfProject': '项目名1',
+              'assistNameOfDepart': '部门名1',
+            }
+          ]
+        },
+        {
+          filename: '凭证模板2',
+          headers: 'importVoucherHeadersTpl2',
+          excelData: [
+            { 'rowNumber': 2, 'year': '2022-1-1', 'voucherName': '记-1', 'entryAbstract': '工行手续费', 'subjectId': '660304', 'debit': 10, 'credit': '' },
+            {
+              'rowNumber': 3, 'year': '2022-1-1', 'voucherName': '记-1', 'entryAbstract': '工行手续费', 'subjectId': '100201', 'debit': '', 'credit': 10,
+              'assistNameOfCustomer': '客户名1',
+              'assistNameOfSupplier': '供应商名1',
+              'assistNameOfStaff': '员工名1',
+              'assistNameOfProject': '项目名1',
+              'assistNameOfDepart': '部门名1',
+            }
+          ]
+        },
+      ]
+    }),
+      
+  }
+</script>

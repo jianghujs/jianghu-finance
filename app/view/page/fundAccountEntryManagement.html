@@ -1,0 +1,1060 @@
+{% extends 'template/jhTemplateV4.html'%}
+
+{% block vueTemplate %}
+
+<!--SQL START
+-- 以下为 jianghu init 工具生成的参考 SQL，使用后删除
+-- 创建 page
+INSERT INTO `_page` (`pageId`,`pageName`,`pageType`,`sort`,`operation`,`operationByUserId`,`operationByUser`,`operationAt`) SELECT 'fundAccountEntryManagement','页面','showInMenu','5','jhInsert',NULL,NULL,NULL FROM DUAL WHERE NOT EXISTS (SELECT `pageId` FROM `_page` WHERE `pageId`='fundAccountEntryManagement');
+
+-- 创建 resource
+INSERT INTO `_resource` (`accessControlTable`,`resourceHook`,`pageId`,`actionId`,`desc`,`resourceType`,`appDataSchema`,`resourceData`,`requestDemo`,`responseDemo`,`operation`,`operationByUserId`,`operationByUser`,`operationAt`) SELECT NULL,NULL,'fundAccountEntryManagement','selectItemList','✅查询-查询列表','sql','{}','{ \"table\": \"fund_account_entry\", \"operation\": \"select\" }','','','insert',NULL,NULL,NULL FROM DUAL WHERE NOT EXISTS (SELECT `pageId` FROM `_resource` WHERE `pageId`='fundAccountEntryManagement' AND `actionId`='selectItemList');
+INSERT INTO `_resource` (`accessControlTable`,`resourceHook`,`pageId`,`actionId`,`desc`,`resourceType`,`appDataSchema`,`resourceData`,`requestDemo`,`responseDemo`,`operation`,`operationByUserId`,`operationByUser`,`operationAt`) SELECT NULL,NULL,'fundAccountEntryManagement','insertItem','✅查询-添加成员','sql','{}','{ \"table\": \"fund_account_entry\", \"operation\": \"insert\" }','','','insert',NULL,NULL,NULL FROM DUAL WHERE NOT EXISTS (SELECT `pageId` FROM `_resource` WHERE `pageId`='fundAccountEntryManagement' AND `actionId`='insertItem');
+INSERT INTO `_resource` (`accessControlTable`,`resourceHook`,`pageId`,`actionId`,`desc`,`resourceType`,`appDataSchema`,`resourceData`,`requestDemo`,`responseDemo`,`operation`,`operationByUserId`,`operationByUser`,`operationAt`) SELECT NULL,NULL,'fundAccountEntryManagement','updateItem','✅查询-更新成员','sql','{}','{ \"table\": \"fund_account_entry\", \"operation\": \"update\" }','','','insert',NULL,NULL,NULL FROM DUAL WHERE NOT EXISTS (SELECT `pageId` FROM `_resource` WHERE `pageId`='fundAccountEntryManagement' AND `actionId`='updateItem');
+INSERT INTO `_resource` (`accessControlTable`,`resourceHook`,`pageId`,`actionId`,`desc`,`resourceType`,`appDataSchema`,`resourceData`,`requestDemo`,`responseDemo`,`operation`,`operationByUserId`,`operationByUser`,`operationAt`) SELECT NULL,NULL,'fundAccountEntryManagement','deleteItem','✅查询-删除信息','sql','{}','{ \"table\": \"fund_account_entry\", \"operation\": \"delete\" }','','','insert',NULL,NULL,NULL FROM DUAL WHERE NOT EXISTS (SELECT `pageId` FROM `_resource` WHERE `pageId`='fundAccountEntryManagement' AND `actionId`='deleteItem');
+SQL END!-->
+
+<script type="text/html" id="app-template">
+<div>
+<v-app mobile-breakpoint="sm">
+  <jh-menu />
+  <v-main class="mt-15">
+    <!-- 头部内容 >>>>>>>>>>>>> -->
+    <div class="jh-page-second-bar px-8">
+      <v-row class="align-center">
+        <v-col cols="12" xs="12" sm="12" md="4" xl="3">
+          <div class="py-4 text-body-1 font-weight-bold d-flex align-center">资金日记账
+            <!-- 帮助页按钮 -->
+            <span role="button" class="success--text font-weight-regular jh-font-size-13 mx-2" @click="jumpToUrl">
+                  <v-icon size="13" class="success--text">mdi-help-circle-outline</v-icon>帮助
+                </span>
+            <select-appaId  class="hidden-xs-only" />
+          </div>
+        </v-col>
+        <!-- 搜索条件表单 >>>>>>>> -->
+        <v-col cols="12" xs="12" sm="12" md="8" xl="9" class="hidden-xs-only">
+          <v-row no-gutters class="align-center jh-backend-form-container justify-end ma-0">
+            <v-col cols="12" xs="12" sm="6" md="4" xl="3" class="px-0 pr-md-2 mb-2 mb-md-0">
+              <v-autocomplete label="请选择资金账号" v-model="serverSearchInput.accountId" color="success" class="jh-v-input bg-white" :items="constantObj.fundAccountList" dense filled single-line></v-autocomplete>
+            </v-col>
+            
+            <v-col cols="12" xs="12" sm="6" md="4" xl="3" class="px-0 pr-md-2 mb-2 mb-md-0">
+              <select-date-range v-model="dates" sortField="accountEntryAt" @set-date-range="x => this.serverSearchInputWhereOptions = x"></select-date-range>
+            </v-col>
+            <v-btn class="w-sm-full ml-0" color="success" small @click="doUiAction('getTableData')">
+              查询
+            </v-btn>
+          </v-row>
+        </v-col>
+        <!-- <<<<<<<< 搜索条件表单 -->
+      </v-row>
+    </div>
+    <!-- <<<<<<<<<<<<< 头部内容 -->
+
+    <div class="jh-page-body-container px-8">
+      <mobileHintBlock />
+      <!-- 页面内容 >>>>>>>>>>>>> -->
+      <v-card class="rounded-lg hidden-xs-only">
+        <v-row class="ma-0 pa-4">
+          <v-btn color="success" class="elevation-0 mr-2 d-none d-md-inline-block" @click="doUiAction('startGenerateVoucher')" small>
+            <v-icon size="14">mdi-ticket-percent-outline</v-icon>         
+            生成凭证</v-btn>
+
+          <!-- 新增按钮 -->
+          <v-btn color="success" :disabled="isSelectDisabled" class="elevation-0 mr-2 d-none d-md-inline-block" @click="doUiAction('import')" outlined small><v-icon size="14">mdi-import</v-icon>Excel导入</v-btn>
+          <v-btn color="success" :disabled="isSelectDisabled" class="elevation-0 mr-2" @click="doUiAction('export')" outlined small><v-icon size="14">mdi-export-variant</v-icon>Excel导出</v-btn>
+          <v-spacer></v-spacer>
+          <!-- 搜索过滤 -->
+          <v-col cols="12" xs="8" sm="4" md="3" xl="2" class="pa-0">
+            <v-text-field color="success" v-model="searchInput" prefix="搜索：" class="jh-v-input" dense filled single-line></v-text-field>
+          </v-col>
+        </v-row>
+        <!-- 表格 -->
+        <v-data-table
+          :headers="headers"
+          :items="tableData"
+          :search="searchInput"
+          :footer-props="{ itemsPerPageOptions: [20, 50, -1], itemsPerPageText: '每页', itemsPerPageAllText: '所有'}"
+          :items-per-page="-1"
+          v-model="selectedAccountEntryContainer"
+          selectable-key="enableSelect"
+          @toggle-select-all="toggleSelectAll"
+          show-select
+          mobile-breakpoint="0"
+          :loading="isTableLoading"
+          checkbox-color="success"
+          :class="{'zebraLine': isTableZebraLineShown }"
+          fixed-header
+          class="xBaseTable jh-fixed-table-height elevation-0 mt-0 mb-xs-4">
+          <template v-slot:body="{items, isSelected}">
+            <tbody>
+              <tr v-for="(item, index) in items" :key="index">
+                <td> 
+                  <v-simple-checkbox v-if="item.enableSelect" color="success" v-model="item.selected" @input="handleCheckboxChange(item)"></v-simple-checkbox>
+                </td>
+                <td v-for="key in headers" :key="key" :class="key.cellClass">
+                  <template v-if="key.value === 'voucherId'">
+                    <voucher-paper :voucher-id="item.voucherId" :currentPeriodId="currentPeriod.periodId" readonly>
+                      <span role="button" class="success--text">{{item.voucherId | empty}}</span>
+                      <v-chip x-small v-if="!item.isEqual" color="red" text-color="white">金额不匹配</v-chip>
+                    </voucher-paper>
+                  </template>
+                  <template v-else>
+                    <template v-if="item.accountEntryAbstract !== '初始化余额'">
+                      <template v-if="key.formType === 'action'">
+                        <template v-if="!isMobile">
+                          <div class="text-center">
+                            <span role="button" class="success--text jh-font-size-3 pr-2" v-if="editLineActiveMap[item.lineId]" text color="green" @click="doUiAction('createOrUpdateItem', item)">
+                              <v-icon class="success--text" size="14">mdi-content-save-check</v-icon>
+                              提交 </span>
+                            <span role="button" class=" jh-font-size-3 pr-2" v-if="editLineActiveMap[item.lineId]" text color="green" @click="doUiAction('cancelEntryTableItem', item, index)" > 
+                              <v-icon  class="" size="14">mdi-close</v-icon>
+                              取消 </span>
+                            <span role="button" class="blue--text jh-font-size-3 pr-2" text color="blue" @click="addEntryTableItem(index)" > 
+                              <v-icon  class="blue--text" size="14">mdi-plus</v-icon>
+                              插入 </span>
+                            <span role="button" class="red--text jh-font-size-3 pr-2" v-if="tableData.length > 1" text color="error" @click="doUiAction('deleteItem', item, index)" > 
+                              <v-icon  class="red--text" size="14">mdi-delete</v-icon>
+                              删除 </span>
+                          </div>
+                        </template>
+  
+                        <v-menu offset-y v-if="isMobile">
+                          <template v-slot:activator="{ on, attrs }">
+                            <span role="button" class="success--text font-weight-medium font-size-2" v-bind="attrs" v-on="on">操作<v-icon size="14" class="success--text">mdi-chevron-down</v-icon></span>
+                          </template>
+                          <v-list dense>
+                            <v-list-item v-if="editLineActiveMap[item.lineId]" @click="doUiAction('createOrUpdateItem', item)">
+                              <v-list-item-title><v-icon size="14">mdi-content-save-check-outline</v-icon>提交</v-list-item-title>
+                            </v-list-item>
+                            <v-list-item v-if="editLineActiveMap[item.lineId]" @click="doUiAction('cancelEntryTableItem', item, index)">
+                              <v-list-item-title><v-icon size="14">mdi-close</v-icon>取消</v-list-item-title>
+                            </v-list-item>
+                            <v-list-item @click="addEntryTableItem(index)">
+                              <v-list-item-title>插入</v-list-item-title>
+                            </v-list-item>
+                            <v-list-item @click="doUiAction('deleteItem', item, index)">
+                              <v-list-item-title><v-icon size="14">mdi-trash-can-outline</v-icon>删除</v-list-item-title>
+                            </v-list-item>
+                          </v-list>
+                        </v-menu>
+                        
+                      </template>
+                      <template v-else-if="key.formType === 'date'">
+                        <v-menu v-if="editLineActiveMap[item.lineId]" :close-on-content-click="false" class="jh-v-input" transition="scale-transition" offset-y min-width="auto">
+                          <template v-slot:activator="{on, attrs}">
+                            <v-text-field v-bind="attrs" v-on="on" v-model="item[key.value]" class="jh-v-input  bg-white " dense single-line outlined readonly label="点击此处选择日期"></v-text-field>
+                          </template>
+                          <v-date-picker color="success" elevation="20" v-model="item[key.value]"></v-date-picker>
+                        </v-menu>
+                      </template>
+                      <template v-else-if="key.formType === 'select'">
+                        <v-autocomplete v-show="editLineActiveMap[item.lineId]" class="jh-v-input bg-white mr-2" dense outlined single-line hide-details :items="constantObj[key.value]" :label='"请选择" + key.text' v-model="item[key.value]"></v-autocomplete>
+                      </template>
+                      <template v-else-if="key.formType === 'text'">
+                        <v-text-field v-show="editLineActiveMap[item.lineId]" class="jh-v-input bg-white" outlined dense single-line v-model="item[key.value]"></v-text-field>
+                      </template>
+                      <span v-show="!key.formType || !editLineActiveMap[item.lineId]" :contentEditable="!!key.formType" @focus="focusTd(item, key, $event)">{{item[key.value]}}</span> 
+                    </template>
+                    <template v-else>
+                      {{item[key.value]}}
+                    </template>
+                  </template>
+                </td>
+              </tr>
+            </tbody>
+          </template>
+          <!-- 表格操作按钮 -->
+          <template v-slot:item.voucherId="{item}">
+            <voucher-paper :voucher-id="item.voucherId" :currentPeriodId="currentPeriod.periodId" readonly>
+              <span role="button" class="success--text">{{item.voucherId}}</span>
+            </voucher-paper>
+          </template>
+          <template v-slot:footer.prepend>
+            <div class="d-none d-md-flex" style="flex: auto;">{{searchSummary}}</div>
+          </template>
+          <!-- 没有数据 -->
+          <template v-slot:loading>
+            <div class="jh-no-data">数据加载中</div>
+          </template>
+          <template v-slot:no-data>
+            <div class="jh-no-data">暂无数据</div>
+          </template>
+          <template v-slot:no-results>
+            <div class="jh-no-data">暂无数据</div>
+          </template>
+          <!-- 表格分页 -->
+          <template v-slot:footer.page-text="pagination">
+            
+            <span>{{pagination.pageStart}}-{{pagination.pageStop}}</span>
+            <span class="ml-1">共{{pagination.itemsLength}}条</span>
+          </template>
+        </v-data-table>
+      </v-card>
+      <!-- <<<<<<<<<<<<< 页面内容 -->
+
+      <!-- 导入抽屉 -->
+      <v-navigation-drawer v-model="isExcelDrawerShow" fixed temporary right width="80%" class="elevation-24">
+        <v-card class="pa-4" :class="{'pb-8': isMobile}">
+          <v-row class="pa-0">
+            <span class="title pa-6" :class="{'pl-6': !isMobile, 'pl-6': isMobile}">【日记账-导入】</span>
+            <v-spacer></v-spacer>
+          </v-row>
+
+          <v-row class="ma-0 pa-xs-4 align-center flex-none pt-0" class="{'pa-4': !isMobile, 'pb-0': !isMobile, 'pa-2': isMobile}">
+            <v-col cols="4" class="pa-0">
+              <span class="inputLabel"></span>
+              <v-file-input accept=".xlsx" v-model="uploadFile" class="cus-v-input mr-2" @click:clear="doUiAction('clearImportData')" dense counter  show-size filled single-line chips label="请选择Excel文件"></v-file-input>
+            </v-col>
+            <v-col cols="8" class="pa-0">
+              <v-btn color="warning ml-2" @click="doUiAction('checkExcelDataList')">检查excel数据</v-btn>
+              <v-btn color="success ml-2" @click="doUiAction('confirmUploadExcelDataList')" v-if="checkExcelDataListSuccess">确定上传</v-btn>
+              <v-btn color="success ml-2" @click="doUiAction('templateFileDownload', { 
+                headers: 'importHeaders', 
+                filename: '日记账数据模版',
+                excelData: [
+                  {  
+                    'accountEntryAt': '2023-04-25',  
+                    'accountEntryAbstract': '购买办公用品',  
+                    'templateName': '采购支出',  
+                    'amount': '500.00',  
+                    'assistIdOfCustomer': '001',  
+                    'assistNameOfCustomer': '阳光办公用品有限公司',  
+                    'assistIdOfSupplier': 'S001',  
+                    'assistNameOfSupplier': '办公用品供应商',  
+                    'assistIdOfStaff': 'E001',  
+                    'assistNameOfStaff': '张三',  
+                    'assistIdOfProject': 'P001',  
+                    'assistNameOfProject': '2023年办公室改造项目',  
+                    'assistIdOfDepart': 'D001',  
+                    'assistNameOfDepart': '行政部门'  
+                  }
+                ],
+              })">下载模板</v-btn>
+
+            </v-col>
+            <v-col cols="4" class="pa-0">
+              <div class="title pa-2">Excel数据条数: {{ uploadExcelDataList.length }}</div>
+              <div class="title pa-2">Excel异常数据条数: {{ uploadExcelDataListOfCheck.length }}</div>
+            </v-col>
+            <v-col cols="12">
+              <v-data-table :headers="importErrorHeaders" :items="uploadExcelDataListOfCheck"
+                :footer-props="{ itemsPerPageOptions: [20, 40, 60, 100, -1] }" :items-per-page="-1" mobile-breakpoint="0"
+                checkbox-color="success" class="elevation-0 mt-0 mb-xs-4 flex-fill d-flex flex-column">
+                <template v-slot:item.errorDesc="{ item }">
+                  <span style="color: red;">{{ item.errorDesc }}</span>
+                </template>
+
+                <!-- 没有数据 -->
+                <template v-slot:loading>
+                  <div class="jh-no-data">数据加载中</div>
+                </template>
+                <template v-slot:no-data>
+                  <div class="jh-no-data">无异常数据</div>
+                </template>
+                <template v-slot:no-results>
+                  <div class="jh-no-data">无异常数据</div>
+                </template>
+                <!-- 表格分页 -->
+                <template v-slot:footer.page-text="pagination">
+                  <span>{{pagination.pageStart}}-{{pagination.pageStop}}</span>
+                  <span class="ml-1">共{{pagination.itemsLength}}条</span>
+                </template>
+
+              </v-data-table>
+            </v-col>
+          </v-row>
+
+        </v-card>
+        <v-btn elevation="0" color="success" fab absolute top left small tile class="drawer-close-float-btn"
+          @click="isExcelDrawerShow = false">
+          <v-icon>mdi-close</v-icon>
+        </v-btn>
+      </v-navigation-drawer>
+
+      <accountVoucherGenerate ref="generateDialog" @success="doUiAction('getTableData')"/>
+    </div>
+
+
+    <!-- 帮助页抽屉 >>>>>>>>>>>>> -->
+    <!-- <<<<<<<<<<<<< 帮助页抽屉 -->
+
+  </v-main>
+</v-app>
+
+<jh-toast />
+<jh-mask />
+<jh-confirm-dialog />
+</div>
+</script>
+
+<div id="app">
+</div>
+
+{% endblock %}
+
+{% block vueScript %}
+{% include 'component/jianghuJs/select-appaId.html' %}
+{% include 'component/select-date-range.html' %}
+{% include 'common/jianghuJs/fixedTableHeightV4.html' %}
+{% include 'component/voucher/accountVoucherGenerate.html' %}
+{% include 'component/voucher/accountVoucherEntry.html' %}
+{% include 'component/select-period.html' %}
+{% include 'component/voucher/voucherFile.html' %}
+{% include 'component/voucher/voucherPaper.html' %}
+{% include 'component/mobile-hint-block.html' %}
+{% include 'common/excelUtil.html' %}
+
+<script lang="javascript" src="/<$ ctx.app.config.appId $>/public/js/xlsx.full.min.js"></script>
+<script type="module">
+  new Vue({
+    el: '#app',
+    template: '#app-template',
+    vuetify: new Vuetify(),
+    data: () => ({
+      username: localStorage.getItem(`${window.appInfo.appId}_username`),
+
+      // 面包屑
+      breadcrumbs: [
+        {
+          text: '首页',
+          disabled: true,
+        },
+        {
+          text: '资金日记账',
+          disabled: true,
+        }
+      ],
+
+      datesOfUrl: null,
+      dates: [],
+      isSelectDisabled: false,
+      isHelpPageDrawerLoaded: false,
+      isMobile: window.innerWidth < 500,
+      // 表格相关数据
+      isTableZebraLineShown: true,
+      validationRules: {
+        requireRules: [
+          v => !!v || 'This is required',
+        ],
+        voucherEntryRules: [
+          v => v.length > 0 || '姓名必须少于10个字符',
+        ],
+      },
+      // 下拉选项
+      constantObj: {
+        templateName: [],
+        subjectList: [],
+        fundAccountList: [],
+        voucherName: [
+          { text: '记', value: '记' },
+          { text: '收', value: '收' },
+          { text: '借', value: '借' },
+          { text: '付', value: '付' },
+          { text: '转', value: '转' },
+          { text: '结计', value: '结计' },
+          { text: '结转', value: '结转' },
+          { text: '去年', value: '去年' },
+        ]
+      },
+      fundAccountList: [],
+      selectedAccountEntryContainer: [],
+      currentAccountId: null,
+      searchInput: null,
+      isTableLoading: true,
+      tableData: [],
+      tableDataBackEnd: [],
+      headers: [
+        { text: "关联凭证", value: "voucherId", width: 180, class: window.innerWidth > 768 && 'fixed', cellClass: window.innerWidth > 768 && 'fixed' },
+        { text: "日期", value: "accountEntryAt", width: 120, formType: 'date' },
+        { text: "摘要", value: "accountEntryAbstract", width: 120, formType: 'text' },
+        { text: "凭证模板", value: "templateName", width: 120, formType: 'select' },
+        { text: "金额", value: "amount", width: 120, formType: 'text' },
+        { text: "余额", value: "remainAmount", width: 120 },
+        { text: '操作', value: 'action', align: 'center', sortable: false, width: window.innerWidth < 500 ? 50 : 150, class: 'fixed', cellClass: 'fixed', formType: "action" },
+      ],
+      importErrorHeaders: [
+        { text: "错误原因", value: "errorDesc", width: 120 },
+        { text: "日期", value: "日期", width: 120 },
+        { text: "摘要", value: "摘要", width: 120 },
+        { text: "凭证模板", value: "凭证模板", width: 120 },
+        { text: "金额", value: "金额", width: 120 },
+        { text: "客户编码", value: "客户编码", width: 120 },
+        { text: "往来客户", value: "往来客户", width: 120 },
+        { text: "供应商编码", value: "供应商编码", width: 120 },
+        { text: "往来供应商", value: "往来供应商", width: 120 },
+        { text: "员工编码", value: "员工编码", width: 120 },
+        { text: "往来员工", value: "往来员工", width: 120 },
+        { text: "项目编码", value: "项目编码", width: 120 },
+        { text: "项目", value: "项目", width: 120 },
+        { text: "部门编码", value: "部门编码", width: 120 },
+        { text: "部门", value: "部门", width: 120 },
+      ],
+      importHeaders: [
+        { text: "日期", value: "accountEntryAt", width: 120 },
+        { text: "摘要", value: "accountEntryAbstract", width: 120 },
+        { text: "凭证模板", value: "templateName", width: 120 },
+        { text: "金额", value: "amount", width: 120 },
+        { text: "客户编码", value: "assistIdOfCustomer", width: 120 },
+        { text: "往来客户", value: "assistNameOfCustomer", width: 120 },
+        { text: "供应商编码", value: "assistIdOfSupplier", width: 120 },
+        { text: "往来供应商", value: "assistNameOfSupplier", width: 120 },
+        { text: "员工编码", value: "assistIdOfStaff", width: 120 },
+        { text: "往来员工", value: "assistNameOfStaff", width: 120 },
+        { text: "项目编码", value: "assistIdOfProject", width: 120 },
+        { text: "项目", value: "assistNameOfProject", width: 120 },
+        { text: "部门编码", value: "assistIdOfDepart", width: 120 },
+        { text: "部门", value: "assistNameOfDepart", width: 120 },
+      ],
+
+      serverSearchInput: {},
+      serverSearchInputWhereOptions: [],
+
+      // 导入导出
+      uploadFile: null,
+      isExcelDrawerShow: false,
+      checkExcelDataListSuccess: false,
+      uploadExcelDataList: [],
+      excelDataSearchInput: null,
+      uploadExcelDataListOfCheck: [],
+
+      isCreateDrawerShown: false,
+      createItem: {},
+      createActionData: {},
+      isUpdateDrawerShown: false,
+      updateItem: {},
+      updateItemId: null,
+      updateActionData: {},
+      deleteItem: {},
+      deleteItemId: null,
+      editLineActiveMap: {},
+      currentPeriod: {},
+    }),
+    computed: {
+      searchSummary() {
+        const conditions = [];
+        if (this.serverSearchInput.accountId) {
+          conditions.push(`类型: ${this.serverSearchInput.accountId}`);
+        }
+        if (this.serverSearchInputWhereOptions) {
+          conditions.push(`时间: ${this.dates}`);
+        }
+
+        return conditions.length > 0 ? `${conditions.join('，')}，共${this.tableData.length}条记录` : `共${this.tableData.length}条记录`;
+      }
+    },
+    watch: {
+      isHelpPageDrawerShown(val) {
+        if (val && !this.isHelpPageDrawerLoaded) {
+          this.isHelpPageDrawerLoaded = true;
+        }
+      },
+    },
+    async created() {
+      const urlObj = new URLSearchParams(location.search.substring(1));
+      const itemType = urlObj.get('itemType');
+      const itemId = urlObj.get('itemId');
+      const datesOfUrl = urlObj.get('dateRange');
+
+      switch (itemType) {
+        case 'account':
+          this.serverSearchInput.accountId = itemId;
+          break;
+        case 'incomeType':
+          // TODO
+          break;
+        default:
+          break;
+      }
+
+      if (!_.isNil(datesOfUrl)) {
+        this.datesOfUrl = datesOfUrl.split(',');
+      }
+    },
+    async mounted() {
+      await this.doUiAction('getPageData');
+    },
+    methods: {
+      async doUiAction(uiActionId, uiActionData, index) {
+        switch (uiActionId) {
+          case 'getPageData':
+            this.getVoucherTemplateList();
+            await this.getCurrentPeriod();
+            await this.getSubjectData();
+            await this.getFundAccountData();
+            await this.getTableData();
+            break;
+          case 'getTableData':
+            await this.getTableData();
+            break;
+          case 'export':
+            await this.export();
+            break;
+          case 'import':
+            await this.openExcelDrawer(uiActionData);
+            break;
+          case 'clearImportData':
+            await this.clearImportData();
+            break;
+          case 'checkExcelDataList':
+            await this.readExcelDataList(uiActionData);
+            await this.checkExcelDataList(uiActionData);
+            break;
+          case 'confirmUploadExcelDataList':
+            await this.confirmUploadExcel();
+            await this.closeExcelDrawer();
+            await this.getTableData();
+            break;
+          case 'startGenerateVoucher':
+            await this.prepareGenerateVoucherFormData();
+            break;
+          case 'createOrUpdateItem':
+            await this.prepareUpdateFormData(uiActionData);
+            await this.prepareDoCreateOrUpdateItem();
+            await this.doCreateOrUpdateItem();
+            await this.closeUpdateDrawer();
+            await this.getTableData();
+            break;
+          case 'cancelEntryTableItem':
+            await this.cancelEntryTableItem(uiActionData, index);
+            break;
+          case 'deleteItem':
+            await this.prepareDeleteFormData(uiActionData);
+            await this.prepareDoDeleteItem();
+            await this.doDeleteItem(uiActionData, index);
+            await this.clearDeleteItem();
+            break;
+          case 'templateFileDownload':
+            await this.templateFileDownload(uiActionData);
+            break;
+          default:
+            console.error("[doUiAction] uiActionId not find", { uiActionId });
+            break;
+        }
+      },
+
+      /**
+       * 获取凭证模板列表
+       */
+      async getVoucherTemplateList() {
+        const rows = (await window.jianghuAxios({
+          data: {
+            appData: {
+              pageId: 'setting-voucherTemplateManagement',
+              actionId: 'selectVoucherTemplateList',
+              orderBy: [{ column: 'id', order: 'esc' }]
+            }
+          }
+        })).data.appData.resultData.rows;
+        this.constantObj.templateName = rows.map(x => x.voucherTemplateName);
+      },
+
+      /**
+       * 获取会计周期
+       */
+      async getCurrentPeriod() {
+        const result = await window.jianghuAxios({
+          data: {
+            appData: {
+              pageId: 'allPage',
+              actionId: 'selectPeriodList',
+              actionData: {},
+              where: {},
+              orderBy: [{ column: 'periodId', order: 'desc' }]
+            }
+          }
+        });
+        const { rows } = result.data.appData.resultData;
+        this.currentPeriod = (rows.find(item => item.isCheckout == '待结账') || {});
+
+        if (!this.datesOfUrl) {
+          this.dates = [dayjs(this.currentPeriod.periodId).startOf("month").format("YYYY-MM-DD")];
+        } else {
+          this.dates = this.datesOfUrl
+        }
+      },
+
+      /**
+       * 获取表格数据
+       */
+      async getTableData() {
+        this.selectedAccountEntryContainer = [];
+        const backendSearchWhereOptionData = this.serverSearchInputWhereOptions.filter(x => x.length === 3);
+        const backendSearchData = _.pickBy(this.serverSearchInput, (fieldValue, fieldKey) => {
+          if (fieldValue !== null && fieldValue !== '') {
+            return true;
+          }
+        });
+        let rows = (await window.jianghuAxios({
+          data: {
+            appData: {
+              pageId: 'fundAccountEntryManagement',
+              actionId: 'selectItemList',
+              actionData: {},
+              where: backendSearchData,
+              whereOptions: backendSearchWhereOptionData,
+            }
+          }
+        })).data.appData.resultData.rows;
+
+        const currentFundAccount = _.find(this.fundAccountList, { accountId: this.currentAccountId }) || {};
+        rows.unshift({ accountEntryAbstract: '初始化余额', amount: currentFundAccount.initAmount || 0 });
+
+        const voucherIds = _.uniq(rows.filter(x => x.voucherId).map(x => x.voucherId));
+        const voucherEntryList = await this.getVoucherEntryList(voucherIds);
+        let sumAmount = 0;
+        for (let i = 0; i < rows.length; i++) {
+          const row = rows[i];
+          row.lineId = i + 1;
+          this.$set(this.editLineActiveMap, row.lineId, this.editLineActiveMap[row.lineId] || false);
+          if (row.voucherId) {
+            const currentVoucherEntry = voucherEntryList.find(x => x.voucherId === row.voucherId && x.debit + x.credit === Math.abs(row.amount))
+            row.isEqual = !_.isEmpty(currentVoucherEntry)
+            row.enableSelect = !row.isEqual;
+          } else {
+            row.isEqual = true;
+            row.enableSelect = row.accountEntryAbstract === '初始化余额' ? false : true;
+          }
+          row.amount = (row.amount || 0).toFixed(2);
+          sumAmount += (+row.amount);
+          row.remainAmount = sumAmount.toFixed(2);
+        }
+
+
+        this.tableData = rows;
+        this.addEntryTableItem(rows.length - 1)
+        this.tableDataBackEnd = _.cloneDeep(rows);
+        this.isTableLoading = false;
+      },
+
+      async getVoucherEntryList(voucherIds) {
+        if (voucherIds.length === 0) return [];
+
+        const voucherEntryList = (await window.jianghuAxios({
+          data: {
+            appData: {
+              pageId: 'voucher-voucherManagement',
+              actionId: 'selectItemList',
+              whereIn: {
+                voucherId: voucherIds
+              },
+            }
+          }
+        })).data.appData.resultData.rows;
+
+        return voucherEntryList;
+      },
+
+      // ---------- 新增数据 uiAction >>>>>>>>>> --------
+
+      // ---------- 新增数据 uiAction >>>>>>>>>> --------
+      async focusTd(item, key, $event) {
+        this.editLineActiveMap[item.lineId] = true;
+      },
+
+      addEntryTableItem(index) {
+        this.$set(this.editLineActiveMap, this.tableData.length + 2, true);
+        this.tableData.splice(index + 1, 0, { isEqual: true, lineId: this.tableData.length + 2 })
+      },
+
+      deleteEntryTableItem(index) {
+        this.tableData.splice(index, 1);
+      },
+
+      async cancelEntryTableItem(item, index) {
+        if (item.accountId) {
+          this.tableData.splice(index, 1, _.cloneDeep(this.tableDataBackEnd[index]));
+        } else {
+          this.tableData.splice(index, 1);
+        }
+        this.editLineActiveMap[item.lineId] = false;
+      },
+      // ---------- <<<<<<<<<< 行内编辑 uiAction --------
+
+      // ---------- 获取科目数据 uiAction >>>>>>>>>> --------
+      async getSubjectData() {
+        const result = await window.jianghuAxios({
+          data: {
+            appData: {
+              pageId: 'fundAccountManagement',
+              actionId: 'selectSubjectList',
+              orderBy: [{ column: 'subjectId', order: 'asc' }]
+            }
+          }
+        });
+        const subjectData = result.data.appData.resultData.rows;
+        this.constantObj.subjectList = _.map(subjectData, item => {
+          const { subjectId, subjectName } = item;
+          return {
+            subjectIdLabel: `${subjectId} ${subjectName}`,
+            subjectId: subjectId,
+            assistList: []
+          };
+        })
+      },
+      // ---------- <<<<<<<<<<< 获取科目数据 uiAction  --------
+
+      // ---------- 获取资金账号数据 uiAction >>>>>>>>>> --------
+      async getFundAccountData() {
+        const result = await window.jianghuAxios({
+          data: {
+            appData: {
+              pageId: 'fundAccountManagement',
+              actionId: 'selectItemList',
+            }
+          }
+        });
+        this.fundAccountList = result.data.appData.resultData.rows;
+        if (this.fundAccountList.length > 0) {
+          // 如果url没有参数，默认选中第一个资金账号
+          if (!this.serverSearchInput.accountId) {
+            this.currentAccountId = this.fundAccountList[0].accountId;
+            this.serverSearchInput.accountId = this.currentAccountId;
+          }
+          this.constantObj.fundAccountList = _.map(this.fundAccountList, item => {
+            const { accountId, accountName } = item;
+            return {
+              text: `${accountId} ${accountName}`,
+              value: accountId
+            };
+          })
+        }
+      },
+      // ---------- <<<<<<<<<<< 获取资金账号数据 uiAction  --------
+
+      // ---------- 生成凭证 uiAction >>>>>>>>>>> --------
+      async prepareGenerateVoucherFormData() {
+        if (this.selectedAccountEntryContainer.length == 0) {
+          await window.vtoast.fail("请先选择日记账记录~");
+          throw new Error("请先选择日记账记录");
+        }
+        this.$refs.generateDialog.doUiAction('onlyOpen');
+
+        // 获取凭证模板信息
+        const templateNames = this.selectedAccountEntryContainer.map(x => x.templateName);
+        const voucherTemplates = (await window.jianghuAxios({
+          data: {
+            appData: {
+              pageId: 'setting-voucherTemplateManagement',
+              actionId: 'selectVoucherTemplateList',
+              whereIn: {
+                voucherTemplateName: templateNames
+              },
+            }
+          }
+        })).data.appData.resultData.rows;
+
+        // voucherTemplateConfig
+        const voucherList = []
+        for (const accountEntry of this.selectedAccountEntryContainer) {
+          const curAccountConfig = this.fundAccountList.find(x => x.accountId === accountEntry.accountId) || {};
+          const curEntryVoucherTemplate = voucherTemplates.find(x => x.voucherTemplateName === accountEntry.templateName) || {};
+          const curEntryVoucherTemplateConfig = JSON.parse(curEntryVoucherTemplate.voucherTemplateConfig || '{}');
+          const curEntryVoucherTemplateVoucherEntryList = curEntryVoucherTemplateConfig.voucherEntryList || [];
+
+          const amount = Math.abs(accountEntry.amount);
+          voucherList.push({
+            periodId: dayjs(accountEntry.accountEntryAt).format('YYYY-MM'),
+            voucherName: '记',
+            voucherDebitSum: amount,
+            voucherCreditSum: amount,
+            voucherAt: dayjs(accountEntry.accountEntryAt).format('YYYY-MM-01'),
+
+            ticketList: [accountEntry],
+            voucherEntryList: curEntryVoucherTemplateVoucherEntryList.map(voucherEntry => {
+              let { subjectId, subjectName } = voucherEntry;
+              if ((voucherEntry.subjectBalanceDirection === "借" && curEntryVoucherTemplateConfig.incomeExpendType === '收入') ||
+                (voucherEntry.subjectBalanceDirection === "贷" && curEntryVoucherTemplateConfig.incomeExpendType === '支出')) {
+                subjectId = curAccountConfig.subjectId;
+                subjectName = curAccountConfig.subjectName;
+              }
+
+              return {
+                subjectId,
+                subjectName,
+                entryAbstract: voucherEntry.entryAbstract,
+                debit: voucherEntry.subjectBalanceDirection === "借" ? amount : 0,
+                credit: voucherEntry.subjectBalanceDirection === "贷" ? amount : 0
+              }
+            })
+          })
+        }
+        this.$refs.generateDialog.doUiAction('open', { voucherList });
+      },
+
+      // ---------- <<<<<<<<<<< 生成凭证 uiAction  --------
+
+
+      // ---------- 导入、导出数据 uiAction >>>>>>>>>>>> --------
+      async openExcelDrawer() {
+        this.uploadFile = null;
+        this.isExcelDrawerShow = true;
+        this.checkExcelDataListSuccess = false;
+      },
+      async closeExcelDrawer() {
+        this.isExcelDrawerShow = false;
+        this.checkExcelDataListSuccess = false
+        this.uploadExcelDataList = []
+        this.uploadExcelDataListOfCheck = []
+      },
+
+      async clearImportData() {
+        this.checkExcelDataListSuccess = false
+        this.uploadExcelDataList = []
+        this.uploadExcelDataListOfCheck = []
+      },
+
+      async export() {
+        const sheetName = "日记账数据";
+        const exportData = [];
+        for (const item of this.tableData) {
+          if (!item.accountEntryId) continue;
+
+          const curRow = {};
+          for (const header of this.importHeaders) {
+            curRow[header.text] = item[header.value];
+          }
+          exportData.push(curRow);
+        }
+        const worksheet1 = XLSX.utils.json_to_sheet(exportData);
+        const workbook = XLSX.utils.book_new()
+        XLSX.utils.book_append_sheet(workbook, worksheet1, sheetName);
+        XLSX.writeFile(workbook, `${sheetName}.xlsx`);
+      },
+
+      async readExcelDataList() {
+        this.checkExcelDataListSuccess = false;
+        this.uploadExcelDataList = [];
+        this.uploadExcelDataListOfTemplate = [];
+
+        if (!this.uploadFile) {
+          window.vtoast.fail({ message: '请选择excel文件' });
+          throw new Error('请选择excel文件');
+        }
+
+        const data = await this.process_RS(this.uploadFile.stream());
+        const workbook = XLSX.read(data, { type: 'array' });
+        const worksheet1 = workbook.Sheets[workbook.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(worksheet1);
+        this.uploadExcelDataList = rows;
+      },
+
+      async checkExcelDataList() {
+        this.uploadExcelDataListOfCheck = [];
+        this.checkExcelDataListSuccess = false;
+        await window.vtoast.loading({ message: 'excel数据检查中', timer: -1 });
+        for (const importItemData of this.uploadExcelDataList) {
+          let errorDesc = [];
+          // 检查金额格式
+          if (_.isNaN(+importItemData['金额'])) errorDesc.push('金额类型不合法');
+          // 检查凭证模板类型
+          if (!this.constantObj.templateName.includes(importItemData["凭证模板"])) errorDesc.push('凭证模板不合法');
+
+          if (errorDesc.length) {
+            importItemData.errorDesc = errorDesc.join('，');
+            this.uploadExcelDataListOfCheck.push(importItemData);
+          }
+        }
+        const checkSuccess = !this.uploadExcelDataListOfCheck.length > 0;
+        if (!checkSuccess) {
+          window.vtoast.fail({ message: '检查失败，有数据异常' });
+          return;
+        } else {
+          window.vtoast.success({ message: '检查成功' });
+        }
+
+        this.checkExcelDataListSuccess = checkSuccess;
+      },
+
+      async confirmUploadExcel() {
+        window.vtoast.loading({ message: '数据导入中，请耐心等待……', time: -1 });
+
+        // 准备导入的数据
+        const importData = [];
+        for (const itemData of _.cloneDeep(this.uploadExcelDataList)) {
+          const curRow = {
+            accountId: this.currentAccountId,
+          };
+          for (const header of this.importHeaders) {
+            curRow[header.value] = itemData[header.text];
+          }
+          importData.push(curRow);
+        };
+        const result = await window.jianghuAxios({
+          data: {
+            appData: {
+              pageId: 'fundAccountEntryManagement',
+              actionId: 'importFundAccountEntryData',
+              actionData: { importData }
+            }
+          }
+        })
+
+        if (result && result.status !== 200) {
+          window.vtoast.fail({ message: '导入失败' });
+          return;
+        } else {
+          window.vtoast.success({ message: '导入成功' });
+        }
+      },
+      // ---------- <<<<<<<<<<< 导入、导出数据 uiAction  --------
+
+      // ---------- 修改数据 uiAction >>>>>>>>>>>> --------
+      async prepareUpdateFormData(funObj) {
+        this.updateItem = _.cloneDeep(funObj);
+        this.updateItem.accountId = this.currentAccountId;
+      },
+
+      async confirmUpdateItemDialog() {
+        if (await window.confirmDialog({ title: "修改", content: "确定修改吗？" }) === false) {
+          throw new Error("[confirmUpdateItemDialog] 否");
+        }
+      },
+
+      async prepareDoCreateOrUpdateItem() {
+        const { id, remainAmount, lineId, isEqual, enableSelect, ...data } = this.updateItem;
+        this.updateItemId = id;
+        this.updateActionData = data;
+      },
+
+      async doCreateOrUpdateItem() {
+        await window.vtoast.loading({ message: "修改数据中", timer: -1 });
+        if (this.updateItemId) {
+          await window.jianghuAxios({
+            data: {
+              appData: {
+                pageId: 'fundAccountEntryManagement',
+                actionId: 'updateItem',
+                actionData: this.updateActionData,
+                where: { id: this.updateItemId }
+              }
+            }
+          })
+        } else {
+          await window.jianghuAxios({
+            data: {
+              appData: {
+                pageId: 'fundAccountEntryManagement',
+                actionId: 'insertItem',
+                actionData: this.updateActionData,
+                bizIdGenerate: {
+                  tableName: "fund_account_entry",
+                  prefix: "ZJ",
+                  type: "idSequence",
+                  bizId: "accountEntryId",
+                  startValue: "10000",
+                },
+              }
+            }
+          })
+        }
+
+        await window.vtoast.success("修改数据成功");
+        this.editLineActiveMap[this.updateItem.lineId] = false;
+      },
+
+      handleCheckboxChange(item) {
+        if (item.selected) {
+          this.selectedAccountEntryContainer.push(item);
+        } else {
+          const index = this.selectedAccountEntryContainer.indexOf(item);
+          if (index !== -1) {
+            this.selectedAccountEntryContainer.splice(index, 1);
+          }
+        }
+        this.isSelectDisabled = this.selectedAccountEntryContainer.length;
+      },
+      toggleSelectAll({ items, value }) {
+        for (const item of items) {
+          item.selected = value;
+          this.handleCheckboxChange(item)
+        }
+      },
+
+      async closeUpdateDrawer() {
+        this.isUpdateDrawerShown = false;
+        this.updateItem = {};
+        this.updateActionData = null;
+        this.updateItemId = null;
+      },
+      // ---------- <<<<<<<<<<< 修改数据 uiAction ---------
+      // ---------- 删除数据 uiAction >>>>>>>>>>>> --------
+      async prepareDeleteFormData(funObj) {
+        this.deleteItem = _.cloneDeep(funObj);
+      },
+      async confirmDeleteItemDialog() {
+        if (await window.confirmDialog({ title: "删除", content: "确定删除吗？" }) === false) {
+          throw new Error("[confirmDeleteItemDialog] 否");
+        }
+      },
+      async prepareDoDeleteItem() {
+        const { id } = this.deleteItem;
+        this.deleteItemId = id;
+      },
+      async doDeleteItem(item, index) {
+        await window.vtoast.loading({ message: '删除数据', timer: -1 });
+        if (this.deleteItemId) {
+          await window.jianghuAxios({
+            data: {
+              appData: {
+                pageId: 'fundAccountEntryManagement',
+                actionId: 'deleteItem',
+                actionData: { voucherId: this.deleteItem.voucherId },
+                where: { id: this.deleteItemId }
+              }
+            }
+          });
+          await this.getTableData();
+        } else {
+          this.tableData.splice(index, 1);
+        }
+        await window.vtoast.success("删除数据成功");
+      },
+      async clearDeleteItem() {
+        this.deleteItem = {};
+        this.deleteItemId = null;
+      },
+      // ---------- <<<<<<<<<<< 删除数据 uiAction ---------
+
+      async process_RS(stream) {
+        const buffers = [];
+        const reader = stream.getReader();
+        for (; ;) {
+          const res = await reader.read();
+          if (res.value) buffers.push(res.value);
+          if (res.done) break;
+        }
+
+        /* concat */
+        const out = new Uint8Array(buffers.reduce((acc, v) => acc + v.length, 0));
+
+        let off = 0;
+        for (const u8 of buffers) {
+          out.set(u8, off);
+          off += u8.length;
+        }
+        return out;
+      },
+
+      // ---------- 模版excel下载 uiAction >>>>>>>>>>>> --------
+      async templateFileDownload({ headers, filename, excelData = [] }) {
+        headers = this[headers]
+        const params = {
+          header: headers.filter(header => !header.exportDisabled).map(header => header.text),
+          key: headers.filter(header => !header.exportDisabled).map(header => header.value),
+          data: excelData,
+          filename: filename,
+        };
+        excelUtil.exportData(params);
+      },
+      // ---------- <<<<<<<<<<< 模版excel下载 uiAction ---------
+      jumpToUrl() {
+        window.open('https://cn.jianghujs.org/doc/page/article/11603', '_blank');
+      }
+    }   
+  })
+</script>
+
+<style scoped>
+
+</style>{% endblock %}

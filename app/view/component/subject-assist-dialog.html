@@ -1,0 +1,223 @@
+<template id="subject-assist-dialog">
+  <v-dialog v-model="dialog" transition="dialog-bottom-transition" max-width="800">
+
+    <v-card>
+      <v-row no-gutters>
+        <span class="text-h7 font-weight-bold pa-4">增加明细</span>
+      </v-row>
+      <v-divider class="jh-divider"></v-divider>
+
+      <v-card-text>
+        <div class="d-flex align-center py-4">
+          <span>科目：{{subjectItem.subjectName}}</span>
+
+          <v-spacer></v-spacer>
+          <v-btn class="ml-2" small color="primary" @click="doUiAction('saveSubjectAssistInfo')"><v-icon size="14">mdi-content-save-check-outline</v-icon>保存</v-btn>
+          <v-btn :disabled="!selected.length" class="ml-2" small color="error" outlined @click="doUiAction('batchDeleteRow')"><v-icon size="14">mdi-trash-can-outline</v-icon>删除</v-btn>
+        </div>
+        <v-form ref="updateForm" lazy-validation>
+          <v-data-table fixed-header class="jh-fixed-table-height elevation-0 mt-0 mb-xs-4" v-model="selected"
+            :headers="headers" :items="items" item-key="id" hide-default-footer show-select height="300px">
+            <template v-slot:item.action="{ item }">
+              <v-icon small class="mr-2" @click="addRow">mdi-plus</v-icon>
+              <v-icon small @click="deleteRow(item)">mdi-minus</v-icon>
+            </template>
+            
+            <!-- TODO: 这里要遍历下 -->
+            <template v-slot:item.customer="{ item }">
+              <v-combobox item-text="assistName" class="jh-v-input " dense filled single-line
+                :items="assistConfigObj.customer.dataList" v-model="item.customer" :rules="validationRules.requireRules"></v-combobox>
+            </template>
+            <template v-slot:item.supplier="{ item }">
+              <v-combobox item-text="assistName" item-value="assistName" class="jh-v-input " dense filled single-line
+                :items="assistConfigObj.supplier.dataList" v-model="item.supplier" :rules="validationRules.requireRules"></v-combobox>
+            </template>
+            <template v-slot:item.staff="{ item }">
+              <v-combobox item-text="assistName" item-value="assistName" class="jh-v-input " dense filled single-line
+                :items="assistConfigObj.staff.dataList" v-model="item.staff" :rules="validationRules.requireRules"></v-combobox>
+            </template>
+            <template v-slot:item.project="{ item }">
+              <v-combobox item-text="assistName" item-value="assistName" class="jh-v-input " dense filled single-line
+                :items="assistConfigObj.project.dataList" v-model="item.project" :rules="validationRules.requireRules"></v-combobox>
+            </template>
+            <template v-slot:item.depart="{ item }">
+              <v-combobox item-text="assistName" item-value="assistName" class="jh-v-input " dense filled single-line
+                :items="assistConfigObj.depart.dataList" v-model="item.depart" :rules="validationRules.requireRules"></v-combobox>
+            </template>
+            <template v-slot:item.cunhuo="{ item }">
+              <v-combobox item-text="assistName" item-value="assistName" class="jh-v-input " dense filled single-line
+                :items="assistConfigObj.cunhuo.dataList" v-model="item.cunhuo" :rules="validationRules.requireRules"></v-combobox>
+            </template>
+          </v-data-table>
+        </v-form>
+      </v-card-text>
+
+      <v-card-actions class="justify-end">
+        <v-btn text @click="dialog = false">关闭</v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
+</template>
+
+<script>
+  Vue.component('subject-assist-dialog', {
+    template: '#subject-assist-dialog',
+    data: () => ({
+      validationRules: {
+        requireRules: [
+          v => !!v || 'This is required',
+        ],
+      },
+      assistConfigObj: {},
+      dialog: false,
+      selected: [],
+      headers: [],
+      items: [
+      ],
+      subjectItem: {},
+      assistListArr: constantObj.assistList
+    }),
+    created() {
+      this.initAssistConfigObj();
+    },
+    methods: {
+      async doUiAction(uiActionId, uiActionData) {
+        switch (uiActionId) {
+          case 'open':
+            await this.open(uiActionData);
+            await this.getAssistList();
+            break;
+          case 'saveSubjectAssistInfo':
+            await this.prepareUpdateValidate();
+            await this.saveSubjectAssistInfo();
+            await this.close();
+            break;
+          case 'batchDeleteRow':
+            await this.batchDeleteRow(uiActionData);
+            break;
+          default:
+            console.error("[doUiAction] uiActionId not find", { uiActionId });
+            break;
+        }
+      },
+      async getAssistList() {
+        const result = await window.jianghuAxios({
+          data: {
+            appData: {
+              pageId: 'allPage',
+              actionId: 'selectAssistList',
+              actionData: {
+                subjectId: this.subjectId
+              },
+              where: {},
+              orderBy: [{ column: 'assistId', order: 'desc' }]
+            }
+          }
+        });
+        const resultData = result.data.appData.resultData;
+        const assistConfigObj = {...this.assistConfigObj}
+        for (let key in resultData) {
+          const assistType = this.assistListArr.find((assist) => assist.text === key).value
+          assistConfigObj[assistType].dataList = resultData[key];
+        }
+        this.assistConfigObj = assistConfigObj;
+        console.log('getAssistList this.assistConfigObj:', this.assistConfigObj);
+      },
+      close() {
+        this.dialog = false;
+      },
+      open({ item }) {
+        this.subjectItem = item
+        this.headers = [
+          { text: '序号', value: 'id', sortable: true },
+          ...item.assistList.map((assistName) => {
+            const value = this.assistListArr.find((assist) => assist.text === assistName).value
+            return { text: assistName, value };
+          }),
+          { text: '操作', value: 'action', sortable: false },
+        ];
+        // console.log('open this.headers:', this.headers);
+        this.items = item.assistChildrenList
+        if (this.items.length == 0) {
+          this.addRow();
+        }
+        this.dialog = true;
+      },
+      async batchDeleteRow() {
+        this.selected.forEach((selectedItem) => {
+          this.deleteRow(selectedItem)
+        });
+        this.selected = []
+      },
+      addRow() {
+        const id = this.items.length + 1;
+        const rowItem = { id }
+        this.subjectItem.assistList.forEach(item=> {
+          const key = this.assistListArr.find((assist) => assist.text === item).value
+          rowItem[key] = null
+        })
+        this.items.push(rowItem);
+      },
+      deleteRow(item) {
+        const index = this.items.indexOf(item);
+        if (index > -1) {
+          this.items.splice(index, 1);
+        }
+      },
+      deleteSelected() {
+        this.selected.forEach((selectedItem) => {
+          const index = this.items.indexOf(selectedItem);
+          if (index > -1) {
+            this.items.splice(index, 1);
+          }
+        });
+        this.selected = [];
+      },
+
+      // ---------- 保存 >>>>>>>>>>>>> ----------
+      async prepareUpdateValidate() {
+        if (await this.$refs.updateForm.validate()) {
+          return true;
+        }
+        throw new Error("请完善表单信息")
+        window.vtoast.fail('请完善表单信息');
+      },
+      async saveSubjectAssistInfo() {
+        // 构建subject的数据
+        const { subjectBalanceDirection, subjectLevel } = this.subjectItem
+        const items = this.items
+          .map((item, index)=> {
+            // subjectName构造，如：subjectItem.subjectName_item.customer_item.staff
+            // 由item里的key值拼接而成，除了id
+            const { id, ...rest } = item;
+            const subjectName = this.subjectItem.subjectName + '_' + Object.keys(item).filter(key => key !== 'id').map(key => item[key].assistName).join('_');
+            const subjectId = this.subjectItem.subjectId + '_' + Object.keys(item).filter(key => key !== 'id').map(key => item[key].assistId).join('_');
+            return {
+              id,
+              subjectId,
+              subjectName,
+              subjectBalanceDirection,
+              subjectLevel: subjectLevel+1,
+              startDebitPeriod: 0, startCreditPeriod: 0,
+              occurDebitYear: 0, occurCreditYear: 0,
+              startBalancePeriod: 0, startBalanceYear: 0,     
+              isAssistChildrenSubject: true,
+              ...rest,
+            }
+          })
+        this.subjectItem.assistChildrenList = items;
+        this.$emit('save', { item: this.subjectItem });
+      },
+      // ---------- <<<<<<<<<<<<< 保存 ----------
+      initAssistConfigObj() {
+        this.assistConfigObj = _.transform(constantObj.assistList, (accumulator, currentValue) => {
+          accumulator[currentValue.value] = {
+            text: currentValue.text,
+            assistType: currentValue.value,
+            dataList: []
+          };
+        })
+      }
+    },
+  });
+</script>

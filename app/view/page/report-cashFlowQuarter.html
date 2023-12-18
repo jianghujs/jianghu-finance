@@ -1,0 +1,403 @@
+{% extends 'template/jhTemplateV4.html'%}
+
+{% block vueTemplate %}
+
+<script type="text/html" id="app-template">
+  <div>
+    <v-app mobile-breakpoint="sm">
+      <jh-menu />
+      <v-main class="mt-15">
+        <!-- 头部内容 >>>>>>>>>>>>> -->
+        <div class="jh-page-second-bar px-8">
+          <v-row>
+            <v-col cols="12" xs="12" sm="12" md="4" xl="3">
+              <div class="py-4 text-body-1 font-weight-bold d-flex align-center">现金流量表季报
+                <!-- 帮助页按钮 -->
+                <span role="button" class="success--text font-weight-regular jh-font-size-13 mx-2" @click="jumpToUrl">
+                  <v-icon size="13" class="success--text">mdi-help-circle-outline</v-icon>帮助
+                </span>
+                <select-appaId/>
+              </div>
+            </v-col>
+            
+            <!-- pc端的搜索条件表单 >>>>>>>> -->
+            <v-col class="d-flex align-center" cols="12" xs="12" sm="12" md="8" xl="9">
+              <v-row no-gutters class="align-center jh-backend-form-container justify-end ma-0 py-1 pb-xs-2">
+                <v-col cols="6" xs="12" sm="4" md="3" xl="3" class="px-0 pr-md-2 pb-2 pb-md-0">
+                  <v-select v-model="serverSearchInput.financeYear" color="success" prefix="年" class="jh-v-input bg-white" 
+                    :items="constantObj.financeYear" dense filled single-line></v-select>
+                  </v-select>
+                </v-col>
+                <v-col cols="12" xs="12" sm="6" md="4" xl="3" class="px-0 pr-md-2 pb-2 pb-md-0">
+                  <v-select v-model="serverSearchInput.quarterText" color="success" prefix="季度" class="jh-v-input bg-white" 
+                    :items="constantObj.quarterText" dense filled single-line></v-select>
+                  </v-select>
+                </v-col>
+                  <v-btn class="elevation-0 w-sm-full" color="success" small @click="doUiAction('refreshTableData')">
+                    查询
+                  </v-btn>
+                  <!-- <v-btn v-if="!isMobile" class="elevation-0 mt-xs-0 mt-3" color="warning" small @click="doUiAction('openExDrawer')">
+                    调整EX报表
+                  </v-btn> -->
+              </v-row>
+            </v-col>
+            <!-- <<<<<<<< pc端的搜索条件表单 -->
+          </v-row>
+        </div>
+        <!-- <<<<<<<<<<<<< 头部内容 -->
+
+        <div class="jh-page-body-container px-8">
+
+          <!-- 页面主要内容 -->
+          <v-container class="fullScreen d-flex flex-column pa-xs-0 pa-0">
+
+            <v-row>
+              <v-col cols="12">
+                <v-card class="rounded-lg">
+                  <v-row class="ma-0 pa-4">
+            
+                    <v-col cols="12" xs="4" sm="4" md="4" xl="4" class="pa-0">
+                      <v-btn class="elevation-0 mr-2 " color="primary" small outlined @click="exportExcel"><v-icon size="14">mdi-export-variant</v-icon>导出excel</v-btn>
+                    </v-col>
+            
+                    <v-spacer></v-spacer>
+            
+                    <v-col cols="12" xs="6" sm="4" md="3" xl="2" class="pa-0">
+                      <v-text-field v-model="searchInput" prefix="搜索：" class="jh-v-input" dense filled single-line>
+                      </v-text-field>
+                    </v-col>
+                  </v-row>
+                  <v-data-table 
+                    fixed-header 
+                    :headers="headers" 
+                    :items="tableData" 
+                    :search="searchInput"
+                    :footer-props="{ itemsPerPageOptions: [20, 50, -1], itemsPerPageText: '每页行数', itemsPerPageAllText: '所有'}"
+                    :items-per-page="-1"  
+                    mobile-breakpoint="0"
+                    sort-by="profitFormulaCount"
+                    :sort-desc="true"
+                    :loading="isTableLoading" checkbox-color="success"
+                    :class="{'zebraLine': isTableZebraLineShown }"
+                    class="jh-fixed-table-height elevation-0 mt-0 mb-xs-4">
+                    <!-- 处理显示列 -->
+                    <template v-slot:item="{ item }">
+                      <tr @mouseover="showFormulaId=item.id">  
+                        <td>
+                          <span :title="`${item.itemName}  ${item.computeFormula||''}`" class="item-name" :style="{'margin-left': (item.level * 20) + 'px'}">{{item.itemName}}</span>
+                        </td>  
+                        <td>{{ item.row | empty }}</td>  
+                        <td >
+                          <v-menu :close-on-content-click="false" v-if="item.id==showFormulaId" offset-x location="end">
+                            <template v-slot:activator="{ on, attrs }">
+                              <v-icon v-bind="attrs" v-on="on" color="success" size="16">mdi-equal-box</v-icon>
+                            </template>
+                      
+                            <div class="pa-2" @mouseleave="showFormulaId=null">
+                              <p class="pa-0 ma-0">公式：{{item.formulaListStr2 || item.computeFormula}}</p>
+                              <p class="pa-0 ma-0">{{item.itemName}}(本期数，{{item.itemAmountPeriod | formatMoney2}})</p>
+                              <p class="pa-0 ma-0" v-for="formula in item.formulaList">
+                                {{formula.countDirection}}{{formula.formulaName}}(本期数，{{formula.itemAmountPeriod | formatMoney2}})
+                              </p>
+                            </div>
+                          </v-menu>
+                          <span class="float-right">{{item.itemAmountPeriod | formatMoney}}</span>
+                        </td>  
+                        <td>
+                          <v-menu :close-on-content-click="false" v-if="item.id==showFormulaId" offset-x location="end">
+                            <template v-slot:activator="{ on, attrs }">
+                              <v-icon v-bind="attrs" v-on="on" color="success" size="16">mdi-equal-box</v-icon>
+                            </template>
+                      
+                            <div class="pa-2" @mouseleave="showFormulaId=null">
+                              <p class="pa-0 ma-0">公式：{{item.formulaListStr2 || item.computeFormula}}</p>
+                              <p class="pa-0 ma-0">{{item.itemName}}(本年数，{{item.itemAmountYear | formatMoney2}})</p>
+                              <p class="pa-0 ma-0" v-for="formula in item.formulaList">
+                                {{formula.countDirection}}{{formula.formulaName}}(本年数，{{formula.itemAmountYear | formatMoney2}})
+                              </p>
+                            </div>
+                          </v-menu>
+                          <span class="float-right">{{item.itemAmountYear | formatMoney}}</span>
+                        </td>  
+                      </tr>  
+                    </template> 
+
+
+                    <!-- 表格底部右侧功能按钮 -->
+                    <template v-slot:footer.prepend>
+                      <div class="d-none d-md-flex" style="flex: auto;">{{searchSummary}}</div>
+                     
+                      <v-menu top offset-y :close-on-content-click="false" v-model="isTableZebraLineMenuShown" :position-x="tableZebraLineMenuPosition.x" :position-y="tableZebraLineMenuPosition.y">
+                        <v-list>
+                          <v-list-item>
+                            <v-switch v-model="isTableZebraLineShown" hide-details class="ma-0" label="显示斑马纹" dense flat></v-switch>
+                          </v-list-item>
+                        </v-list>
+                      </v-menu>
+                    </template>
+                    <!-- 没有数据 -->
+                    <template v-slot:loading>
+                      <div class="jh-no-data">数据加载中</div>
+                    </template>
+                    <template v-slot:no-data>
+                      <div class="jh-no-data">暂无数据</div>
+                    </template>
+                    <template v-slot:no-results>
+                      <div class="jh-no-data">暂无数据</div>
+                    </template>
+                    <!-- 表格分页 -->
+                    <template v-slot:footer.page-text="pagination">
+                      <span>{{pagination.pageStart}}-{{pagination.pageStop}}</span>
+                      <span class="ml-1">共{{pagination.itemsLength}}条</span>
+                    </template>
+                  </v-data-table>
+                </v-card>
+              </v-col>
+            </v-row>
+
+
+          </v-container>
+
+          <!-- 编辑公式 -->
+          <v-navigation-drawer v-model="isExDrawerShow" :permanent="isExDrawerShow" fixed temporary right width="80%"
+            class="elevation-24">
+            <!-- 抽屉标题 -->
+            <v-row>
+              <span class="title pa-6 pl-8">EX报表</span>
+              <report-cashFlow-ex v-if="isExDrawerShow" />
+            </v-row>
+            <!-- 抽屉关闭按钮 -->
+            <v-btn elevation="0" color="success" fab absolute top left small tile class="drawer-close-float-btn" @click="isExDrawerShow = false">
+              <v-icon>mdi-close</v-icon>
+            </v-btn>
+          </v-navigation-drawer>
+        </div>
+
+        <!-- 帮助页抽屉 >>>>>>>>>>>>> -->
+        <!-- <<<<<<<<<<<<< 帮助页抽屉 -->
+
+      </v-main>
+          
+    </v-app>
+    <jh-toast />
+    <jh-mask />
+    <jh-confirm-dialog />
+  </div>
+</script>
+<div id="app">
+</div>
+
+{% endblock %}
+
+{% block vueScript %}
+{% include 'component/jianghuJs/select-appaId.html' %}
+{% include 'common/jianghuJs/fixedTableHeightV4.html' %}
+{% include 'component/select-period.html' %}
+{% include 'component/select-quarter.html' %}
+{% include 'component/report-cashFlow-ex/report-cash-flow-ex-formula.html' %}
+{% include 'component/report-cashFlow-ex/report-cashFlow-ex.html' %}
+{% include 'common/excelUtil.html' %}
+{% include 'common/tableHeaderAndBorder.html' %}
+{% include 'common/vueFilters.html' %}
+
+<script type="module">
+  new Vue({
+    el: '#app',
+    template: '#app-template',
+    vuetify: new Vuetify(),
+    data: () => ({
+      isMobile: window.innerWidth < 500,
+        
+      // 面包屑
+      breadcrumbs: [
+        {
+          text: '首页',
+          disabled: true,
+        },
+        {
+          text: '现金流量表季报',
+          disabled: true,
+        }
+      ],
+
+      quarterFlowList: [],
+      // 表格相关数据
+      isTableZebraLineMenuShown: false,
+      tableZebraLineMenuPosition: {x: null, y: null},
+      isTableZebraLineShown: true,
+
+      // 下拉选项
+      constantObj: {
+      },
+      isFormValid: true,
+      validationRules: {
+        requireRules: [
+          v => !!v || '必填',
+        ],
+      },
+      constantObj: {
+        financeYear: [],
+        quarterText: [],
+        types: [
+          { text: '资产', vlaue: '借' },
+          { text: '负债', vlaue: '贷' },
+        ],
+      },
+      serverSearchInput: {
+        financeYear: null,
+        quarterText: null,
+        quarter: {},
+      },
+      searchInput: null,
+      isTableLoading: true,
+      headers: [
+        { text: "项目", value: "itemName", sortable: false, width: 120 },
+        { text: "行次", value: "row", sortable: false, width: 20 },
+        { text: "本季数", value: "itemAmountPeriod", align: 'end', sortable: false, width: 80 },
+        { text: "本年数", value: "itemAmountYear", align: 'end', sortable: false, width: 80 },
+      ],
+
+      isExDrawerShow: false,
+
+      showFormulaId: null,
+    }),
+    computed: {
+      tableData() {
+        if (!this.serverSearchInput.quarterText) {
+          return []
+        }
+        const quarterFlow = this.quarterFlowList.find(qp => qp.quarterText == this.serverSearchInput.quarterText)
+        return quarterFlow?.rows;
+      },
+      searchSummary() {
+        const conditions = [];
+        if (this.serverSearchInput.financeYear) {
+          conditions.push(`年: ${this.serverSearchInput.financeYear}`);
+        }
+        if (this.serverSearchInput.quarterText) {
+          conditions.push(`季度: ${this.serverSearchInput.quarterText}`);
+        }
+        return conditions.length > 0 ? `${conditions.join('，')}，共${this.tableData.length}条记录` : `共${this.tableData.length}条记录`;
+      }
+    },
+    watch: {},
+    async created() {
+      await this.doUiAction('getFinanceYearList');
+      await this.doUiAction('refreshTableData');
+    },
+    mounted() { },
+    methods: {
+      async doUiAction(uiActionId, uiActionData) {
+        switch (uiActionId) {
+          case 'getFinanceYearList':
+            await this.getFinanceYearList();
+            break;
+          case 'refreshTableData':
+            await this.refreshTableData();
+            break;
+          case 'openTableZebraLineMenu':
+            await this.openTableZebraLineMenu(uiActionData);
+            break;
+          case 'openExDrawer':
+            await this.openExDrawer();
+            break;
+          default:
+            console.error("[doUiAction] uiActionId not find", { uiActionId });
+            break;
+        }
+      },
+
+      async getFinanceYearList() {
+        this.isTableLoading = true;
+        const { rows: periodList } = (await window.jianghuAxios({
+          data: {
+            appData: {
+              pageId: 'allPage',
+              actionId: 'selectPeriodList',
+              actionData: {},
+              where: {},
+              orderBy: [{column: 'periodId', order: 'desc'}]
+            }
+          }
+        })).data.appData.resultData;
+        let financeYearList = periodList.map(p => p.financeYear);
+        financeYearList = _.uniq(financeYearList);
+        this.constantObj.financeYear = financeYearList;
+        this.serverSearchInput.financeYear = this.constantObj.financeYear[0];
+      },  
+
+      /**
+       * uiActionId:  refreshTableData
+       * description: ✅获取表格数据
+      */
+      async refreshTableData() {
+        this.isTableLoading = true;
+        const result = await window.jianghuAxios({
+          data: {
+            appData: {
+              pageId: 'report-cashFlow',
+              actionId: 'getItemListOfCashFlowOfQuarter',
+              actionData: { 
+                financeYear: this.serverSearchInput.financeYear,
+              },
+              where: {},
+            }
+          }
+        });
+
+        const { rows } = result.data.appData.resultData;
+        this.quarterFlowList = rows;
+        this.constantObj.quarterText = this.quarterFlowList.map(row => row.quarterText);
+        this.serverSearchInput.quarterText = this.quarterFlowList[0].quarterText;
+        this.isTableLoading = false;
+      },
+      // ---------- 斑马纹开关 uiAction >>>>>>>>>> --------
+      async openTableZebraLineMenu(funObj) {
+        this.tableZebraLineMenuPosition.x = funObj.x - funObj.offsetX + 10;
+        this.tableZebraLineMenuPosition.y = window.innerHeight - 50;
+        this.isTableZebraLineMenuShown = !this.isTableZebraLineMenuShown;
+      },
+      // ---------- <<<<<<<<<< 斑马纹开关 uiAction --------
+      async openExDrawer() {
+        this.isExDrawerShow = true;
+      },
+      async exportExcel() {
+        const excelDataList = _.cloneDeep(this.tableData);
+        excelDataList.forEach(item => {
+          if (item.computeFormula) {
+            const { computeFormula } = item;
+            item.computeFormula = computeFormula.replace(/L/g, 'D');
+            item.computeFormula2 = computeFormula.replace(/L/g, 'E');
+          }
+        })
+        const headers = _.cloneDeep(this.headers);
+        headers.push(
+          { text: "本季数-行公式", value: "computeFormula", sortable: false, width: 5 },
+          { text: "本年数-行公式", value: "computeFormula2", sortable: false, width: 5 },
+        )
+        const params = {
+          header: headers.filter(header => header.text != '操作').map(header => header.text),
+          key: headers.filter(header => header.text != '操作').map(header => header.value),
+          data: excelDataList,
+          filename: dayjs().format('YYYYMMDDHHmmss') + '_' + '现金流量表季报表',
+          // deleteRows: [0,1,9,16]
+        };
+        excelUtil.exportData(params);
+      }
+,
+      jumpToUrl() {
+        window.open('https://cn.jianghujs.org/doc/page/article/11603', '_blank');
+      }
+    }   
+  })
+</script>
+
+<style scoped>
+  .item-name {
+    display: block;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+</style>
+{% endblock %}

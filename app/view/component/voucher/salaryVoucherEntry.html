@@ -1,0 +1,290 @@
+<template id="salary-voucher-entry">
+  <v-container class="enhancer-voucher pa-0 py-4" ref="entryEl">
+    <v-card elevation="0" outlined :class="{'hasError': hasError}">
+      <table cellspacing="0" class="enhancer-voucher-table">
+        <thead>
+          <tr>
+            <td rowspan="2"> 摘要 </td>
+            <td rowspan="2"> 会计科目 </td>
+            <td>借方金额</td>
+            <td>贷方金额</td>
+          </tr>
+          <tr>
+            <td class="enhancer-voucher-digit">
+              <div class="enhancer-voucher-digit-wrap" style="position: inherit;">
+                <div v-for="(digitUnitItem, digitUnitIndex) in constantObj.digitUnit">{{digitUnitItem}}</div>
+              </div>
+            </td>
+            <td class="enhancer-voucher-digit">
+              <div class="enhancer-voucher-digit-wrap" style="position: inherit;">
+                <div v-for="(digitUnitItem, digitUnitIndex) in constantObj.digitUnit">{{digitUnitItem}}</div>
+              </div>
+            </td>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="enhancer-voucher-item-row" v-for="(item, index) in value" :key="index">
+            <td>
+              <div class="operate-btn">
+                <div @click="doUiAction('deleteItem', { item, index })"> <v-icon>mdi-minus</v-icon> </div>
+                <div @click="doUiAction('addItem', { item, index })"> <v-icon>mdi-plus</v-icon> </div>
+              </div>
+              <input class="quick-focus" type="text" v-model="item.entryAbstract"/>
+            </td>
+            <td>
+              <v-autocomplete input-class="quick-focus"
+                :items="subjectList.filter(row => row.isShown === '显示')" item-text="subjectIdLabel" item-value="subjectId" single-line
+                v-model="item.subjectId">
+              </v-autocomplete>
+            </td>
+            <td class="enhancer-voucher-digit enhancer-voucher-digit-value quick-focus">
+              <div class="enhancer-voucher-digit-wrap">
+                <div v-for="(digitValueItem, digitValueIndex) in item.debitText || '           '">{{digitValueItem}}</div>
+              </div>
+              <input type="text" v-model="item.debit" @input="calcValueText(item, 'debit')"/>
+            </td>
+            <td class="enhancer-voucher-digit enhancer-voucher-digit-value quick-focus">
+              <div class="enhancer-voucher-digit-wrap">
+                <div v-for="(digitValueItem, digitValueIndex) in item.creditText || '           '">{{digitValueItem}}</div>
+              </div>
+              <input type="text" v-model="item.credit" @input="calcValueText(item, 'credit')"/>
+            </td>
+          </tr>
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="2" class="total-title">合计:</td>
+            <td class="enhancer-voucher-digit enhancer-voucher-digit-value">
+              <div class="enhancer-voucher-digit-wrap">
+                <div v-for="(digitValueItem, digitValueIndex) in debitTotalText || '           '">{{digitValueItem}}</div>
+              </div>
+            </td>
+            <td class="enhancer-voucher-digit enhancer-voucher-digit-value">
+              <div class="enhancer-voucher-digit-wrap">
+                <div v-for="(digitValueItem, digitValueIndex) in creditTotalText || '           '">{{digitValueItem}}</div>
+              </div>
+            </td>
+          </tr>
+        </tfoot>
+      </table>
+    </v-card>
+  </v-container>
+</template>
+
+<script type="module">
+  Vue.component("salary-voucher-entry", {
+    template: '#salary-voucher-entry',
+    props: {
+      value: {
+        type: Array,
+        default: () => [{}],
+      },
+      subjectList: {
+        type: Array,
+        default: () => [],
+      },
+      voucherTemplate: {
+        type: Object,
+        default: () => {},
+      },
+    },
+    data: () => ({
+      validationRules: {
+        requireRules: [
+          v => !!v || '必填',
+        ],
+      },
+      constantObj: {
+        digitUnit: ['亿', '千', '百', '十', '万', '千', '百', '十', '元', '角', '分'],
+        assistType: [ '客户', '供应商', '职员', '项目', '部门'],
+      },
+      assistConfigObj: {},
+      debitTotalText: 0,
+      creditTotalText: 0,
+      entryAbstract: "",
+      hasError: false
+    }),
+    computed: {
+      subjectMap() {
+        return _.keyBy(this.subjectList, 'subjectId');
+      },
+    },
+    watch: {
+      voucherTemplate: {
+        deep: true,
+        handler(newValue, oldValue) {
+          this.createEntryList();
+        }
+      },
+      value: {
+        deep: true,
+        handler(newValue, oldValue) {
+          console.log(newValue.length !== oldValue.length)
+        }
+      },
+    },
+    async created() {
+      this.initAssistConfigObj();
+      // await this.doUiAction('getAssistData');
+      // await this.ensureMinRows();
+    },
+    async mounted() {
+      this.createEntryList();
+    },
+    methods: {
+      async doUiAction(uiActionId, uiActionData) {
+        switch (uiActionId) {
+          case 'getAssistData':
+            await this.getAssistData(uiActionData);
+            break;
+          case 'addItem':
+            await this.doAddItem(uiActionData);
+            break;
+          case 'deleteItem':
+            await this.doDeleteItem(uiActionData);
+            break;
+          default:
+            console.error("[doUiAction] uiActionId not find", { uiActionId });
+            break;
+        }
+      },
+
+      bindFocusKey() {
+        this.$nextTick(() => {
+          const entryEl = this.$refs.entryEl;
+          const inputList = entryEl.querySelectorAll('.enhancer-voucher-digit-value.quick-focus');
+          inputList.forEach(item => {
+            item.onmouseenter = () => {
+              item.classList.add('focus');
+            }
+            item.onmouseleave = () => {
+              item.classList.remove('focus');
+            }
+            item.querySelector('input').onblur = (e) => {
+              e.target.parentNode.classList.remove('focus');
+            }
+            item.onclick = () => {
+              item.classList.add('focus');
+            }
+          })
+          window.onkeydown = (e) => {
+            if(e.keyCode === 13) {
+              const activeInputEl = document.activeElement;
+              if(activeInputEl && activeInputEl.tagName === 'INPUT') {
+                const activeTdEl = activeInputEl.parentNode;
+                const nextTdEl = activeTdEl.nextElementSibling;
+                if(nextTdEl && nextTdEl.classList.contains('enhancer-voucher-digit-value') && nextTdEl.classList.contains('quick-focus')) {
+                  const nextInputEl = nextTdEl.querySelector('input');
+                  if(nextInputEl) {
+                    activeTdEl.classList.remove('focus');
+                    nextTdEl.classList.add('focus');
+                    activeInputEl.blur();
+                    nextInputEl.focus();
+                  }
+                }
+                if(!nextTdEl) {
+                 const activeErEl = activeTdEl.parentNode;
+                 const nextTrEl = activeErEl.nextElementSibling;
+                 if(nextTrEl) {
+                   const nextTdEl = nextTrEl.querySelector('.enhancer-voucher-digit-value.quick-focus');
+                   if(nextTdEl) {
+                     const nextInputEl = nextTdEl.querySelector('input');
+                     if(nextInputEl) {
+                       activeTdEl.classList.remove('focus');
+                       nextTdEl.classList.add('focus');
+                       activeInputEl.blur();
+                       nextInputEl.focus();
+                     }
+                   }
+                 }
+                }
+              }
+            }
+          }
+        });
+      },
+      createEntryList() {
+        this.entryAbstract = `${this.voucherTemplate.voucherTemplateName}`
+        if(!this.voucherTemplate.voucherTemplateConfig.voucherEntryList) return;
+        const templateVoucherEntryList = _.cloneDeep(this.voucherTemplate.voucherTemplateConfig.voucherEntryList);
+        const voucherEntryList = [];
+        templateVoucherEntryList.forEach(item => {
+          voucherEntryList.push({
+            entryAbstract: this.entryAbstract,
+            subjectId: item.subjectId,
+            debit: item.subjectBalanceDirection === '借' ? (this.value[0][item.dataResourceKey] || 0) : 0,
+            credit: item.subjectBalanceDirection === '贷' ? (this.value[0][item.dataResourceKey] || 0) : 0,
+            debitText: this.getMoneyString(item.subjectBalanceDirection === '借' ? parseFloat(this.value[0][item.dataResourceKey] || 0) : null),
+            creditText: this.getMoneyString(item.subjectBalanceDirection === '贷' ? parseFloat(this.value[0][item.dataResourceKey] || 0) : null),
+          })
+        })
+        this.value = voucherEntryList;
+        this.calcTotalText();
+        this.bindFocusKey();
+      },
+      getMoneyString(floatValue) {
+        return _.padStart(floatValue ? floatValue.toFixed(2) : " .  ", this.constantObj.digitUnit.length + 1, ' ').replaceAll('.', '')
+      },
+      async getAssistData() {
+        const result= await window.jianghuAxios({
+          data: {
+            appData: {
+              pageId: 'voucher-voucherManagement',
+              actionId: 'entry-selectAssistList',
+              where: {},
+              orderBy: [{column: 'assistId', order: 'desc'}]
+            }
+          }
+        });
+        const resultData = result.data.appData.resultData;
+        for (let key in resultData) {
+          this.assistConfigObj[key].dataList = [{ assistId: '', assistName: '' }].concat(resultData[key]);
+        }
+      },
+      async doAddItem({index}) {
+        this.value.splice(index + 1, 0, {entryAbstract: this.entryAbstract});
+        this.value = _.cloneDeep(this.value);
+        this.calcTotalText();
+      },
+      async doDeleteItem({index}) {
+        this.value.splice(index, 1);
+        this.value = _.cloneDeep(this.value);
+        this.calcTotalText();
+      },
+      calcTotalText() {
+        const creditTotal = parseFloat(this.value.reduce((total, item) => {
+          return total + parseFloat(item.credit || '0')
+        }, 0));
+        this.creditTotalText = this.getMoneyString(creditTotal);
+        const debitTotal = parseFloat(this.value.reduce((total, item) => {
+          return total + parseFloat(item.debit || '0')
+        }, 0));
+        this.debitTotalText = this.getMoneyString(debitTotal);
+        this.hasError = creditTotal !== debitTotal;
+        this.$root.doUiAction("changeVoucherDataList", {list: this.value, id: this.voucherTemplate.id})
+      },
+
+      calcValueText(item, key) {
+        item[key + 'Text'] = this.getMoneyString(parseFloat(item[key] || '0'));
+        this.calcTotalText();
+      },
+
+      initAssistConfigObj() {
+        this.assistConfigObj = _.transform(constantObj.assistList, (accumulator, currentValue) => {
+          // currentValue.value首字母大写
+          currentValue.value = currentValue.value.replace(/(\w)/, function (v) { return v.toUpperCase() });
+          const bizId = `assistIdOf${currentValue.value}`
+          accumulator[currentValue.text] = {
+            text: currentValue.text,
+            bizId,
+            assistType: currentValue.value,
+            dataList: []
+          };
+        })
+      }
+    }
+  })
+</script>
+<style scoped>
+
+</style>

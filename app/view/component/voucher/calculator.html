@@ -1,0 +1,91 @@
+<template id="calculator">
+  <!-- 计算器对话框 -->
+  <v-dialog max-width="35%" v-model="dialog" persistent>
+    <v-card>
+      <v-row no-gutters>
+        <span class="text-h7 font-weight-bold pa-4">计算器</span>
+      </v-row>
+      <v-divider class="jh-divider"></v-divider>
+      <v-card-text class="mt-4">
+        <!-- 多行输入框 -->
+        <p class="ma-0 text-caption">计算示例：215+12*(123.32-49.57)/2</p>
+        <v-textarea ref="formula"  @keyup.enter="doUiAction('confirm')" v-model="formula" label="输入金额" persistent-hint rows="3" class="jh-v-input" dense filled
+          single-line></v-textarea>
+        <!-- 实时显示计算结果 -->
+        <div class="d-flex justify-space-between align-center py-4">
+          <div class="orange--text text-caption">亲，按回车键可以快速保存计算结果哦！</div>
+          <div class="">
+            <span class="text-caption">计算结果：</span>
+            <span class="text-h5 font-weight-bold success--text">{{calculatedResult}}</span>
+          </div>
+        </div>
+      </v-card-text>
+      <v-card-actions class="d-flex justify-center">
+        <v-btn small @click="dialog=false">取消</v-btn>
+        <v-btn small color="primary" @click="doUiAction('confirm')">确定</v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
+</template>
+
+<script type="module">
+  Vue.component("calculator", {
+    template: '#calculator',
+    vuetify: new Vuetify(),
+    data() {
+      return {
+        dialog: false,
+        formula: "",
+        calculatedResult: "0.00",
+      };
+    },
+    watch: {
+      formula(newValue) {
+        // 在输入变化时计算结果  
+        this.calculateResult();
+      },
+    },
+    created() {
+    },
+    methods: {
+      async doUiAction(uiActionId, uiActionData) {
+        switch (uiActionId) {
+          case 'open':
+            await this.open(uiActionData);
+            break;
+          case 'confirm':
+            this.$emit("confirm", this.calculatedResult);
+            this.dialog = false;
+            break;
+          default:
+            console.error("[doUiAction] uiActionId not find", { uiActionId });
+            break;
+        }
+      },
+      open(formula) {
+        this.dialog = true;
+        
+        this.formula = formula;
+        setTimeout(() => {
+          this.$refs.formula.focus();
+        }, 0);
+      },
+      // 计算方法  
+      calculateResult() {
+        // 过滤到公式里的非法字符
+        this.formula = this.formula.replace(/[^\d\.\+\-\*\/\(\)]/g, '');
+
+        // 计算输入公式的结果  
+        try {
+          let sum  = eval(this.formula);
+          sum = sum.toFixed(2);
+          this.calculatedResult = sum;
+        } catch (error) {
+          // 捕获计算错误  
+          // console.error('计算错误:', error);
+          this.calculatedResult = '0.00';
+        }
+      },
+    },
+  });  
+</script>

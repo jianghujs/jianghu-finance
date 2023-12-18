@@ -1,0 +1,963 @@
+{% extends 'template/jhTemplateV4.html'%}
+
+{% block vueTemplate %}
+<script type="text/html" id="app-template">
+  <div>
+    <v-app mobile-breakpoint="sm">
+      <jh-menu />
+      <v-main class="mt-15">
+        <!-- 头部内容 >>>>>>>>>>>>> -->
+        <div class="jh-page-second-bar px-8 py-4">
+          <v-row class="align-center" no-gutters>
+            <v-col cols="12" xs="12" sm="12" md="4" xl="3">
+              <div class="text-body-1 font-weight-bold">结账
+                <!-- 帮助页按钮 -->
+                <span role="button" class="success--text font-weight-regular jh-font-size-13 mx-2" @click="jumpToUrl">
+                  <v-icon size="13" class="success--text">mdi-help-circle-outline</v-icon>帮助
+                </span>
+
+                <select-appaId/>
+              </div>
+            </v-col>
+            <!-- pc端的搜索条件表单 >>>>>>>> -->
+            <v-col cols="12" xs="12" sm="12" md="8" xl="9" class="align-center d-none d-md-flex" >
+              <v-row no-gutters class="align-center justify-end ma-0">
+                <v-col v-if="!isTableLoading" cols="12" xs="12" sm="12" md="6" xl="6" class="pa-xs-0 pr-0 d-flex justify-end flex-wrap">
+                  <!-- <v-btn 
+                    v-if="tableDataFromBackend.length > 0"
+                    color="primary" 
+                    dark small
+                    class="elevation-0 ml-2" 
+                    @click="doUiAction('reCheckoutAllPeriod')">
+                    重新结账所有【开发调试用】
+                  </v-btn> -->
+                  <v-btn class="elevation-0 ml-2"
+                    dark
+                    color="green" 
+                    @click="doUiAction('checkSubjectBalance', {} )" small>
+                    <v-icon size="16">mdi-calculator</v-icon>
+
+                    试算平衡
+                  </v-btn>
+                  <v-btn 
+                    v-if="tableDataFromBackend.length === 0"
+                    color="green" 
+                    dark small
+                    class="elevation-0 ml-2" 
+                    @click="doUiAction('startCreateItem')">
+                    <v-icon size="16">mdi-plus</v-icon>
+                    创建-初始会计期间
+                  </v-btn>
+                  
+                  <v-btn 
+                    v-if="tableDataFromBackend.length > 0"
+                    color="green" 
+                    dark small
+                    class="elevation-0 ml-2" 
+                    @click="doUiAction('startVoucherTemplate')">
+                    <!-- 生成凭证icon -->
+                    <v-icon size="16">mdi-file-document-edit-outline</v-icon>
+                    期末结转
+                  </v-btn>
+                  <v-btn
+                    v-if="tableDataFromBackend.length > 0"
+                    color="green ml-2" 
+                    dark small
+                    class="elevation-0" 
+                    @click="doUiAction('startCheckoutItem')">
+                    <!-- 结账icon -->
+                    <v-icon size="16">mdi-check</v-icon>
+                    结账
+                  </v-btn>
+                  <v-btn
+                    v-if="isCheckoutCount > 0"
+                    color="green ml-2" 
+                    dark small
+                    class="elevation-0" 
+                    @click="doUiAction('reverseCheckout')">
+                    <!-- 反结账icon -->
+                    <v-icon size="16">mdi-undo</v-icon>
+                    反结账
+                  </v-btn>
+                </v-col>
+              </v-row>
+            </v-col>
+            <!-- <<<<<<<< pc端的搜索条件表单 -->
+          </v-row>
+        </div>
+        <!-- <<<<<<<<<<<<< 头部内容 -->
+
+        <div class="jh-page-body-container px-8">
+          <v-card class="rounded-lg" style="overflow: hidden;">
+            <v-data-table 
+              fixed-header
+              :headers="headers"
+              :items="tableData"
+              :search="searchInput"
+              :footer-props="{ itemsPerPageOptions: [20, 50, -1], itemsPerPageText: '每页行数', itemsPerPageAllText: '所有'}"
+              :items-per-page="-1"
+              mobile-breakpoint="0"
+              :loading="isTableLoading"
+              checkbox-color="success"
+              :class="{'zebraLine': isTableZebraLineShown }"
+              class="jh-fixed-table-height elevation-0 mt-0 mb-xs-4 pa-3">
+              <!-- 处理显示列 -->
+              <template v-slot:item.periodId="{ item }">
+                {{ item.periodId }} 
+                <v-chip x-small v-if="item.isPeriodStart === '是'" color="#fb8c00" text-color="white"> 初始会计期间 </v-chip>
+                <v-chip x-small v-if="item.isCheckout === '待结账'" color="green" text-color="white"> 当前会计期间 </v-chip>
+              </template>
+              <template v-slot:item.isCheckout="{ item }">
+                <v-chip :color="getStatusColor(item.isCheckout)" x-small> {{item.isCheckout}} </v-chip>
+              </template>
+              <!-- 表格底部右侧功能按钮 -->
+              <!-- <template v-slot:footer.prepend>
+            
+                <v-menu top offset-y :close-on-content-click="false" v-model="isTableZebraLineMenuShown" :position-x="tableZebraLineMenuPosition.x" :position-y="tableZebraLineMenuPosition.y">
+                  <v-list>
+                    <v-list-item>
+                      <v-switch v-model="isTableZebraLineShown" hide-details class="ma-0" label="显示斑马纹" dense flat></v-switch>
+                    </v-list-item>
+                  </v-list>
+                </v-menu>
+              </template> -->
+              <!-- 没有数据 -->
+              <template v-slot:loading>
+                <div class="jh-no-data">数据加载中</div>
+              </template>
+              <template v-slot:no-data>
+                <div class="jh-no-data">暂无数据</div>
+              </template>
+              <template v-slot:no-results>
+                <div class="jh-no-data">暂无数据</div>
+              </template>
+              <!-- 表格分页 -->
+              <template v-slot:footer.page-text="pagination">
+                <span>{{pagination.pageStart}}-{{pagination.pageStop}}</span>
+                <span class="ml-1">共{{pagination.itemsLength}}条</span>
+              </template>
+            </v-data-table>
+          </v-card>
+
+          <!-- 创建-初始会计期间 -->
+          <v-navigation-drawer v-model="isCreateItemDrawerShow" :permanent="isCreateItemDrawerShow" fixed temporary right width="80%" class="elevation-24">
+            <v-form v-model="isFormValid" v-if="isCreateItemDrawerShow" ref="form" lazy-validation>
+              <!-- 抽屉标题 -->
+              <v-row>
+                <span class="title pa-6 pl-8">创建-初始会计期间</span>
+              </v-row>
+              <!-- 抽屉表单 -->
+              <v-row class="mt-0 px-4">
+                <v-col cols="12" sm="12" md="4">
+                  <v-menu
+                    v-model="isPeriodIdMenuShow"
+                    :close-on-content-click="false"
+                    :nudge-right="40"
+                    transition="scale-transition"
+                    offset-y
+                    min-width="auto">
+                    <template v-slot:activator="{ on, attrs }">
+                      <v-text-field
+                        prefix="初始会计期间:" 
+                        v-model="createItem['periodId']"
+                        class="jh-v-input"
+                        dense
+                        filled
+                        single-line
+                        readonly
+                        v-bind="attrs"
+                        v-on="on"
+                        :rules=validationRules.requireRules
+                      ></v-text-field>
+                    </template>
+                    <v-date-picker
+                      v-model="createItem['periodId']"
+                      type="month"
+                      locale="zh-cn"
+                      @input="isPeriodIdMenuShow = false"
+                    ></v-date-picker>
+                  </v-menu>
+                </v-col>
+              </v-row>
+              <!-- 抽屉操作按钮 -->
+              <v-row class="justify-end mx-0 mt-8 px-6">
+                <v-btn color="success" @click="doUiAction('createItem')" small>确定</v-btn>
+                <v-btn class="elevation-0 ml-2" @click="isCreateItemDrawerShow = false" small><v-icon size="14">mdi-close</v-icon>取消</v-btn>
+              </v-row>
+            </v-form>
+            
+            <!-- 抽屉关闭按钮 -->
+            <v-btn elevation="0" color="success" fab absolute top left small tile class="drawer-close-float-btn" @click="isCreateItemDrawerShow = false">
+              <v-icon>mdi-close</v-icon>
+            </v-btn>
+          </v-navigation-drawer>
+
+          <!-- 结账-生成下一个会计期间 -->
+          <v-navigation-drawer v-model="isCheckoutDrawerShow" :permanent="isCheckoutDrawerShow" fixed temporary right width="80%" class="elevation-24">
+            <v-form v-model="isFormValid" v-if="isCheckoutDrawerShow" ref="form" lazy-validation>
+              <!-- 抽屉标题 -->
+              <v-row no-gutters class="d-flex align-center">
+                <span class="text-h7 font-weight-bold pa-4">结账</span>
+                <span>(结账到: {{checkoutItem['nextPeriodId']}})</span>
+              </v-row>
+              <v-divider class="jh-divider"></v-divider>
+              <!-- 抽屉表单 -->
+              <!-- <v-row class="mt-0 px-4">
+                <v-col cols="12" sm="12" md="4">
+                  <v-text-field 
+                    v-if="checkoutItem['nextPeriodId']"
+                    class="jh-v-input " prefix="结账到:" 
+                    dense filled single-line readonly
+                    v-model="checkoutItem['nextPeriodId']">
+                  </v-text-field>
+                </v-col>
+              </v-row> -->
+              <div class="pa-4 px-8 d-flex green lighten-2 white--text align-center justify-space-between examine-header">
+                <div class="flex-1" style="flex: 1">
+                  <div v-if="!checkoutExamineStatus">对要结账的期间做个检查吧!</div>
+                  <div v-else-if="checkoutExamineStatus=='fail'">重新对要结账的期间做个检查吧!</div>
+                  <div v-else>{{checkoutItem['currentPeriodId']}}账表完成检查！!</div>
+                  <v-progress-linear
+                  color="success lighten-5 accent-1 mt-2"
+                  indeterminate
+                  rounded
+                  height="20"
+                  v-if="isCheckoutExamineLoading"
+                ></v-progress-linear>
+                </div>
+                <div class="ml-8">
+                  <v-btn :loading="isCheckoutExamineLoading" v-if="!checkoutExamineStatus" @click="doUiAction('startCheckoutExamine')" color="success">马上检查</v-btn>
+                  <v-btn :loading="isCheckoutExamineLoading" v-else-if="checkoutExamineStatus == 'fail'" @click="doUiAction('startCheckoutExamine')" color="success">重新检查</v-btn>
+
+                  <div v-else class="d-flex align-center">
+                    <v-btn color="success" @click="doUiAction('checkout')">结账</v-btn>
+                    <v-btn color="success" class="elevation-0 ml-2" @click="doUiAction('cancelCheckout')">不结账</v-btn>
+                  </div>
+                </div>
+              </div>
+
+              <v-expansion-panels multiple class="pa-4" :disabled="checkoutExamineStatus == 'success'" v-model="openPanels">
+                <v-expansion-panel
+                  v-for="item in items"
+                >
+                  <v-expansion-panel-header class="py-0 pl-0 ma-0">
+                    <v-list-item>
+                      <v-list-item-avatar>
+                        <v-icon
+                          color="success"
+                          size="40"
+                        >
+                          {{item.icon}}
+                        </v-icon>
+                      </v-list-item-avatar>
+                      <v-list-item-content>
+                        <v-list-item-title v-text="item.title"></v-list-item-title>
+                          <v-list-item-subtitle v-text="item.subtitle"></v-list-item-subtitle>
+                      </v-list-item-content>
+                    </v-list-item>
+                  </v-expansion-panel-header>
+                  <v-expansion-panel-content>
+                    <v-list-item
+                    v-for="child in item.items"
+                    :key="child.title"
+                    class="list-child-item"
+                  >
+                    <v-list-item-content>
+                      <v-list-item-title>
+                        <v-icon color="success" size="18">mdi-circle-small</v-icon>
+                        <span>{{child.title}}</span>
+                      </v-list-item-title>
+                      <v-list-item-subtitle v-text="child.subtitle"></v-list-item-subtitle>
+                    </v-list-item-content>
+
+                    <v-list-item-action-text>
+                      <a target="_blank" :href="child.link" :class="`${child.status == 'error' ? 'red' : 'black'}--text`">{{child.linkText}}</a>
+                    </v-list-item-action-text>
+
+                    <v-list-item-action>
+                      <!-- 成功cion -->
+                      <v-icon v-if="!child.status && child.status != 'error'" color="success">mdi-check-circle</v-icon>
+                      <!-- 错误icon  -->
+                      <v-icon v-else color="error">mdi-alert-circle</v-icon>
+                    </v-list-item-action>
+              
+                  </v-list-item>
+                 
+                  </v-expansion-panel-content>
+                </v-expansion-panel>
+              </v-expansion-panels>
+
+              
+
+              <v-overlay :value="isCheckoutLoading" color="white" dark absolute :opacity="0.7">
+                <v-progress-circular
+                  indeterminate
+                  size="32"
+                  color="grey"
+                ></v-progress-circular>
+              </v-overlay>
+            </v-form>
+            
+            <!-- 抽屉关闭按钮 -->
+            <v-btn elevation="0" color="success" fab absolute top left small tile class="drawer-close-float-btn" @click="isCheckoutDrawerShow = false">
+              <v-icon>mdi-close</v-icon>
+            </v-btn>
+          </v-navigation-drawer>
+
+          <v-row justify="space-around">
+            <v-col cols="auto">
+              <v-dialog v-model="checkSubjectBalanceDialog" transition="dialog-bottom-transition" width="600">
+                <template v-slot:default="dialog">
+                  <v-card>
+                    <v-row no-gutters>
+                      <span class="text-h7 font-weight-bold pa-4">试算平衡</span>
+                    </v-row>
+                    <v-divider class="jh-divider"></v-divider>
+
+                    <v-card-text class="mt-10">
+                      <v-simple-table>
+                        <template v-slot:default>
+                          <tbody>
+                            <tr v-if="currentPeriod.isPeriodStart === '是'">
+                              <th class="text-left"></th>
+                              <th class="text-left">借方金额</th>
+                              <th class="text-left">贷方金额</th>
+                              <th class="text-left">平衡</th>
+                            </tr>
+                            <tr v-if="currentPeriod.isPeriodStart === '是'" >
+                              <td>初始余额</td>
+                              <td>{{ checkResult.periodStartDebit | formatMoney }}</td>
+                              <td>{{ checkResult.periodStartCredit | formatMoney }}</td>
+                              <td>
+                                <span v-if="checkResult.periodStartAmount != 0" class="error--text">
+                                  {{ checkResult.periodStartAmount | formatMoney }} 
+                                  <v-btn
+                                      @click="window.vtoast.show({ message: '借贷不平衡!', icon: 'mdi-help-circle' })"
+                                      text icon small>
+                                    <v-icon small>mdi-help-circle</v-icon>
+                                  </v-btn>
+                                </span>
+                                <span v-if="checkResult.periodStartAmount == 0" class="green--text">平</span>
+                              </td>
+                            </tr>
+                            <tr v-if="currentPeriod.isPeriodStart === '是'">
+                              <td></td>
+                              <td></td>
+                              <td></td>
+                              <td></td>
+                            </tr>
+                            <tr>
+                              <td></td>
+                              <td>借方累计</td>
+                              <td>贷方累计</td>
+                              <td>平衡</td>
+                            </tr>
+                            <tr>
+                              <td>本年累计</td>
+                              <td>{{ checkResult.occurDebitYear | formatMoney }}</td>
+                              <td>{{ checkResult.occurCreditYear | formatMoney }}</td>
+                              <td>
+                                <span v-if="checkResult.occurAmountYear != 0" class="error--text">
+                                  {{ checkResult.occurAmountYear | formatMoney }} 
+                                  <v-btn
+                                      @click="window.vtoast.show({ message: '借贷不平衡!', icon: 'mdi-help-circle' })"
+                                      text icon small>
+                                    <v-icon small>mdi-help-circle</v-icon>
+                                  </v-btn>
+                                </span>
+                                <span v-if="checkResult.occurAmountYear == 0" class="green--text">平</span>
+                              </td>
+                            </tr>
+                            <tr>
+                              <td>本期累计</td>
+                              <td>{{ checkResult.occurDebit | formatMoney }}</td>
+                              <td>{{ checkResult.occurCredit | formatMoney }}</td>
+                              <td>
+                                <span v-if="checkResult.occurAmount != 0" class="error--text">
+                                  {{ checkResult.occurAmount | formatMoney }} 
+                                  <v-btn
+                                      @click="window.vtoast.show({ message: '借贷不平衡!', icon: 'mdi-help-circle' })"
+                                      text icon small>
+                                    <v-icon small>mdi-help-circle</v-icon>
+                                  </v-btn>
+                                </span>
+                                <span v-if="checkResult.occurAmount == 0" class="green--text">平</span>
+                              </td>
+                            </tr>
+                            
+                            <tr>
+                              <td></td>
+                              <td></td>
+                              <td></td>
+                              <td></td>
+                            </tr>
+                            <tr>
+                              <td></td>
+                              <td>资产</td>
+                              <td>负债和所有者权益</td>
+                              <td>平衡</td>
+                            </tr>
+                            <tr>
+                              <td>期末</td>
+                              <td>{{ checkResult.assetTotal | formatMoney }}</td>
+                              <td>{{ checkResult.liabilityTotal | formatMoney }}</td>
+                              <td>
+                                <span v-if="checkResult.assetLiabilityTotalDiff != 0" class="error--text">
+                                  {{ checkResult.assetLiabilityTotalDiff | formatMoney }} 
+                                  <v-btn
+                                      @click="window.vtoast.show({ message: '资产负债表不平衡!', icon: 'mdi-help-circle' })"
+                                      text icon small>
+                                    <v-icon small>mdi-help-circle</v-icon>
+                                  </v-btn>
+                                </span>
+                                <span v-if="checkResult.assetLiabilityTotalDiff == 0" class="green--text">平</span>
+                              </td>
+                            </tr>
+
+                            <tr v-if="checkResult.errorVoucherListOfCheckout.length > 0">
+                              <td></td>
+                              <td></td>
+                              <td></td>
+                              <td></td>
+                            </tr>
+                            <tr v-if="checkResult.errorVoucherListOfCheckout.length > 0">
+                              <td></td>
+                              <td>凭证类型</td>
+                              <td></td>
+                              <td>
+                                错误原因
+                                <v-btn 
+                                  color="error" 
+                                  dark small
+                                  class="elevation-0 ml-2" 
+                                  @click="()=> {
+                                    doUiAction('startVoucherTemplate');
+                                    checkSubjectBalanceDialog = false;
+                                  }">
+                                  生成结账凭证
+                                </v-btn>
+                              </td>
+                            </tr>
+                            <tr v-if="checkResult.errorVoucherListOfCheckout.length > 0"
+                              v-for="(carryVoucherError, index) in checkResult.errorVoucherListOfCheckout" :key="index">
+                              <td></td>
+                              <td class="error--text">{{ carryVoucherError.voucherTemplateName }}</td>
+                              <td></td>
+                              <td>
+                                <span class="error--text">
+                                  {{ carryVoucherError.errorMessage }} 
+                                </span>
+                              </td>
+                            </tr>
+                          </tbody>
+                        </template>
+                      </v-simple-table>
+                    </v-card-text>
+                    <v-card-actions class="justify-end">
+                      <v-btn text @click="checkSubjectBalanceDialog = false">关闭</v-btn>
+                    </v-card-actions>
+                  </v-card>
+                </template>
+              </v-dialog>
+            </v-col>
+          </v-row>  
+          <checkout-periodCheckout-voucherTemplate :period-id="currentPeriod.periodId" ref="checkoutPeriodCheckoutVoucherTemplate"/>
+        </div>
+
+        <!-- 帮助页抽屉 >>>>>>>>>>>>> -->
+        <!-- <<<<<<<<<<<<< 帮助页抽屉 -->
+
+      </v-main>
+          
+    </v-app>
+    <jh-toast />
+    <jh-mask />
+    <jh-confirm-dialog />
+  </div>
+</script>
+<div id="app">
+</div>
+
+{% endblock %}
+
+{% block vueScript %}
+{% include 'component/jianghuJs/select-appaId.html' %}
+{% include 'common/jianghuJs/fixedTableHeightV4.html' %}
+{% include 'component/voucher/voucherTemplateComputeEditForm.html' %}
+{% include 'component/voucher/checkout-periodCheckout-voucherTemplate.html' %}
+{% include 'common/vueFilters.html' %}
+
+<script type="module">
+  new Vue({
+    el: '#app',
+    template: '#app-template',
+    vuetify: new Vuetify(),
+    data: () => ({
+      // 面包屑
+      breadcrumbs: [
+        {
+          text: '首页',
+          disabled: true,
+        },
+        {
+          text: '结账',
+          disabled: true,
+        }
+      ],
+      isMobile: window.innerWidth < 500,
+
+      // 下拉选项
+      constantObj: {
+      },
+      // 表格相关数据
+      isTableZebraLineMenuShown: false,
+      tableZebraLineMenuPosition: { x: null, y: null },
+      isTableZebraLineShown: true,
+      isFormValid: true,
+      validationRules: {
+        requireRules: [
+          v => !!v || '必填',
+        ],
+      },
+      constantObj: {
+      },
+
+      searchInput: null,
+      isTableLoading: true,
+      tableDataFromBackend: [],
+      headers: [
+        { text: "财年", value: "financeYear", width: 80, class: 'fixed', cellClass: 'fixed,' },
+        { text: "会计期间", value: "periodId", width: window.innerWidth > 500 ? 120 : 50, class: 'fixed', cellClass: 'fixed', },
+        { text: "是否结账", value: "isCheckout", width: window.innerWidth > 500 ? 120 : 40, align: window.innerWidth > 768 ? 'left' : 'right' },
+      ],
+      currentPeriod: {},
+
+      isCheckoutDrawerShow: false,
+      isCheckoutLoading: false,
+      checkoutItem: {
+        currentPeriodId: null,
+        nextPeriodId: null,
+      },
+
+      isCreateItemDrawerShow: false,
+      createItem: {},
+      isPeriodIdMenuShow: false,
+
+      checkSubjectBalanceDialog: false,
+      checkResult: {
+        isBalance: true,
+        occurDebit: null,
+        occurCredit: null,
+        periodStartDebit: null,
+        periodStartCredit: null,
+      },
+
+      isCheckoutExamineLoading: false,
+      isStartCheckoutExamine: false,
+      checkoutExamineStatus: null,
+
+      items: [
+        // {
+        //   icon: 'mdi-alpha-r-circle-outline',
+        //   title: '资产类科目余额',
+        //   subtitle: `此条目尚未检查`,
+        // },
+        {
+          icon: 'mdi-asterisk-circle-outline',
+          title: '期末结转',
+          subtitle: `此条目尚未检查`,
+         
+        },
+        {
+          icon: 'mdi-circle-edit-outline',
+          title: '往来挂账超过一年',
+          subtitle: `此条目尚未检查`,
+        },
+
+        {
+          icon: 'mdi-alert-circle-outline',
+          title: '其他异常',
+          subtitle: `此条目尚未检查`,
+        },
+      ],
+      openPanels: []
+    }),
+    computed: {
+      tableData() {
+        return this.tableDataFromBackend;
+      },
+      isCheckoutCount() {
+        return this.tableDataFromBackend.filter(item => item.isCheckout === '已结账').length;
+      }
+    },
+    watch: {},
+    async created() {
+      await this.doUiAction('refreshTableData');
+
+      // Tip: 测试代码
+      // this.doUiAction('startVoucherTemplate');
+    },
+    mounted() { },
+    methods: {
+      async doUiAction(uiActionId, uiActionData) {
+        switch (uiActionId) {
+          case 'refreshTableData':
+            await this.refreshTableData();
+            break;
+          case 'openTableZebraLineMenu':
+            await this.openTableZebraLineMenu(uiActionData);
+            break;
+          case 'openTableZebraLineMenu':
+            await this.openTableZebraLineMenu(uiActionData);
+            break;
+          case 'startCreateItem':
+            await this.clearCreateItemData();
+            await this.openCreateItemDialog();
+            break;
+          case 'createItem':
+            await this.refreshTableData();
+            await this.prepareCreateItemValidate();
+            await this.confirmCreateItemDialog();
+            await this.doCreateItem();
+            await this.closeDrawerShow();
+            await this.refreshTableData();
+            break;
+          case 'startCheckoutItem':
+            await this.clearCheckoutItemData();
+            await this.openCheckoutItemDialog();
+            // await this.computeSubjectBalance(uiActionData);
+            // await this.checkSubjectBalance(uiActionData);
+            break;
+          case 'reverseCheckout':
+            await this.doReverseCheckout(uiActionData);
+            await this.refreshTableData();
+            break;
+          case 'checkout':
+            await this.prepareCheckoutItemValidate();
+            await this.confirmCheckoutItemDialog();
+            await this.doCheckout();
+            await this.closeDrawerShow();
+            await this.refreshTableData();
+            break;
+          case 'reCheckoutAllPeriod':
+            await this.reCheckoutAllPeriod();
+            await this.refreshTableData();
+            break;
+          case 'checkSubjectBalance':
+            await this.computeSubjectBalance(uiActionData);
+            await this.checkSubjectBalance(uiActionData);
+            await this.openTrialbalancingDialog();
+            break;
+          case 'startVoucherTemplate':
+            await this.$refs.checkoutPeriodCheckoutVoucherTemplate.doUiAction('open');
+            break;
+          case 'startCheckoutExamine':
+            await this.startCheckoutExamine();
+            await this.checkoutExamine();
+            break;
+          case 'cancelCheckout':
+            await this.cancelCheckout();
+            break;
+          default:
+            console.error("[doUiAction] uiActionId not find", { uiActionId });
+            break;
+        }
+      },
+      // =================================uiAction 公共方法 start ======================================
+      /**
+       * uiActionId:  prepareValidate
+       * description: ✅表单校验
+      */
+      async prepareCreateItemValidate() {
+        if (this.$refs.form.validate() === false) {
+          window.vtoast.fail({ message: "输入有误, 请检查!" });
+          throw new Error("[prepareValidate] false");
+        }
+        if (this.tableDataFromBackend.length > 0) {
+          window.vtoast.fail({ message: "初始会计期间已存在, 请勿重复创建!" });
+          throw new Error("[prepareValidate] false");
+        }
+      },
+      async prepareCheckoutItemValidate() {
+        if (this.$refs.form.validate() === false) {
+          window.vtoast.fail({ message: "输入有误, 请检查!" });
+          throw new Error("[prepareValidate] false");
+        }
+      },
+
+      /**
+       * uiActionId:  refreshTableData
+       * description: ✅获取表格数据
+      */
+      async refreshTableData() {
+        this.isTableLoading = true;
+        const result = await window.jianghuAxios({
+          data: {
+            appData: {
+              pageId: 'checkout-periodCheckout',
+              actionId: 'selectItemList',
+              actionData: {},
+              where: {},
+              orderBy: [{ column: 'periodId', order: 'desc' }]
+            }
+          }
+        });
+        const { rows } = result.data.appData.resultData;
+        this.currentPeriod = rows.find(row => row.isCheckout === '待结账') || {};
+
+        this.tableDataFromBackend = rows;
+        this.isTableLoading = false;
+      },
+
+      // ---------- 斑马纹开关 uiAction >>>>>>>>>> --------
+      async openTableZebraLineMenu(funObj) {
+        this.tableZebraLineMenuPosition.x = funObj.x - funObj.offsetX + 10;
+        this.tableZebraLineMenuPosition.y = window.innerHeight - 50;
+        this.isTableZebraLineMenuShown = !this.isTableZebraLineMenuShown;
+      },
+      // ---------- <<<<<<<<<< 斑马纹开关 uiAction --------
+      // =================================uiAction 公共方法 end ======================================
+      async clearCreateItemData() {
+        this.createItem = {};
+      },
+      async openCreateItemDialog() {
+        this.isCreateItemDrawerShow = true;
+      },
+      /**
+       * uiActionId:  startCheckoutItem
+       * description: ✅获取表格数据
+      */
+      async clearCheckoutItemData() {
+        this.checkoutItem = {
+          currentPeriodId: this.currentPeriod.periodId,
+          nextPeriodId: dayjs(this.currentPeriod.periodId).add(1, 'month').format("YYYY-MM"),
+        };
+      },
+      async openCheckoutItemDialog() {
+        this.isCheckoutDrawerShow = true;
+      },
+
+      async confirmCreateItemDialog() {
+        if (await window.confirmDialog({ title: "会计期间", content: "确定创建-初始会计期间吗？" }) === false) {
+          throw new Error("取消");
+        }
+      },
+      async doCreateItem() {
+        const { id, ...data } = this.createItem;
+        await window.vtoast.loading("创建-初始会计期间");
+        await window.jianghuAxios({
+          data: {
+            appData: {
+              pageId: 'checkout-periodCheckout',
+              actionId: 'createPeriodStart',
+              actionData: data
+            }
+          }
+        })
+        await window.vtoast.success("创建-初始会计期间成功, 请前往\"科目初始余额\"!");
+      },
+      /**
+       * uiActionId:  checkoutItem
+       * description: ✅获取表格数据
+      */
+      async confirmCheckoutItemDialog() {
+        if (await window.confirmDialog({ title: "结账", content: "确定结账并生成下一个会计期间吗？" }) === false) {
+          throw new Error("取消");
+        }
+      },
+      async doReverseCheckout() {
+        if (await window.confirmDialog({ title: "反结账", content: "确定反结账到上一个会计期间吗？" }) === false) {
+          throw new Error("取消");
+        }
+        await window.vtoast.loading("反结账");
+        await window.jianghuAxios({
+          data: {
+            appData: {
+              pageId: 'checkout-periodCheckout',
+              actionId: 'reverseCheckout',
+              actionData: { currentPeriodId: this.currentPeriod.periodId }
+            }
+          }
+        })
+          // Tip: 捕获 period_has_template_voucher ===》给用户确认清空结转凭证操作
+          .catch(async (err) => {
+            const { errorCode, errorReason } = err;
+            if (errorCode === 'period_has_template_voucher') {
+              if (await window.confirmDialog({ title: "提示", content: `需要清空当前会计期间的结转凭证才能进行反结账，确定要清空吗？` }) === true) {
+                await window.jianghuAxios({
+                  data: {
+                    appData: {
+                      pageId: 'checkout-periodCheckout',
+                      actionId: 'reverseCheckout',
+                      actionData: { currentPeriodId: this.currentPeriod.periodId, force: true }
+                    }
+                  }
+                })
+                return;
+              }
+            }
+
+            throw err;
+          })
+        await window.vtoast.success("反结账");
+      },
+      async doCheckout() {
+        try {
+          const { id, currentPeriodId, nextPeriodId } = this.checkoutItem;
+          this.isCheckoutLoading = true;
+          await window.vtoast.loading("结算");
+          const result = await window.jianghuAxios({
+            data: {
+              appData: {
+                pageId: 'checkout-periodCheckout',
+                actionId: 'checkout',
+                actionData: {
+                  currentPeriodId,
+                  nextPeriodId
+                }
+              }
+            }
+          });
+
+          const resultData = result.data.appData.resultData;
+          const { checkoutSuccess, ...checkResult } = resultData;
+          this.isCheckoutLoading = false;
+          if (checkoutSuccess === true) {
+            await window.vtoast.success("结算成功");
+            return;
+          }
+
+          this.checkResult = checkResult;
+          this.checkSubjectBalanceDialog = !this.checkResult.isBalance;
+        } catch (error) {
+          this.isCheckoutLoading = false;
+        }
+      },
+      async closeDrawerShow() {
+        this.isCheckoutDrawerShow = false;
+        this.isCreateItemDrawerShow = false;
+      },
+
+      async reCheckoutAllPeriod() {
+        if (await window.confirmDialog({ title: "重新结账所有【开发调试】", content: "确定重新结账\"所有会计期间\"吗？" }) === false) {
+          throw new Error("取消");
+        }
+        await window.vtoast.loading("重新结账所有");
+        await window.jianghuAxios({
+          data: {
+            appData: {
+              pageId: 'checkout-periodCheckout',
+              actionId: 'reCheckoutAllPeriod',
+              actionData: {}
+            }
+          }
+        })
+        await window.vtoast.success("重新结账所有成功");
+      },
+      async computeSubjectBalance() {
+        await window.vtoast.loading({ message: "试算平衡……", time: -1 });
+        await window.jianghuAxios({
+          data: {
+            appData: {
+              pageId: 'checkout-periodCheckout',
+              actionId: 'computeSubjectBalance',
+              actionData: {
+                periodId: this.currentPeriod.periodId,
+              }
+            }
+          }
+        });
+      },
+      async checkSubjectBalance() {
+        const result = await window.jianghuAxios({
+          data: {
+            appData: {
+              pageId: 'checkout-periodCheckout',
+              actionId: 'checkSubjectBalance',
+              actionData: {
+                periodId: this.currentPeriod.periodId,
+              }
+            }
+          }
+        });
+        await window.vtoast.success("试算平衡");
+        const checkResult = result.data.appData.resultData;
+        this.checkResult = checkResult;
+      },
+      async openTrialbalancingDialog() {
+        this.checkSubjectBalanceDialog = true;
+      },
+      getStatusColor(status) {
+        switch (status) {
+          case '已结账':
+            return 'primary';
+          case '反结账':
+            return 'orange';
+          default:
+            return 'default';
+        }
+      },
+      jumpToUrl() {
+        window.open('https://cn.jianghujs.org/doc/page/article/11603', '_blank');
+      },
+      // ---------- 结账检查 >>>>>>>>>>>>> ----------
+      async startCheckoutExamine() {
+        this.isStartCheckoutExamine = true;
+      },
+      async checkoutExamine() {
+        const { id, currentPeriodId, nextPeriodId } = this.checkoutItem;
+        this.isCheckoutExamineLoading = true;
+        const result = await window.jianghuAxios({
+          data: {
+            appData: {
+              pageId: 'checkout-periodCheckout',
+              actionId: 'checkoutExamine',
+              actionData: {
+                currentPeriodId, nextPeriodId
+              }
+            }
+          }
+        });
+        this.isCheckoutExamineLoading = false;
+
+        const resultData = result.data.appData.resultData;
+        // 合并items,使用loadsh来简化代码
+        this.items = _.merge(this.items, resultData);
+
+        this.openPanels = this.items.map((item, index)=> index)
+
+        // 判断是否有status为error的item
+        const hasErrorItem = this.items.some(item => item.items.some(child => child.status === 'error'));
+     
+        this.checkoutExamineStatus = !hasErrorItem ? 'success' : 'fail';
+      },
+      async cancelCheckout() {
+        this.isStartCheckoutExamine = false;
+        this.checkoutExamineStatus = null
+        this.openPanels = [];
+      },
+      // ---------- <<<<<<<<<<<<< 结账检查 ----------
+    }
+  })
+</script>
+
+<style scoped>
+  .v-expansion-panel-header {
+    border-bottom: 1px solid #eee;
+  }
+
+  .v-expansion-panel .v-list-item.list-child-item {
+    border-bottom: 1px solid #e9e9e9;
+    padding-left: 0;
+    margin-left: 72px;
+  }
+  .v-expansion-panels .v-expansion-panel {
+    border: 0;
+  }
+  .examine-header {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+  }
+</style>
+{% endblock %}

@@ -1,0 +1,424 @@
+<template id="voucher-file">
+  <v-container class="px-4 py-0 pl-6 pr-6">
+
+    <!-- 页面主要内容 -->
+    <v-card class="rounded-lg">
+      <v-row class="ma-0 pa-4">
+        <!-- 上传单据 -->
+        <v-col cols="12" xs="8" sm="4" md="3" xl="2" class="pa-0">
+          <v-btn color="success" small dark class="elevation-0 mr-2" @click="doUiAction('startCreateItem', null)">上传单据
+          </v-btn>
+          <span class="body-2">共{{ tableDataFromBackend.length }}条记录</span>
+        </v-col>
+        <v-spacer></v-spacer>
+        <!-- 搜索过滤 -->
+        <v-col cols="12" xs="8" sm="4" md="3" xl="2" class="pa-0">
+          <v-text-field v-model="searchInput" color="success" prefix="搜索：：" class="jh-v-input" dense filled single-line></v-text-field>
+        </v-col>
+      </v-row>
+      <v-data-table 
+        fixed-header
+        :headers="headers"
+        :items="tableDataFromBackend"
+        :search="searchInput"
+        :footer-props="{ itemsPerPageOptions: [20, 50, -1], itemsPerPageText: '每页行数', itemsPerPageAllText: '所有'}"
+        :items-per-page="-1"
+        :loading="isTableLoading"
+        checkbox-color="success"
+        mobile-breakpoint="0"
+        :class="{'zebraLine': isTableZebraLineShown }"
+        class="jh-fixed-table-height elevation-0 mt-0 mb-xs-4">
+        <!-- 处理显示列 -->
+        <template v-slot:item.download-path="{ item }">
+          <a v-if="item.downloadPath" @click="filePreview({item})">{{item.downloadPath}}</a>
+          <v-btn text small class="mrl-2" color="primary" v-if="item.downloadPath" @click="doUiAction('downloadFileByStream', {item})">下载</v-btn>
+        </template>
+        <template v-slot:item.action="{ item }">
+          <!-- <v-btn small class="mr-2 success" @click="doUiAction('startUpdateItem', {item})">
+            修改
+          </v-btn> -->
+          <v-btn small class="mr-2 error" @click="doUiAction('deleteItem', {item})">
+            删除
+          </v-btn>
+        </template>
+
+        <!-- 表格底部右侧功能按钮 -->
+        <template v-slot:footer.prepend>
+          
+          <v-menu top offset-y :close-on-content-click="false" v-model="isTableZebraLineMenuShown" :position-x="tableZebraLineMenuPosition.x" :position-y="tableZebraLineMenuPosition.y">
+            <v-list>
+              <v-list-item>
+                <v-switch v-model="isTableZebraLineShown" hide-details class="ma-0" label="显示斑马纹" dense flat></v-switch>
+              </v-list-item>
+            </v-list>
+          </v-menu>
+        </template>
+        <!-- 没有数据 -->
+        <template v-slot:loading>
+          <div class="jh-no-data">数据加载中</div>
+        </template>
+        <template v-slot:no-data>
+          <div class="jh-no-data">暂无数据</div>
+        </template>
+        <template v-slot:no-results>
+          <div class="jh-no-data">暂无数据</div>
+        </template>
+        <!-- 表格分页 -->
+        <template v-slot:footer.page-text="pagination">
+          <span>{{pagination.pageStart}}-{{pagination.pageStop}}</span>
+          <span class="ml-1">共{{pagination.itemsLength}}条</span>
+        </template>
+      </v-data-table>
+    </v-card>
+
+    <v-overlay app :value="isEditDrawerShow"></v-overlay>
+
+    <!-- 单据抽屉 -->
+    <v-navigation-drawer v-model="isEditDrawerShow" :permanent="isEditDrawerShow" fixed temporary right width="80%" hide-overlay class="elevation-24">
+      <v-form v-model="isFormValid" ref="form" lazy-validation>
+        <!-- 抽屉标题 -->
+        <v-row>
+          <span class="title pa-6 pl-8">{{ currentClickButton.title }}单据</span>
+        </v-row>
+        <!-- 抽屉表单 -->
+        <v-row class="mt-0 px-4">
+          
+          <v-col v-if="currentClickButton.action === 'add'" cols="12" sm="12" md="4">
+            <span class="jh-input-label">文件</span>
+            <v-file-input v-model="inputFile" class="jh-v-input mr-2" dense filled single-line chips label="请选择文件" ></v-file-input>
+          </v-col>
+          <v-col cols="12" sm="12" md="4">
+            <span class="jh-input-label">备注</span>
+            <v-text-field class="jh-v-input " dense filled single-line v-model="editItem['remark']"></v-text-field>
+            </v-col> 
+        </v-row>
+        <!-- 抽屉操作按钮 -->
+        <v-row class="justify-end mx-0 mt-8 px-6">
+          <v-btn color="success" small @click="doUiAction(dialogSaveInfoAction)"><v-icon size="14">mdi-content-save-check-outline</v-icon>保存</v-btn>
+          <v-btn class="elevation-0 mr-2 ml-2" small @click="isEditDrawerShow = false"><v-icon size="14">mdi-close</v-icon>取消</v-btn>
+        </v-row>
+      </v-form>
+      <!-- 抽屉关闭按钮 -->
+      <v-btn elevation="0" color="success" fab absolute top left small tile class="drawer-close-float-btn" @click="isEditDrawerShow = false">
+        <v-icon>mdi-close</v-icon>
+      </v-btn>
+    </v-navigation-drawer>
+
+    <v-overlay :value="overlay" @click="overlay = false" :opacity="0.85"  style="z-index: 9999;">
+      <v-icon style="position: fixed; right: 30px; top: 30px;" large color="white"
+        @click="overlay = false" :color="fileType === 'pdf' ? '#ccc' : ''">
+        mdi-close-circle
+      </v-icon>
+      <v-icon icon style="position: fixed; right: 80px; top: 30px;" large color="white"
+        @click="doUiAction('downloadFileByStream', {item: editItem})" :color="fileType === 'pdf' ? '#ccc' : ''">
+        mdi-download
+      </v-icon>
+      <iframe v-if="fileType === 'pdf'" id="pdfPlayer" :src="fileSrc" frameborder="0"
+      style="width: 100vw; height: 100vh; padding: 50px 0 0 0;"></iframe>
+      <v-img v-else max-height="800" max-width="800" :src="fileSrc"></v-img>
+    </v-overlay>    
+
+  </v-container>  
+</template>
+  
+<script type="module">
+  Vue.component("voucher-file", {
+    template: '#voucher-file',
+    props: {
+      voucherId: {
+        type: String,
+        default: null,
+      },
+    },
+    data: () => ({
+      // 表格相关数据
+      isTableZebraLineMenuShown: false,
+      tableZebraLineMenuPosition: {x: null, y: null},
+      isTableZebraLineShown: true,
+      isFormValid: true,
+      validationRules: {
+        requireRules: [
+          v => !!v || '必填',
+        ],
+      },
+      isEditDrawerShow: false,
+      searchInput: null,
+      isTableLoading: true,
+      tableDataFromBackend: [],
+      headers: [
+        {text: '操作', value: 'action', align: 'center', sortable: false, width: 100, class: 'fixed', cellClass: 'fixed'},
+        {text: "凭证字号", value: "voucherId",  width: 120, class: 'fixed', cellClass: 'fixed'}, 
+        {text: "文件名", value: "filename", width: 200, class: 'fixed', cellClass: 'fixed'}, 
+        {text: "文件大小/kb", value: "binarySize", width: 80}, 
+        {text: "文件查看", value: "download-path", width: 220}, 
+        {text: "备注", value: "remark", width: 120}, 
+        {text: "文件类型", value: "fileType", width: 120}
+      ],
+
+      currentClickButton: {title: '新增', action: 'add'},
+      editItem: {},
+      inputFile: null,
+      downloadPrefix: `${window.location.origin}/<$ ctx.app.config.appId $>/upload`,
+      dialogSaveInfoAction: '',
+      overlay: false,
+      fileType: '',
+      fileSrc: '',
+      previewPrefix: `/<$ ctx.app.config.appId $>/upload`,
+    }),
+    watch: { },
+    async created() {
+      this.doUiAction('refreshTableData');
+    },
+    mounted() { },
+    methods: {
+      async doUiAction(uiActionId, uiActionData) {
+        switch (uiActionId) {
+          case 'refreshTableData':
+            await this.refreshTableData(uiActionData);
+            break;
+          case 'openTableZebraLineMenu':
+            await this.openTableZebraLineMenu(uiActionData);
+            break;
+          case 'startCreateItem':
+            await this.clearItemData(uiActionData);
+            await this.openCreateItemDialog(uiActionData);
+            break;
+          case 'createItem':
+            await this.prepareValidate(uiActionData);
+            await this.confirmCreateItemDialog(uiActionData);
+            await this.doCreateItem(uiActionData);
+            await this.refreshTableData(uiActionData);
+            await this.closeDrawerShow(uiActionData);
+            break;
+          case 'startUpdateItem':
+            await this.prepareItemData(uiActionData);
+            await this.openUpdateItemDialog(uiActionData);
+            break;
+          case 'updateItem':
+            await this.prepareValidate(uiActionData);
+            await this.confirmUpdateItemDialog(uiActionData);
+            await this.doUpdateItem(uiActionData);
+            await this.refreshTableData(uiActionData);
+            await this.closeDrawerShow(uiActionData);
+            break;
+          case 'deleteItem':
+            await this.confirmDeleteItemDialog(uiActionData);
+            await this.prepareItemData(uiActionData);
+            await this.doDeleteItem(uiActionData);
+            await this.refreshTableData(uiActionData);
+            break;
+          case 'downloadFileByStream':
+            await this.downloadFileByStream(uiActionData);
+            break;
+          default:
+            console.error("[doUiAction] uiActionId not find", { uiActionId });
+            break;
+        }
+      },
+      /**
+       * 获取表格数据
+       */
+      async refreshTableData() {
+        this.isTableLoading = true;
+        const result = await window.jianghuAxios({
+          data: {
+            appData: {
+              pageId: 'voucher-voucherManagement',
+              actionId: 'file-selectItemList',
+              where: { voucherId: this.voucherId },
+              orderBy: [{column: 'operationAt', order: 'desc'}]
+            }
+          }
+        });
+
+        this.tableDataFromBackend = result.data.appData.resultData.rows;
+        this.isTableLoading = false;
+      },
+      // ---------- 斑马纹开关 uiAction >>>>>>>>>> --------
+      async openTableZebraLineMenu(funObj) {
+        this.tableZebraLineMenuPosition.x = funObj.x - funObj.offsetX + 10;
+        this.tableZebraLineMenuPosition.y = window.innerHeight - 50;
+        this.isTableZebraLineMenuShown = !this.isTableZebraLineMenuShown;
+      },
+      // ---------- <<<<<<<<<< 斑马纹开关 uiAction --------
+
+      // startCreateItem
+      async clearItemData() {
+        this.editItem = {};
+        this.inputFile = null;
+      },
+
+      async openCreateItemDialog() {
+        this.currentClickButton = {action: 'add', title: '新增'};
+        this.isEditDrawerShow = true;
+        this.dialogSaveInfoAction = 'createItem';
+      },
+
+      // 表单验证
+      async prepareValidate() {
+        if (await this.$refs.form.validate() === false) {
+          throw new Error("[prepareValidate] false");
+        }
+      },
+
+      // createItem
+      async confirmCreateItemDialog() {
+        if (await window.confirmDialog({title: "新增", content: "确定新增吗？"}) === false) {
+          throw new Error("[confirmCreateFormDialog] 否");
+        }
+      },
+
+      /**
+       * 新增数据
+       */
+      async doCreateItem() {
+        const { id, remark, ...createData } = this.editItem;
+        await window.vtoast.loading("保存中");
+        const fileDesc = this.editItem.fileDesc;
+        const file = this.inputFile
+        window.vtoast.loading(`${file.name} 上传进度: 0.00%`);
+        const result = await window.jianghuAxios.httpUploadByStream({
+            fileDesc,
+            file,
+            fileDirectory: 'testFile',
+            onProgress: (total, loaded) => {
+              const progress = Number((loaded * 100 / total).toFixed(2));
+              window.vtoast.loading(`${file.name} 上传进度: ${progress}%`);
+              if (loaded === total) {
+                window.vtoast.success(`${file.name} 上传进度: 100%`);
+              }
+            }
+          })
+        const { status } = result.data;
+        const { fileId, downloadPath, binarySize, filename, fileType } = result.data.appData.resultData;
+
+        if (status === 'success') {
+          await window.jianghuAxios({
+            data: {
+              appData: {
+                pageId: 'voucher-voucherManagement',
+                actionId: 'file-insertItem',
+                actionData: {
+                  voucherId: this.voucherId, remark, 
+                  fileId, downloadPath, filename, binarySize, fileType
+                }
+              }
+            }
+          })
+          await window.vtoast.success("新增数据成功");
+        } else {
+          await window.vtoast.fail("文件上传失败");
+        }
+      },
+
+      // startUpdateItem
+      async prepareItemData({item}) {
+        this.editItem = {...item};
+      },
+
+      async openUpdateItemDialog() {
+        this.currentClickButton = {action: 'edit', title: '修改'};
+        this.isEditDrawerShow = true;
+        this.dialogSaveInfoAction = 'updateItem';
+      },
+
+      // updateItem
+      async confirmUpdateItemDialog() {
+        if (await window.confirmDialog({title: "修改", content: "确定修改吗？"}) === false) {
+          throw new Error("[confirmUpdateItemDialog] 否");
+        }
+      },
+
+      /**
+       * 保存学生
+       */
+      async doUpdateItem() {
+        await window.vtoast.loading("保存中");
+        const { id, ...data } = this.editItem;
+        await window.jianghuAxios({
+          data: {
+            appData: {
+              pageId: 'voucher-voucherManagement',
+              actionId: 'file-updateItem',
+              actionData: data,
+              where: {id}
+            }
+          }
+        })
+        await window.vtoast.success("修改成功");
+      },
+
+      // 关闭抽屉
+      async closeDrawerShow() {
+        this.isEditDrawerShow = false;
+      },
+
+      // deleteItem
+      async confirmDeleteItemDialog() {
+        if (await window.confirmDialog({title: "删除", content: "确定删除吗？"}) === false) {
+          throw new Error("[confirmDeleteItemDialog] 否");
+        }
+      },
+
+      /**
+       * 删除数据
+       */
+      // TODO::只是删除了 _file表中的数据，并没有删除文件
+      async doDeleteItem() {
+        const { id } = this.editItem;
+        window.vtoast.loading('正在删除')
+        await window.jianghuAxios({
+          data: {
+            appData: {
+              pageId: 'voucher-voucherManagement',
+              actionId: 'file-deleteItem',
+              where: {id}
+            }
+          }
+        });
+        window.vtoast.success('删除成功')
+      },
+
+
+      /**
+       * 文件stream下载
+       */
+      // TODO::下载未成功时无错误响应
+      async downloadFileByStream({ item }) {
+        const downloadPath = item.downloadPath
+        const filename = item.filename || downloadPath.split('/').pop()
+        window.vtoast.loading(`${filename} 下载进度: 0%`);
+        const buffer = await window.jianghuAxios.httpDownloadByStream({
+          downloadPath,
+          filename,
+          onProgress: (total, loaded) => {
+            const progress = Number((loaded * 100 / total).toFixed(2));
+            window.vtoast.loading(`${filename} 下载进度: ${progress}%`);
+            if (total === loaded) {
+              window.vtoast.success("下载完成");
+            }
+          }
+        })
+        window.jianghuAxios.downloadBufferToChrome({ buffer, filename });
+      },
+      filePreview({ item }) {
+        this.editItem = item;
+        if (!item.downloadPath) return;
+        const fileType = item.downloadPath.split('.');
+        if (/\.(pdf|PDF)$/.test(item.downloadPath)) {
+          this.fileType = 'pdf';
+          this.fileSrc = '/<$ ctx.app.config.appId $>/public/pdf/web/viewer.html?file=' + encodeURIComponent(this.previewPrefix + item.downloadPath);
+          this.overlay = true;
+        }
+        if (/\.(gif|jpg|jpeg|png|GIF|JPG|PNG)$/.test(item.downloadPath)) {
+          this.fileType = 'img';
+          this.fileSrc = this.previewPrefix + item.downloadPath;
+        }
+        console.log(this.fileSrc)
+        this.overlay = true;
+      },
+    }
+  })
+</script>
+<style>
+</style>

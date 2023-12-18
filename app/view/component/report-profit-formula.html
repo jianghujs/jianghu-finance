@@ -1,0 +1,188 @@
+<template id="report-profit-formula">
+  <v-container class="px-4 py-0">
+    <v-card elevation="0">
+      <v-btn class="add-btn mb-2" color="primary" small @click="doUiAction('addItem')">添加公式</v-btn>
+      <v-data-table 
+        fixed-header
+        :loading="loadingFormulaList" :headers="headers" :items="value" hide-default-footer
+        :class="{'zebraLine': isTableZebraLineShown }"
+        class="elevation-0 mt-0 mb-xs-4">
+        <!-- 处理显示列 -->
+        <template v-slot:item.subject-id="{ item }">
+          <v-autocomplete 
+            style="max-width: 200px;"
+            class="jh-v-input mr-2"
+            dense filled single-line  
+            v-model="item.subjectId" 
+            :readonly="item.id"
+            :rules=validationRules.requireRules
+            :items="subjectList" 
+            item-text="subjectIdLabel" 
+            item-value="subjectId">
+          </v-autocomplete>
+        </template>
+        <template v-slot:item.count-direction="{ item }">
+          <v-text-field v-model="item.countDirection" class="jh-v-input" dense filled single-line readonly></v-text-field>  
+        </template>
+        <template v-slot:item.access-rule="{ item }">
+          <v-text-field v-model="item.accessRule" class="jh-v-input" dense filled single-line readonly></v-text-field>  
+        </template>
+        <template v-slot:item.access-rule-temp01="{ item }">
+          {{ item.itemOccurAmountPeriod | formatMoney }}
+        </template>
+        <template v-slot:item.access-rule-temp02="{ item }">
+          {{ item.itemOccurAmountYear | formatMoney }}
+        </template>
+        <template v-slot:item.action="{ item, index }">
+          <v-btn x-small class="error" @click="doUiAction('deleteItem', {item, index})"><v-icon size="14">mdi-trash-can-outline</v-icon>删除</v-btn>
+        </template>
+        <template v-slot:body.append>
+          <tr>
+            <td class="text-center">合计</td>
+            <td></td>
+            <td></td>
+            <td class="text-right">{{ item.itemOccurAmountPeriodSum | formatMoney }}</td>
+            <td class="text-right">{{ item.itemOccurAmountYearSum | formatMoney }}</td>
+            <td></td>
+          </tr>
+        </template>
+
+        <!-- 表格底部右侧功能按钮 -->
+        <template v-slot:footer.prepend>
+         
+          <v-menu top offset-y :close-on-content-click="false" v-model="isTableZebraLineMenuShown" :position-x="tableZebraLineMenuPosition.x" :position-y="tableZebraLineMenuPosition.y">
+            <v-list>
+              <v-list-item>
+                <v-switch v-model="isTableZebraLineShown" hide-details class="ma-0" label="显示斑马纹" dense flat></v-switch>
+              </v-list-item>
+            </v-list>
+          </v-menu>
+        </template>
+        <!-- 没有数据 -->
+        <template v-slot:loading>
+          <div class="jh-no-data">数据加载中</div>
+        </template>
+        <template v-slot:no-data>
+          <div class="jh-no-data">暂无数据</div>
+        </template>
+        <template v-slot:no-results>
+          <div class="jh-no-data">暂无数据</div>
+        </template>
+        <!-- 表格分页 -->
+        <template v-slot:footer.page-text="pagination">
+          <span>{{pagination.pageStart}}-{{pagination.pageStop}}</span>
+          <span class="ml-1">共{{pagination.itemsLength}}条</span>
+        </template>
+      </v-data-table>
+    </v-card>
+  </v-container>
+</template>
+
+<script type="module">
+  Vue.component("report-profit-formula", {
+    template: '#report-profit-formula',
+    props: {  
+      value: {
+        type: Array,
+        default: () => [{subjectId: null, countDirection: null, accessRule: null}],
+      },
+      item: {
+        type: Object,
+        default: {},
+      },
+      period: {
+        type: Object,
+        default: {},
+      },
+      subjectList: {
+        type: Array,
+        default: () => [],
+      },
+      loadingFormulaList: {
+        type: Boolean,
+        default: false,
+      },
+    },
+    data: () => ({
+      // 表格相关数据
+      isTableZebraLineMenuShown: false,
+      tableZebraLineMenuPosition: {x: null, y: null},
+      isTableZebraLineShown: false,
+      validationRules: {
+        requireRules: [
+          v => !!v || '必填',
+        ],
+      },
+      constantObj: {
+      },
+      headers: [
+        { text: "科目", value: "subject-id", width: 150 },
+        { text: "运算符号", value: "count-direction", width: 80 },
+        { text: "取数规则", value: "access-rule", width: 150 },
+        { text: "本月累计金额", value: "access-rule-temp01", align: 'end', width: 80 },
+        { text: "本年累计金额", value: "access-rule-temp02", align: 'end', width: 80 },
+        { text: '操作', value: 'action', align: 'center', sortable: false, width: 80, class: 'fixed', cellClass: 'fixed' },
+
+      ]
+    }),
+    watch: { },
+    async created() {
+      
+    },
+    mounted() { },
+    methods: {
+      async doUiAction(uiActionId, uiActionData) {
+        switch (uiActionId) {
+          case 'openTableZebraLineMenu':
+            await this.openTableZebraLineMenu(uiActionData);
+            break;
+          case 'addItem':
+            await this.doAddItem();
+            break;
+          case 'deleteItem':
+            await this.doDeleteItem(uiActionData);
+            break;
+     
+          default:
+            console.error("[doUiAction] uiActionId not find", { uiActionId });
+            break;
+        }
+      },
+      // ---------- 斑马纹开关 uiAction >>>>>>>>>> --------
+      async openTableZebraLineMenu(funObj) {
+        this.tableZebraLineMenuPosition.x = funObj.x - funObj.offsetX + 10;
+        this.tableZebraLineMenuPosition.y = window.innerHeight - 50;
+        this.isTableZebraLineMenuShown = !this.isTableZebraLineMenuShown;
+      },
+      // ---------- <<<<<<<<<< 斑马纹开关 uiAction --------
+      
+    
+      async doAddItem() {
+        this.$emit("input", [
+          ...this.value, 
+          { 
+            entryAbstract: null, subjectId: null, debit: 0, credit: 0,
+            countDirection: '+',
+            accessRule: '余额',
+          }
+      ]);
+      },
+      async doDeleteItem({index, item}) {
+        let list = _.cloneDeep(this.value);
+        list.splice(index, 1);
+        this.$emit("input", list);
+        this.$emit("change", list);
+        if (item.itemId) {
+          this.$emit("doDeleteItem", item)
+        }
+      }
+    }
+  })
+</script>
+<style>
+.add-btn {
+  width: 100%;
+  margin-top: 5px;
+  padding: 5px;
+}
+</style>

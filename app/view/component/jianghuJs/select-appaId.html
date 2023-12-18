@@ -1,0 +1,112 @@
+<template id="select-appaId">
+  <v-select
+    :class="isMobile ? 'appaId-select-xs' : 'appaId-select-md'"
+    class="jh-v-input bg-white select-appaId"
+    v-model="appaId"
+    :items="items"
+    prefix="账套: "
+    dense filled single-line
+    item-value="appaId"
+    item-text="appaName"
+    :menu-props="{ button: true, offsetY: true }"
+    :disabled="disabled"
+    :loading="isPeriodListLoading"
+    @change="onChange">
+
+    <template v-slot:item="{item}">
+      <v-divider class="mb-2"></v-divider>
+      <v-list-item disabled>
+        <v-list-item-content>
+          <v-list-item-subtitle> {{item.appaName}} </v-list-item-subtitle>
+        </v-list-item-content>
+        <!-- <template v-if="item.appaStatus === '账套启用'">
+          <v-chip x-small color="green" text-color="white"> 启用 </v-chip>
+        </template>
+        <template v-else>
+          <v-chip x-small color="red" text-color="white"> 停用 </v-chip>
+        </template> -->
+      </v-list-item>
+    </template>
+  </v-select>
+</template>
+
+<script>
+  Vue.component('select-appaId', {
+    template: '#select-appaId',
+    props: {
+      disabled: {
+        type: Boolean,
+        default: false,
+      },
+    },
+    vuetify: new Vuetify(),
+    data: () => ({
+      isMobile: window.innerWidth < 500,
+
+      appaId: window.localStorage.getItem(`${window.appInfo.appId}_appaId`),
+      items: [],
+      isPeriodListLoading: true
+    }),
+    computed: {
+    },
+    watch: {},
+    async created() {
+      await this.getItems();
+      await this.checkAppaId();
+      await this.setDefaultAppaId();
+    },
+    methods: {
+      async getItems() {
+        const result = await window.jianghuAxios({
+          data: {
+            appData: {
+              pageId: 'allPage',
+              actionId: 'selectAppAccountList',
+              actionData: {},
+              orderBy: [{column: 'appaName', order: 'desc'}]
+            }
+          }
+        });
+        const { rows } = result.data.appData.resultData;
+
+        this.items = rows.filter(row => row.appaStatus === '账套启用');
+        this.isPeriodListLoading = false;
+      },
+      setDefaultAppaId() {
+        if (this.items.findIndex(item => item.appaId == this.appaId) == -1) {
+          this.appaId = null;
+        }
+        if ((!this.appaId || this.appaId == 'null') && this.items.length > 0) {
+          const defaultAppaId = this.items[0].appaId;
+          window.localStorage.setItem(`${window.appInfo.appId}_appaId`, defaultAppaId);
+          window.location.reload();
+        }
+      },
+      onChange(val) {
+        window.localStorage.setItem(`${window.appInfo.appId}_appaId`, val);
+        window.location.reload();
+      },
+      // 检查是否有账套，没有则提示下
+      async checkAppaId() {
+        if (this.items.length == 0) {
+          await window.vtoast.fail({ message: "当前没有账套，请先添加账套!" });
+          window.location.href =  `/${window.appInfo.appId}/page/appAccountManagement`;
+        }
+      }
+    }
+  })
+</script>
+
+<style scoped>
+  .appaId-select-xs {
+    width: 180px; 
+    max-width: 180px;
+    display: inline-block;
+  }
+
+  .appaId-select-md {
+    width: 200px; 
+    max-width: 200px;
+    display: inline-block;
+  }
+</style>

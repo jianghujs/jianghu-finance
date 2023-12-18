@@ -1,0 +1,300 @@
+{% extends 'template/jhTemplateV4.html'%}
+
+{% block vueTemplate %}
+
+<!-- 3 table 下  的单表 crud 页面 -->
+
+<!-- SQL START
+-- 以下为 jianghu init 工具生成的参考 SQL，使用后删除
+-- 创建 page
+INSERT INTO `_page` (`pageId`,`pageName`,`pageType`,`sort`,`operation`,`operationByUserId`,`operationByUser`,`operationAt`) SELECT 'assistCustomerManagement','页面','showInMenu','5','jhInsert',NULL,NULL,NULL FROM DUAL WHERE NOT EXISTS (SELECT `pageId` FROM `_page` WHERE `pageId`='assistCustomerManagement');
+
+-- 创建 resource
+INSERT INTO `_resource` (`accessControlTable`,`resourceHook`,`pageId`,`actionId`,`desc`,`resourceType`,`appDataSchema`,`resourceData`,`requestDemo`,`responseDemo`,`operation`,`operationByUserId`,`operationByUser`,`operationAt`) SELECT NULL,NULL,'assistCustomerManagement','selectItemList','✅查询-查询列表','sql','{}','{ \"table\": \"assist_customer\", \"operation\": \"select\" }','','','insert',NULL,NULL,NULL FROM DUAL WHERE NOT EXISTS (SELECT `pageId` FROM `_resource` WHERE `pageId`='assistCustomerManagement' AND `actionId`='selectItemList');
+INSERT INTO `_resource` (`accessControlTable`,`resourceHook`,`pageId`,`actionId`,`desc`,`resourceType`,`appDataSchema`,`resourceData`,`requestDemo`,`responseDemo`,`operation`,`operationByUserId`,`operationByUser`,`operationAt`) SELECT NULL,NULL,'assistCustomerManagement','insertItem','✅查询-添加成员','sql','{}','{ \"table\": \"assist_customer\", \"operation\": \"insert\" }','','','insert',NULL,NULL,NULL FROM DUAL WHERE NOT EXISTS (SELECT `pageId` FROM `_resource` WHERE `pageId`='assistCustomerManagement' AND `actionId`='insertItem');
+INSERT INTO `_resource` (`accessControlTable`,`resourceHook`,`pageId`,`actionId`,`desc`,`resourceType`,`appDataSchema`,`resourceData`,`requestDemo`,`responseDemo`,`operation`,`operationByUserId`,`operationByUser`,`operationAt`) SELECT NULL,NULL,'assistCustomerManagement','updateItem','✅查询-更新成员','sql','{}','{ \"table\": \"assist_customer\", \"operation\": \"update\" }','','','insert',NULL,NULL,NULL FROM DUAL WHERE NOT EXISTS (SELECT `pageId` FROM `_resource` WHERE `pageId`='assistCustomerManagement' AND `actionId`='updateItem');
+INSERT INTO `_resource` (`accessControlTable`,`resourceHook`,`pageId`,`actionId`,`desc`,`resourceType`,`appDataSchema`,`resourceData`,`requestDemo`,`responseDemo`,`operation`,`operationByUserId`,`operationByUser`,`operationAt`) SELECT NULL,NULL,'assistCustomerManagement','deleteItem','✅查询-删除信息','sql','{}','{ \"table\": \"assist_customer\", \"operation\": \"delete\" }','','','insert',NULL,NULL,NULL FROM DUAL WHERE NOT EXISTS (SELECT `pageId` FROM `_resource` WHERE `pageId`='assistCustomerManagement' AND `actionId`='deleteItem');
+SQL END! -->
+
+<script type="text/html" id="app-template">
+  <div>
+    <v-app mobile-breakpoint="sm">
+      <jh-menu />
+      <v-main class="mt-15">
+        <!-- 头部内容 >>>>>>>>>>>>> -->
+        <div class="jh-page-second-bar px-8 mb-4 mb-md-0">
+          <v-row no-gutters class="align-center">
+            <v-col cols="12" xs="12" sm="12" md="4" xl="3">
+              <div class="py-4 text-body-1 font-weight-bold d-flex align-center">辅助核算
+                <!-- 帮助页按钮 -->
+                <span role="button" class="success--text font-weight-regular jh-font-size-13 mx-2" @click="jumpToUrl">
+                  <v-icon size="13" class="success--text">mdi-help-circle-outline</v-icon>帮助
+                </span>
+                <select-appaId/>
+              </div>
+            </v-col>
+            
+            <!-- pc端的搜索条件表单 >>>>>>>> -->
+            <v-col cols="12" xs="12" sm="12" md="8" xl="9" class="text-md-right d-flex align-center justify-sm-end">
+              <v-btn-toggle mandatory dense class="mr-2" color="success"> 
+                <v-btn small v-for="scene, index in sceneList"  @click="doUiAction('useScene', {scene, index})" :key="index"> {{scene.name}} </v-btn> 
+              </v-btn-toggle>
+
+              <v-btn @click="doUiAction('startAddCustomAssist')" small color="primary">
+                <v-icon class="ma-0 pa-0">mdi-plus</v-icon>
+              </v-btn>
+            </v-col>
+
+            <!-- <<<<<<<< pc端的搜索条件表单 -->
+          </v-row>
+        </div>
+        <!-- <<<<<<<<<<<<< 头部内容 -->
+
+        <div class="jh-page-body-container px-8">
+          <customer-list v-if="selectAssistCategory == 'customer'"/>
+          <depart-list v-else-if="selectAssistCategory == 'depart'"/>
+          <project-list v-else-if="selectAssistCategory == 'project'"/>
+          <staff-list v-else-if="selectAssistCategory == 'staff'"/>
+          <supplier-list v-else-if="selectAssistCategory == 'supplier'"/>
+          <custom-list v-else :assistTypeItem="assistTypeItem" />
+        </div>
+
+        <!-- 帮助页抽屉 >>>>>>>>>>>>> -->
+        <!-- <<<<<<<<<<<<< 帮助页抽屉 -->
+
+        <!-- 添加自定义的辅助核算 >>>>>>>>>>>>> -->
+        <v-navigation-drawer v-model="isAddDrawerShow" :permanent="isAddDrawerShow" fixed temporary right width="80%" class="elevation-24">
+          <v-row no-gutters>
+            <span class="text-h7 font-weight-bold pa-4">核算类别设置</span>
+          </v-row>
+          <v-divider class="jh-divider"></v-divider>
+    
+          <v-form v-if="isAddDrawerShow" ref="form" lazy-validation>
+          
+            <!-- 抽屉表单 -->
+            <v-row class="mt-0 px-4">
+              <v-col cols="12" sm="12" md="4">
+                <span class="jh-input-label">辅助核算表名</span>
+                <v-text-field class="jh-v-input " dense filled single-line v-model="addItem['tableName']"
+                  :rules="validationRules.requireRules"
+                  placeholder="英文字母名称,不能有_等特殊字符"
+                ></v-text-field>
+              </v-col>
+              <v-col cols="12" sm="12" md="4">
+                <span class="jh-input-label">辅助核算类型</span>
+                <v-text-field class="jh-v-input " placeholder="名称不能超过10个字" dense filled single-line v-model="addItem['typeName']"
+                  :rules="validationRules.requireRules"
+                  :maxlength="10"
+                ></v-text-field>
+              </v-col>
+              <v-col cols="12" sm="12" md="4"></v-col>
+
+              <v-col cols="12" sm="12" md="12">
+                <span class="jh-input-label">默认列</span>
+                <v-row>
+                  <v-col cols="12" sm="12" md="4">
+                    <v-text-field class="jh-v-input " dense filled single-line  value="编码" disabled></v-text-field>
+                  </v-col>
+                  <v-col cols="12" sm="12" md="4">
+                    <v-text-field class="jh-v-input " dense filled single-line  value="名称" disabled></v-text-field>
+                  </v-col>
+                </v-row>
+              </v-col>
+              <!-- <v-col cols="12" sm="12" md="12">
+                <span class="jh-input-label">自定义列</span>
+                <v-row>
+                  <v-col cols="12" sm="12" md="4" v-for="(item, index) in addItem.columns">
+                    <v-text-field class="jh-v-input" dense filled single-line  v-model="item.colValue" :placeholder="`自定义列${index}`"></v-text-field>
+                  </v-col>
+                  <v-col cols="12" sm="12" md="4">
+                    <v-btn small color="primary" @click="()=> addItem.columns.push({colKey:`value${addItem.columns.length}`, colValue: ''})">添加列</v-btn>
+                  </v-col>
+                </v-row>
+              </v-col> -->
+            </v-row>
+            <!-- 抽屉操作按钮 -->
+            <v-row class="justify-end mx-0 mt-8 px-6">
+              <v-btn color="success" @click="doUiAction('addCustomAssist')" small><v-icon size="14">mdi-plus</v-icon>新增</v-btn>
+              <v-btn class="ml-2" @click="isAddDrawerShow = false" small><v-icon size="14">mdi-close</v-icon>取消</v-btn>
+            </v-row>
+          </v-form>
+          <!-- 抽屉关闭按钮 -->
+          <v-btn elevation="0" color="success" fab absolute top left small tile class="drawer-close-float-btn" @click="isAddDrawerShow = false">
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
+        </v-navigation-drawer>
+        <!-- <<<<<<<<<<<<< 添加自定义的辅助核算 -->
+      </v-main>
+          
+    </v-app>
+    <jh-toast />
+    <jh-mask />
+    <jh-confirm-dialog />
+  </div>
+</script>
+<div id="app">
+</div>
+
+{% endblock %}
+
+{% block vueScript %}
+{% include 'component/jianghuJs/select-appaId.html' %}
+{% include 'common/jianghuJs/fixedTableHeightV4.html' %}
+{% include 'component/setting/customerList.html' %}
+{% include 'component/setting/departList.html' %}
+{% include 'component/setting/projectList.html' %}
+{% include 'component/setting/staffList.html' %}
+{% include 'component/setting/supplierList.html' %}
+{% include 'component/setting/customList.html' %}
+{% include 'common/vueFilters.html' %}
+{% include 'common/constantUtil.html' %}
+
+<script type="module">
+  new Vue({
+    el: '#app',
+    template: '#app-template',
+    vuetify: new Vuetify(),
+    data: () => ({
+
+      // 面包屑
+      breadcrumbs: [
+        {
+          text: '首页',
+          disabled: true,
+        },
+        {
+          text: '辅助核算',
+          disabled: true,
+        }
+      ],
+
+      // 下拉选项
+      constantObj: {
+      },
+      constantObj: {
+        assistCategory: constantObj.assistList
+      },
+      selectAssistCategory: 'customer',
+
+      selectedScene: 0,
+      sceneList: constantObj.assistList.map((item,index) => {
+        return {
+          form: { assistCategory: item.value },
+          name: item.text,
+          id: `scene-fixed-${index}`,
+        }
+      }),
+      currentSceneId: null,
+
+      validationRules: {
+        requireRules: [
+          v => !!v || '必填',
+          v => (!!v && !v.includes('_')) || '不能包含下划线',
+        ],
+      },
+      isAddDrawerShow: false,
+      addItem: {
+        columns: [],
+      },
+    }),
+    computed: {
+      assistTypeItem() {
+        return this.sceneList.find(item => item?.form?.assistCategory === this.selectAssistCategory) || {}
+      }
+    },
+    async created() {
+    },
+    mounted() { },
+    methods: {
+      async doUiAction(uiActionId, uiActionData) {
+        switch (uiActionId) {
+          case 'refreshTableData':
+            await this.refreshTableData(uiActionData);
+            break;
+          case 'useScene':
+            await this.useScene(uiActionData);
+            break;
+          case 'startAddCustomAssist':
+            await this.startAddCustomAssist(uiActionData);
+            break;
+          case 'addCustomAssist':
+            await this.prepareValidate();
+            await this.confirmCreateItemDialog();
+            await this.addCustomAssist();
+            await this.closeDrawerShow();
+            await this.updateSceneList();
+            break;
+          default:
+            console.error("[doUiAction] uiActionId not find", { uiActionId });
+            break;
+        }
+      },
+      
+      // ---------- 场景 uiAction >>>>>>>>>> --------
+      useScene(funObj) {
+        this.selectedScene = funObj.index;
+        this.currentSceneId = funObj.scene.id;
+        this.selectAssistCategory = funObj.scene.form.assistCategory;
+      },
+      // ---------- <<<<<<<<<<< 场景 uiAction --------
+      // ---------- getAppAcountAssistList >>>>>>>>>>>>> ----------
+      
+      async updateSceneList() {
+        // {"form":{"assistCategory":"customer"},"name":"客户","id":"scene-fixed-2"},
+        this.sceneList = [
+          ...this.sceneList,
+          {
+            form: { assistCategory: this.addItem.tableName },
+            name: this.addItem.typeName,
+            id: `scene-fixed-${this.sceneList.length}`,
+          }
+        ]
+      },
+      // ---------- <<<<<<<<<<<<< getAppAcountAssistList ----------
+      
+      // ---------- 添加自定义辅助核算 >>>>>>>>>>>>> ----------
+      async prepareValidate() {
+        if (this.$refs.form.validate() === false) {
+          window.vtoast.fail({ message: "输入有误, 请检查!" });
+          throw new Error("[prepareValidate] false");
+        }
+      },
+      async confirmCreateItemDialog() {
+        if (await window.confirmDialog({title: "新增", content: "确定新增吗？"}) === false) {
+          throw new Error("取消");
+        }
+      },
+      async addCustomAssist() {
+        await window.vtoast.loading("新增数据");
+        await window.jianghuAxios({
+          data: {
+            appData: {
+              pageId: 'assistManagement',
+              actionId: 'addCustomAssist',
+              actionData: this.addItem
+            }
+          }
+        })
+        await window.vtoast.success("新增数据成功");
+      },
+      async startAddCustomAssist() {
+        this.addItem = {
+          columns: [],
+        };
+        this.isAddDrawerShow = true;
+      },
+      async closeDrawerShow() {
+        this.isAddDrawerShow = false;
+      },
+      // ---------- <<<<<<<<<<<<< 添加自定义辅助核算 ----------
+
+      jumpToUrl() {
+        window.open('https://cn.jianghujs.org/doc/page/article/11603', '_blank');
+      }
+    }   
+  })
+</script>
+
+<style scoped>
+</style>
+{% endblock %}

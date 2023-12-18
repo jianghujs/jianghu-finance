@@ -1,0 +1,198 @@
+<template id="select-subject-adjust">
+  <div class="select-subject-adjust-container">
+    <!-- 平铺容器样式 -->
+    <v-row class="ma-0 pb-10" style="max-width: 100%">
+      <v-col>
+        <v-text-field v-model="search" :loading="isSubjectListLoading" 
+          class="jh-v-input" dense single-line filled prefix="过滤科目"></v-text-field>
+      </v-col>
+      <v-col cols="12" class="">
+        <v-btn x-small :outlined="currentCate !== category" v-for="(category, index) in subjectCategoryList"
+          :key="index" :dark="currentCate === category" @click="currentCate = currentCate === category ? '' : category" color="success darken-1"
+          class="mr-1 px-1">
+          {{ category }}
+        </v-btn>
+      </v-col>
+      <v-col cols="12" class="overflow-y-auto px-0" style="padding-bottom: 50px">
+        <v-list nav dense class="px-3 py-0">
+          <v-list-item-group
+            mandatory
+            v-model="subjectIndex"
+            color="primary"
+          >
+            <v-list-item
+              v-for="item in subjectListByCate"
+              :key="item.subjectId"
+            >
+              <v-list-item-content>
+                
+                <v-list-item-title >
+                  <v-chip x-small :color="item.subjectBalanceDirection | directionBgColor">{{item.subjectBalanceDirection}}</v-chip>
+                  {{item.subjectLabel}}
+                </v-list-item-title>
+              </v-list-item-content>
+              <v-list-item-action>
+                {{item.startAmountYearAdjust}}
+              </v-list-item-action>
+            </v-list-item>
+          </v-list-item-group>
+        </v-list>
+      </v-col>
+      <v-overlay :value="isSubjectListLoading" color="white" dark absolute :opacity="0.7">
+        <v-progress-circular indeterminate size="32" color="grey"></v-progress-circular>
+      </v-overlay>
+    </v-row>
+  </div>
+
+</template>
+
+<script>
+  Vue.component('select-subject-adjust', {
+    template: '#select-subject-adjust',
+    props: {
+      value: {
+        type: String | Number,
+        default: ''
+      },
+      clearable: {
+        type: Boolean,
+        default: true,
+      },
+      levelFilter: {
+        type: String,
+        default: '', // 无下级科目、有下级科目、全部
+      },
+      openAll: {
+        type: Boolean,
+        default: false,
+      },
+      serverInput: {
+        type: Boolean,
+        default: false,
+      },
+      openOnClick: {
+        type: Boolean,
+        default: false,
+      },
+      financeYear: {
+        type: String,
+        default: '',
+      },
+    },
+    vuetify: new Vuetify(),
+    data: () => ({
+      subjectListBackup: [],
+      search: '',
+      isSubjectListLoading: true,
+      subjectCategoryList: [],
+      currentCate: '',
+      subjectIndex: 0,
+    }),
+    computed: {
+      subjectList() {
+        let rows = this.subjectListBackup;
+        rows.forEach(row => {
+          row.startAmountYearNoAdjust = row.startDebitYearNoAdjust || row.startCreditYearNoAdjust; 
+          row.startAmountYearAdjust = row.startDebitYearAdjust || row.startCreditYearAdjust;
+          row.startAmountYearAdjustAfter = row.startAmountYearNoAdjust + row.startAmountYearAdjust;
+          row.subjectLabel = row.subjectId + ' ' + row.subjectName;
+        })
+        rows = rows.filter(row => row.startAmountYearAdjust);
+        return rows;
+      },
+      subjectListByCate() {
+        const subjectList = this.subjectList.filter(item => item.subjectLabel.includes(this.search));
+        if (!this.currentCate) {
+          return subjectList;
+        }
+        return this.subjectList.filter(item => item.subjectCategory === this.currentCate);
+      }
+    },
+    watch: {
+      value: {
+        handler(val, oldVal) {
+          console.log('value', JSON.stringify(val) );
+        }
+      },
+      financeYear: {
+        handler(val, oldVal) {
+          console.log('financeYear', JSON.stringify(val) );
+          if (!val) {
+            return;
+          }
+          this.getSubjectList();
+        }
+      },
+      subjectIndex: {
+        handler(val, oldVal) {
+          if (!this.subjectList[val]) {
+            return;
+          } 
+          this.onChange(this.subjectList[val].subjectId);
+        }
+      },
+    },
+    async created() {
+    },
+    mounted() {
+    },
+    methods: {
+
+      async getSubjectList() {
+        this.isSubjectListLoading = true;
+        const result = await window.jianghuAxios({
+          data: {
+            appData: {
+              pageId: 'report-subjectBalanceYearStartAdjust',
+              actionId: 'selectSubjectBalanceYearList',
+              actionData: {},
+              where: { 
+                financeYear: this.financeYear
+              },
+              orderBy: [{column: 'subjectId', order: 'asc'}]
+            }
+          }
+        });
+        const { rows } = result.data.appData.resultData;
+        this.subjectListBackup = rows;
+        this.subjectCategoryList = this.buildSubjectCategory(rows);
+        console.log(this.subjectList)
+        this.isSubjectListLoading = false;
+        setTimeout(() => {
+          this.onChange(this.subjectListBackup[0].subjectId);
+        }, 100);
+      },
+      buildSubjectCategory(rows) {
+        // 排重所有 subjectCategory
+        const subjectCategoryList = [];
+        rows.forEach(r => {
+          if (!subjectCategoryList.includes(r.subjectCategory)) {
+            subjectCategoryList.push(r.subjectCategory)
+          }
+        })
+        return subjectCategoryList;
+      },
+      filterSubjectList(item, search, textKey) {
+        return ('&' + item['subjectId'] + ' ' + item['subjectName']).includes('&' + search)
+      },
+      onChange(subjectId) {
+        if (subjectId !== this.value) {
+          this.value = subjectId;
+        }
+        this.$emit('input', subjectId)
+        this.$emit('change')
+      }
+    }
+  })
+</script>
+<style>
+  .select-subject-adjust-container {
+    min-width: 250px;
+  }
+  .v-btn:not(.v-btn--round).v-size--x-small {
+    padding: 0 8px;
+  }
+  .v-treeview-node__level {
+    width: 0px;
+  }
+</style>

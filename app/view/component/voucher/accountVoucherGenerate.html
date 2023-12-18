@@ -1,0 +1,371 @@
+<template id="accountVoucherGenerate">
+  <!-- 生成凭证预览抽屉 -->
+  <v-navigation-drawer v-model="isDrawerShown" :permanent="isDrawerShown" fixed temporary right width="1250" class="elevation-24">
+    <v-row no-gutters>
+      <span class="text-h7 font-weight-bold pa-4">生成凭证</span>
+    </v-row>
+    <v-divider class="jh-divider"></v-divider>
+
+    <v-form ref="form" lazy-validation>
+      <v-card  elevation="0" outlined class="pa-3">
+        <v-skeleton-loader v-if="formLoading" type="table-heading, list-item-two-line, image" ></v-skeleton-loader>
+        <template v-else>
+     
+          </v-row>
+          <v-row class="row mt-0 mx-4 mb-1 blue-grey lighten-5 rounded-1">
+            <v-col cols="3" style="border-right: 1px solid white;">进销存</v-col>
+            <v-col cols="9">凭证预览</v-col>
+          </v-row>
+          <v-row class="mt-0 px-4"  v-for="(voucherItem, voucherIndex) in computedVoucherList">
+            <v-col cols="3">
+              <v-card class="ticket-card pb-5 mb-5" outlined v-for="(ticketItem, ticketIndex) in voucherItem.ticketList">
+                <template v-if="ticketItem.accountEntryId">
+                  <div class="pa-2 px-5 blue-grey lighten-5">单据编号：{{ticketItem.accountEntryId}}</div>
+                  <div class="px-5 py-2">
+                    <div>日期：{{dayjs(ticketItem.accountEntryAt).format('YYYY-MM-DD')}}</div>
+                    <div>账户ID：{{ticketItem.accountId}}</div>
+                    <div>摘要：{{ticketItem.accountEntryAbstract}}</div>
+                    <div>金额：{{ticketItem.amount}}</div>
+                  </div>
+                </template>
+                <template v-else-if="ticketItem.transferId">
+                  <div class="pa-2 px-5 blue-grey lighten-5">单据编号：{{ticketItem.transferId}}</div>
+                  <div class="px-5 py-2">
+                    <div>日期：{{dayjs(ticketItem.operationAt).format('YYYY-MM-DD')}}</div>
+                    <div>转入账户ID：{{ticketItem.fromAccountId}}</div>
+                    <div>转出账户ID：{{ticketItem.toAccountId}}</div>
+                    <div>摘要：{{ticketItem.transferAbstract}}</div>
+                    <div>金额：{{ticketItem.amount}}</div>
+                  </div>
+                </template>
+              </v-card>
+            </v-col>
+            <v-col cols="9">
+              <!-- 凭证卡片 >>>>>>>>>>> -->
+              <v-card class="px-2 pb-5 mb-5 blue-grey lighten-5">
+                <v-row class="mt-0 px-4">
+                  <div class="enhancer-voucher-header">
+                    <span class="enhancer-voucher-char-wrap">
+                      凭证字
+                      <v-select :rules=validationRules.requireRules 
+                        class="enhancer-voucher-char white"
+                        :items="constantObj.voucherName" 
+                        :menu-props="{ button: true, offsetY: true }"
+                        disabled
+                        single-line v-model="voucherItem['voucherName']"></v-select>
+                      <input v-model="voucherItem.voucherNumber" class="enhancer-voucher-no ui-widget-content white" type="number" min="0" value="1">
+                      号
+                    </span>
+                    <span class="enhancer-voucher-date-wrap">
+                      <v-menu
+                        v-model="voucherItem.isVoucherAtMenuShow"
+                        :close-on-content-click="false"
+                        :nudge-right="40"
+                        transition="scale-transition"
+                        offset-y
+                        min-width="auto"
+                      >
+                        <template v-slot:activator="{ on, attrs }">
+                          <v-text-field
+                            :rules=validationRules.requireRules
+                            class="enhancer-voucher-date pl-1 white"
+                            single-line
+                            v-model="voucherItem['voucherAt']"
+                            label=""
+                            readonly
+                            v-bind="attrs"
+                            v-on="on"
+                          ></v-text-field>
+                        </template>
+                        <v-date-picker
+                          v-model="voucherItem['voucherAt']"
+                          @input="voucherItem.isVoucherAtMenuShow = false"
+                        ></v-date-picker>
+                      </v-menu>
+                      
+                    </span>
+                    <span class="enhancer-voucher-period-wrap">
+                      会计期间: {{ voucherItem.periodId }}
+                    </span>
+                  </div>
+                  <account-voucher-entry ref="editEntryRef" v-model="voucherItem.voucherEntryList" :rules="validationRules.voucherEntryRules"/>
+                  <v-col cols="12" class="pt-3 d-flex justify-space-between align-center">
+                    <span>制单人: {{ voucherItem.voucherAccountant }}</span>
+    
+                    <v-btn
+                      small
+                      color="primary"
+                      dark
+                      @click="doUiAction('voucherEntryAutoCompute', {ref: 'editEntryRef'})"
+                    >
+                      填充金额
+                    </v-btn>
+                  </v-col>
+                </v-row>      
+              </v-card>
+              <!-- <<<<<<<<<<<< 凭证卡片 -->
+            </v-col>
+          <!-- 抽屉表单 -->
+          </v-row>
+    
+          <!-- 抽屉操作按钮 -->
+          <v-row align="center" class="justify-end mx-0 mt-8 px-6">
+            <v-checkbox
+              v-model="isMerge"
+              label="合并生成凭证"
+            ></v-checkbox>
+            <v-btn class="ml-2" color="success" @click="doUiAction('handleItem')" small><v-icon size="14">mdi-content-save-check-outline</v-icon>提交</v-btn>
+            <v-btn class="elevation-0 ml-2" @click="isDrawerShown = false" small><v-icon size="14">mdi-close</v-icon>取消</v-btn>
+          </v-row>
+        </template>
+      </v-card>
+    </v-form>
+    <!-- 抽屉关闭按钮 -->
+    <v-btn elevation="0" color="success" fab absolute top left small tile class="drawer-close-float-btn" @click="isDrawerShown = false">
+      <v-icon>mdi-close</v-icon>
+    </v-btn>
+  </v-navigation-drawer>
+</template>
+
+<script type="module">
+  Vue.component("accountVoucherGenerate", {
+    template: '#accountVoucherGenerate',
+    props: {},
+    data: () => ({
+      validationRules: {
+        requireRules: [
+          v => !!v || '必填',
+        ],
+      },
+      constantObj: {
+        voucherName: [
+          { text: '记', value: '记' },
+          { text: '收', value: '收' },
+          { text: '借', value: '借' },
+          { text: '付', value: '付' },
+          { text: '转', value: '转' },
+          { text: '结计', value: '结计' },
+          { text: '结转', value: '结转' },
+          { text: '去年', value: '去年' },
+        ]
+      },
+      isDrawerShown: false,
+      formLoading: true,
+      
+      nextVoucherNumberMap: {},
+      isMerge: false,
+      handleItem: {
+        voucherList: []
+      },
+      handleActionData: {},
+    }),
+    computed: {
+      isMobile() {
+        return window.innerWidth < 600;
+      },
+      computedVoucherList() {
+        const voucherList = this.isMerge ? this.handleItem.mergedVoucherList: this.handleItem.voucherList;
+        const nextNumberCacheMap = _.cloneDeep(this.nextVoucherNumberMap);
+        for (const voucher of voucherList) {
+          voucher.voucherNumber = nextNumberCacheMap[voucher.periodId] || 1;
+          nextNumberCacheMap[voucher.periodId] += 1;
+        }
+        return voucherList;
+      }
+    },
+    async mounted() {
+      await this.doUiAction('getBaseData');
+    },
+    methods: {
+      async doUiAction(uiActionId, uiActionData) {
+        try {switch (uiActionId) {
+          case 'getBaseData':
+            break;
+          case 'onlyOpen':
+            await this.open();
+            break;
+          case 'open':
+            await this.open();
+            await this.queryNextVoucherNumberMap();
+            await this.prepareHandleItem(uiActionData);
+            break;
+          case 'handleItem':
+            await this.prepareHandleValidate();
+            await this.confirmHandleItemDialog();
+            await this.prepareDoHandleItem();
+            await this.doHandleItem();
+            await this.close();
+            break;
+          default:
+            console.error("[doUiAction] uiActionId not find", { uiActionId });
+            break;
+        }} catch (error) { await window.jhMask.hide(); throw error; }
+      },
+      async prepareHandleItem(data) {
+        const { voucherList } = data;
+        this.handleItem = {
+          voucherList: _.clone(voucherList),
+          mergedVoucherList: await this.getMergedVoucherList(voucherList),
+        }
+        this.formLoading = false;
+      },
+
+      async queryNextVoucherNumberMap() {
+        const { rows } = (await window.jianghuAxios({
+          data: {
+            appData: {
+              pageId: 'voucher-voucherManagement',
+              actionId: 'selectNextVoucherNumberMap',
+            }
+          }
+        })).data.appData.resultData;
+        this.nextVoucherNumberMap = _(rows).keyBy('periodId').mapValues('maxVoucherNumber').value();
+      },
+
+      async getMergedVoucherList(voucherList) {
+        // 合并凭证
+        const mergedVoucherList = _.cloneDeep(voucherList);
+        // 循环voucherList，将全部对象中的voucherEntryList合并到一起，其他的参数使用第一个对象的参数
+        let voucherMerge = mergedVoucherList.reduce((total, item) => {
+          total.voucherEntryList = total.voucherEntryList.concat(item.voucherEntryList.filter(entry => entry.debit || entry.credit));
+          total.ticketList = total.ticketList.concat(item.ticketList);
+          return total;
+        }, {...mergedVoucherList[0], voucherEntryList: [], ticketList: []});
+        return [voucherMerge];
+      },
+
+      async open() {
+        this.formLoading = true;
+        this.isDrawerShown = true;
+      },
+      async close() {
+        this.formLoading = false;
+        this.isDrawerShown = false;
+      },
+
+      async prepareHandleValidate() {
+        if (await this.$refs.form.validate()) {
+          return true;
+        }
+        throw new Error("请完善表单信息")
+      },
+
+      async confirmHandleItemDialog() {
+        if (await window.confirmDialog({title: "提交", content: "确定提交吗？"}) === false) {
+          throw new Error("[confirmHandleFormDialog] 否");
+        }
+      },
+
+      async prepareDoHandleItem() {
+        this.handleActionData = this.computedVoucherList.map(voucher => {
+          return {
+            periodId: voucher.periodId,
+            voucherAt: voucher.voucherAt,
+            voucherName: voucher.voucherName,
+            voucherNumber: voucher.voucherNumber,
+            ticketList: voucher.ticketList,
+            voucherEntryList: voucher.voucherEntryList.filter(x => x.subjectId).map(voucherEntry => {
+              const pickKey = [
+                'entryAbstract', 'subjectId', 'debit', 'credit',
+                'assistIdOfCustomer', 'assistIdOfSupplier', 'assistIdOfStaff', 'assistIdOfProject', 'assistIdOfDepart', 'assistIdOfExtend1', 'assistIdOfExtend2',
+              ];
+              return _.pick(voucherEntry, pickKey)
+            }),
+          }
+        })
+      },
+
+      async doHandleItem() {
+        
+        await window.vtoast.loading({message: "生成凭证中，请等待……", time: -1});
+        await Promise.all(this.handleActionData.map(row => {
+          return window.jianghuAxios({
+            data: {
+              appData: {
+                pageId: 'fundAccountEntryManagement',
+                actionId: 'createVoucherAndVoucherEntry',
+                actionData: row
+              }
+            }
+          })
+        }));
+        
+        await window.vtoast.success("提交成功");
+        this.$emit("success")
+      },
+    }
+  })
+</script>
+<style>
+  .ticket-card {
+    line-height: 30px;
+    min-height: 275px;
+  }
+  .add-btn {
+    width: 100%;
+    margin-top: 5px;
+    padding: 5px;
+  }
+  .jh-v-input .v-messages-outer, .jh-v-input .v-text-field__details {
+    bottom: -15px !important;
+  }
+
+  .enhancer-voucher-header {
+    position: relative;
+    font-size: 12px;
+    box-sizing: border-box;
+    width: 100%;
+    margin: 10px 0;
+  }
+
+  .enhancer-voucher-header .enhancer-voucher-char-wrap {
+    position: relative;
+    display: inline-block;
+    overflow: visible;
+  }
+
+  .enhancer-voucher-header .enhancer-voucher-char-wrap .enhancer-voucher-char {
+    border: 1px solid #eee;
+    height: 32px;
+    display: inline-block;
+    width: 88px;
+    margin: 0px;
+    padding: 0;
+  }
+
+  .enhancer-voucher-header .enhancer-voucher-char-wrap .enhancer-voucher-char .v-select__selection {
+    font-size: 12px;
+  }
+
+  .enhancer-voucher-header .enhancer-voucher-char-wrap .enhancer-voucher-no {
+    border: 1px solid #eee;
+    line-height: 30px;
+    width: 80px;
+    padding-left: 4px;
+    position: relative;
+    text-align: left;
+  }
+
+  .enhancer-voucher-header .enhancer-voucher-date-wrap {
+    width: 90px;
+    margin-left: 12px;
+    position: relative;
+    display: inline-block;
+  }
+
+  .enhancer-voucher-header .enhancer-voucher-date-wrap .enhancer-voucher-date {
+    border: 1px solid #eee;
+    height: 32px;
+    margin-left: 2px;
+    display: inline-block;
+    margin: 0;
+    padding: 0;
+  }
+
+  .enhancer-voucher-header .enhancer-voucher-period-wrap {
+    float: right;
+    padding: 0 5px;
+    line-height: 30px;
+  }
+
+</style>

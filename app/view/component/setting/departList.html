@@ -1,0 +1,389 @@
+<template id="depart-list"> 
+  <v-container class="fullScreen d-flex flex-column pa-xs-0 pa-0">
+    <v-card>
+      <v-row class="ma-0 pa-4">
+        <!-- 新增按钮 -->
+        <v-col cols="12" xs="8" sm="4" md="3" xl="2" class="pa-0">
+          <v-btn small color="success" dark class="elevation-0 mr-2" @click="doUiAction('startCreateItem')"><v-icon size="14">mdi-plus</v-icon>新增</v-btn>
+        </v-col>
+        <v-spacer></v-spacer>
+        <!-- 搜索过滤 -->
+        <v-col cols="12" xs="8" sm="4" md="3" xl="2" class="pa-0">
+          <v-text-field v-model="searchInput" prefix="搜索：" class="jh-v-input" dense filled single-line></v-text-field>
+        </v-col>
+      </v-row>
+      <!-- 表格 -->
+      <v-data-table 
+        fixed-header
+        :headers="headers"
+        :items="tableData"
+        :search="searchInput"
+        :footer-props="{ itemsPerPageOptions: [20, 50, -1], itemsPerPageText: '每页行数', itemsPerPageAllText: '所有'}"
+        :items-per-page="-1"
+        mobile-breakpoint="0"
+        :loading="isTableLoading"
+        checkbox-color="success"
+        :class="{'zebraLine': isTableZebraLineShown }"
+        class="jh-fixed-table-height elevation-0 mt-0 mb-xs-4">
+        <!-- 处理显示列 -->
+        <template v-slot:item.action="{ item }">
+          <span role="button" class="success--text jh-font-size-3 pr-2"
+                @click="doUiAction('startUpdateItem', {item})">
+            <v-icon size="14" class="success--text">mdi-note-edit-outline</v-icon>修改
+          </span>
+          <!-- <span role="button" class="error--text jh-font-size-3"
+                @click="doUiAction('deleteItem', {item})">
+            <v-icon size="14" class="error--text">mdi-trash-can-outline</v-icon><v-icon size="14">mdi-trash-can-outline</v-icon>删除
+          </span> -->
+        </template>
+
+        <!-- 表格底部右侧功能按钮 -->
+        <template v-slot:footer.prepend>
+         
+          <v-menu top offset-y :close-on-content-click="false" v-model="isTableZebraLineMenuShown" :position-x="tableZebraLineMenuPosition.x" :position-y="tableZebraLineMenuPosition.y">
+            <v-list>
+              <v-list-item>
+                <v-switch v-model="isTableZebraLineShown" hide-details class="ma-0" label="显示斑马纹" dense flat></v-switch>
+              </v-list-item>
+            </v-list>
+          </v-menu>
+        </template>
+        <!-- 没有数据 -->
+        <template v-slot:loading>
+          <div class="jh-no-data">数据加载中</div>
+        </template>
+        <template v-slot:no-data>
+          <div class="jh-no-data">暂无数据</div>
+        </template>
+        <template v-slot:no-results>
+          <div class="jh-no-data">暂无数据</div>
+        </template>
+        <!-- 表格分页 -->
+        <template v-slot:footer.page-text="pagination">
+          <span>{{pagination.pageStart}}-{{pagination.pageStop}}</span>
+          <span class="ml-1">共{{pagination.itemsLength}}条</span>
+        </template>
+      </v-data-table>
+    </v-card>
+
+    <!-- 新增 -->
+    <v-navigation-drawer v-model="isAddDrawerShow" :permanent="isAddDrawerShow" fixed temporary right width="80%" class="elevation-24">
+      <v-row no-gutters>
+        <span class="text-h7 font-weight-bold pa-4">新增信息</span>
+      </v-row>
+      <v-divider class="jh-divider"></v-divider>
+      <v-form v-model="isFormValid" v-if="isAddDrawerShow" ref="form" lazy-validation>
+     
+        <!-- 抽屉表单 -->
+        <v-row class="mt-0 px-4">
+          <v-col cols="12" sm="12" md="4">
+            <span class="jh-input-label">辅助ID</span>
+            <v-text-field class="jh-v-input " dense filled single-line v-model="addItem['assistId']"
+              :rules="validationRules.requireRules"
+            ></v-text-field>
+          </v-col>
+          <v-col cols="12" sm="12" md="4">
+            <span class="jh-input-label">辅助名称</span>
+            <v-text-field class="jh-v-input " dense filled single-line v-model="addItem['assistName']"
+              :rules="validationRules.requireRules"
+            ></v-text-field>
+          </v-col>
+           
+        </v-row>
+        <!-- 抽屉操作按钮 -->
+        <v-row class="justify-end mx-0 mt-8 px-6">
+          <v-btn color="success ml-2" @click="doUiAction('createItem2')"><v-icon size="14">mdi-plus</v-icon>保存并新增</v-btn>
+          <v-btn color="success ml-2" @click="doUiAction('createItem')"><v-icon size="14">mdi-plus</v-icon>保存</v-btn>
+          <v-btn class="ml-2" @click="isAddDrawerShow = false"><v-icon size="14">mdi-close</v-icon>取消</v-btn>
+        </v-row>
+      </v-form>
+      <!-- 抽屉关闭按钮 -->
+      <v-btn elevation="0" color="success" fab absolute top left small tile class="drawer-close-float-btn" @click="isAddDrawerShow = false">
+        <v-icon>mdi-close</v-icon>
+      </v-btn>
+    </v-navigation-drawer>
+
+    <!-- 编辑抽屉 -->
+    <v-navigation-drawer v-model="isEditDrawerShow" :permanent="isEditDrawerShow" fixed temporary right width="80%" class="elevation-24">
+      <v-row no-gutters>
+        <span class="text-h7 font-weight-bold pa-4">编辑信息</span>
+      </v-row>
+      <v-divider class="jh-divider"></v-divider>
+
+      <v-form v-model="isFormValid" v-if="isEditDrawerShow" ref="form" lazy-validation>
+      
+        <!-- 抽屉表单 -->
+        <v-row class="mt-0 px-4">
+          <v-col cols="12" sm="12" md="4">
+            <span class="jh-input-label">辅助ID</span>
+            <v-text-field class="jh-v-input " dense filled single-line readonly v-model="editItem['assistId']"
+              :rules="validationRules.requireRules"
+            ></v-text-field>
+          </v-col>
+           
+          <v-col cols="12" sm="12" md="4">
+            <span class="jh-input-label">辅助名称</span>
+            <v-text-field class="jh-v-input " dense filled single-line v-model="editItem['assistName']"
+              :rules="validationRules.requireRules"
+            ></v-text-field>
+          </v-col>
+        </v-row>
+        <!-- 抽屉操作按钮 -->
+        <v-row class="justify-end mx-0 mt-8 px-6">
+          <v-btn color="success" @click="doUiAction('updateItem')"><v-icon size="14">mdi-content-save-check-outline</v-icon>保存</v-btn>
+          <v-btn class="ml-2" @click="isEditDrawerShow = false"><v-icon size="14">mdi-close</v-icon>取消</v-btn>
+        </v-row>
+      </v-form>
+      <!-- 抽屉关闭按钮 -->
+      <v-btn elevation="0" color="success" fab absolute top left small tile class="drawer-close-float-btn" @click="isEditDrawerShow = false">
+        <v-icon>mdi-close</v-icon>
+      </v-btn>
+    </v-navigation-drawer>
+
+  </v-container>
+</template>
+
+<script type="module">
+Vue.component("depart-list", {
+  template: '#depart-list',
+  props: ['xxxxId'],
+  vuetify: new Vuetify(),
+  data: () => ({
+    // 表格相关数据
+    isTableZebraLineMenuShown: false,
+    tableZebraLineMenuPosition: {x: null, y: null},
+    isTableZebraLineShown: true,
+    isFormValid: true,
+    validationRules: {
+      requireRules: [
+        v => !!v || '必填',
+      ],
+    },
+    constantObj: {
+    },
+
+    searchInput: null,
+    isTableLoading: true,
+    tableDataFromBackend: [],
+    headers: [
+      {text: "辅助ID", value: "assistId", width: 120}, 
+      {text: "辅助名称", value: "assistName", width: 120}, 
+      {text: "操作者", value: "operationByUser", width: 120},
+      {text: "操作时间", value: "operationAt", width: 250},
+      {text: '操作', value: 'action', align: 'center', sortable: false, width: 100, class: 'fixed', cellClass: 'fixed'},
+    ],
+    isEditDrawerShow: false,
+    editItem: {},
+    isAddDrawerShow: false,
+    addItem: {}
+  }),
+  computed: {
+    tableData() {
+      return this.tableDataFromBackend;
+    }
+  },
+  watch: {
+     xxxxId() {
+       this.doUiAction('refreshTableData');
+     },
+  },
+  async created() {
+    await this.doUiAction('refreshTableData');
+  },
+  mounted() {},
+  methods: {
+    async doUiAction(uiActionId, uiActionData) {
+      switch (uiActionId) {
+        case 'refreshTableData':
+          await this.refreshTableData();
+          break;
+        case 'openTableZebraLineMenu':
+          await this.openTableZebraLineMenu(uiActionData);
+          break;
+        case 'startCreateItem':
+          await this.clearItemData();
+          await this.openCreateItemDialog();
+          break;
+        case 'createItem':
+          await this.prepareValidate();
+          await this.confirmCreateItemDialog();
+          await this.doCreateItem();
+          await this.closeDrawerShow();
+          await this.refreshTableData();
+          break;
+        case 'createItem2':
+          await this.prepareValidate();
+          await this.confirmCreateItemDialog();
+          await this.doCreateItem();
+          await this.closeDrawerShow();
+          await this.refreshTableData();
+          await this.doUiAction('startCreateItem');
+          break;
+        case 'startUpdateItem':
+          await this.prepareItemData(uiActionData);
+          await this.openUpdateDialog();
+          break;
+        case 'updateItem':
+          await this.prepareValidate();
+          await this.confirmUpdateItemDialog();
+          await this.doUpdateItem();
+          await this.closeDrawerShow();
+          await this.refreshTableData();
+          break;
+        case 'deleteItem':
+          await this.confirmDeleteItemDialog();
+          await this.doDeleteItem(uiActionData);
+          await this.refreshTableData();
+          break;
+        default:
+          console.error("[doUiAction] uiActionId not find", { uiActionId });
+          break;
+      }
+    },
+    // =================================uiAction 公共方法 start ======================================
+    /**
+     * uiActionId:  prepareValidate
+     * description: ✅表单校验
+    */
+    async prepareValidate() {
+      if (this.$refs.form.validate() === false) {
+        window.vtoast.fail({ message: "输入有误, 请检查!" });
+        throw new Error("[prepareValidate] false");
+      }
+    },
+
+    /**
+     * uiActionId:  refreshTableData
+     * description: ✅获取表格数据
+    */
+    async refreshTableData() {
+      this.isTableLoading = true;
+      const result = await window.jianghuAxios({
+        data: {
+          appData: {
+            pageId: 'assistManagement',
+            actionId: 'depart-selectItemList',
+            actionData: {},
+            where: {
+               xxxxId: this.xxxxId
+            },
+            orderBy: [{column: 'assistId', order: 'asc'}]
+          }
+        }
+      });
+      const { rows } = result.data.appData.resultData;
+
+      this.tableDataFromBackend = rows;
+      this.isTableLoading = false;
+    },
+    // ---------- 斑马纹开关 uiAction >>>>>>>>>> --------
+    async openTableZebraLineMenu(funObj) {
+      this.tableZebraLineMenuPosition.x = funObj.x - funObj.offsetX + 10;
+      this.tableZebraLineMenuPosition.y = window.innerHeight - 50;
+      this.isTableZebraLineMenuShown = !this.isTableZebraLineMenuShown;
+    },
+    // ---------- <<<<<<<<<< 斑马纹开关 uiAction --------
+    // =================================uiAction 公共方法 end ======================================
+
+
+    /**
+     * uiActionId:  startCreateItem
+     * description: ✅获取表格数据
+    */
+    async clearItemData() {
+      this.addItem = {};
+    },
+    async openCreateItemDialog() {
+      this.isAddDrawerShow = true;
+    },
+
+    /**
+     * uiActionId:  createItem
+     * description: ✅获取表格数据
+    */
+    async confirmCreateItemDialog() {
+      if (await window.confirmDialog({title: "新增", content: "确定新增吗？"}) === false) {
+        throw new Error("取消");
+      }
+    },
+    async doCreateItem() {
+      const { id, ...data } = this.addItem;
+      await window.vtoast.loading("新增数据");
+      await window.jianghuAxios({
+        data: {
+          appData: {
+            pageId: 'assistManagement',
+            actionId: 'depart-insertItem',
+            actionData: data
+          }
+        }
+      })
+      await window.vtoast.success("新增数据成功");
+    },
+    async closeDrawerShow() {
+      this.isEditDrawerShow = false;
+      this.isAddDrawerShow = false;
+    },
+
+    /**
+     * uiActionId:  startUpdateItem
+     * description: ✅获取表格数据
+    */
+    async prepareItemData({item}) {
+      this.editItem = {...item};
+    },
+    async openUpdateDialog() {
+      this.isEditDrawerShow = true;
+    },
+    /**
+     * uiActionId:  updateItem
+     * description: ✅获取表格数据
+    */
+    async confirmUpdateItemDialog() {
+      if (await window.confirmDialog({title: "修改", content: "确定修改吗？"}) === false) {
+        throw new Error("取消");
+      }
+    },
+    async doUpdateItem() {
+      const { id, ...data } = this.editItem;
+      await window.vtoast.loading("修改数据");
+      await window.jianghuAxios({
+        data: {
+          appData: {
+            pageId: 'assistManagement',
+            actionId: 'depart-updateItem',
+            actionData: data,
+            where: {id}
+          }
+        }
+      })
+      await window.vtoast.success("修改数据成功");
+    },
+
+    /**
+     * uiActionId:  deleteItem
+     * description: ✅获取表格数据
+    */
+    async confirmDeleteItemDialog() {
+      if (await window.confirmDialog({title: "删除", content: "确定删除吗？"}) === false) {
+        throw new Error("取消");
+      }
+    },
+    async doDeleteItem({item}) {
+      const { id } = item;
+      await window.vtoast.loading("删除数据");
+      await window.jianghuAxios({
+        data: {
+          appData: {
+            pageId: 'assistManagement',
+            actionId: 'depart-deleteItem',
+            actionData: {},
+            where: { id: id }
+          }
+        }
+      });
+      await window.vtoast.success("删除数据成功");
+    },
+  }
+})
+</script>

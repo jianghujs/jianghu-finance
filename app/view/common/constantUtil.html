@@ -1,0 +1,15 @@
+<!-- constantUtil.html start -->
+<script>
+  var constantObj = [];
+  try {
+    constantObj = JSON.parse(String.raw`<$ constantObj | dump | safe $>`);
+  } catch (e) {
+    console.error('constantObj parse error! ', e);
+  }
+  function parseConstantText(value, constantKey) {
+    let constantItem = (constantObj[constantKey] || []).find(constant => constant.value == value);
+    return (constantItem || {}).text || value;
+  }
+  Vue.filter('parseConstantText', parseConstantText)
+</script>
+<!-- constantUtil.html end -->

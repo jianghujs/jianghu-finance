@@ -1,0 +1,306 @@
+<template id="report-cashFlow-formula2">
+  <div>
+    <v-row class="pa-4" no-gutters>
+      <v-col>
+        <span class="text-h7 font-weight-bold">现金流量--报表底稿</span>
+      </v-col>
+      <v-spacer></v-spacer>
+      <v-col>
+        <v-row class="align-center jh-backend-form-container justify-end mx-0 pt-xs-0">
+          <v-col cols="12" xs="10" md="5"class="px-0 pr-md-2">
+            <select-period v-model="serverSearchInput.period" @change="doUiAction('refreshTableData')"/>
+          </v-col>
+          <v-btn class="w-sm-full"  color="success" small @click="doUiAction('refreshTableData')">
+            <v-icon size="14">mdi-magnify</v-icon>查询
+          </v-btn>
+      </v-col>
+      </v-row>
+    </v-row>
+    <v-divider class="jh-divider"></v-divider>
+
+  
+    <v-container class="fullScreen d-flex flex-column pa-xs-0 px-4">
+      <v-card class="rounded-lg">
+        <v-row class="ma-0 mb-4">
+          <v-btn class="elevation-0 mr-2" 
+            :disabled="serverSearchInput.period.isCheckout === '已结账'"
+            color="success"
+            @click="doUiAction('saveComputeAdjustList')" small>
+            <v-icon size="16">mdi-content-save-check-outline</v-icon>保存
+            <v-icon v-if="serverSearchInput.period.isCheckout === '已结账'" class="mr-1" right color="warning" @click="window.vtoast.show({ message: '已结帐的期间, 不允许保存!', icon: 'mdi-help-circle' })">mdi-help-circle</v-icon>
+          </v-btn>
+          <v-btn class="elevation-0 mr-2" 
+            v-if="serverSearchInput.period.isCheckout === '待结账'"
+            color="success"
+            @click="doUiAction('resetComputeAdjustList')" small>
+            <v-icon size="16">mdi-rotate-left</v-icon>重置
+          </v-btn>
+          <v-spacer></v-spacer>
+          <!-- 搜索过滤 -->
+          <v-col cols="12" xs="6" sm="4" md="3" xl="2" class="pa-0">
+            <v-text-field v-model="searchInput" prefix="搜索：" class="jh-v-input" dense filled single-line>
+            </v-text-field>
+          </v-col>
+        </v-row>
+        <v-data-table 
+          fixed-header 
+          item-key="itemId"
+          :headers="headers" 
+          :items="tableData" 
+          :search="searchInput"
+          :footer-props="{ itemsPerPageOptions: [20, 50, -1], itemsPerPageText: '每页行数', itemsPerPageAllText: '所有'}"
+          :items-per-page="-1"
+          mobile-breakpoint="0"
+          sort-by="profitFormulaCount"
+          :sort-desc="true"
+          :loading="isTableLoading" checkbox-color="success"
+          :class="{'zebraLine': isTableZebraLineShown }"
+          class="jh-fixed-table-height elevation-0 mt-0 mb-xs-4">
+          
+          <template v-slot:item.item-name="{ item }">
+            <span v-if="item.isFormula">
+              &nbsp;&nbsp;&nbsp;&nbsp;
+              {{ item.countDirection }}
+              {{ item.formulaName }}
+              <a href="javascript:void(0)" style="text-decoration: none;">{{ item.itemAmountPeriodDesc }}</a>
+            </span>
+            <span v-if="!item.isFormula">{{ item.itemName }}</span>
+          </template>
+
+          <template v-slot:item.item-amount-pre-period-adjust="{ item }">
+            <span v-if="!item.isFormula || serverSearchInput.period.isCheckout === '已结账'" class="mr-7">{{ item.itemAmountPrePeriodAdjust | formatMoney }}</span>
+            <v-text-field 
+              v-if="item.isFormula && serverSearchInput.period.isCheckout === '待结账'"
+              style="text-align: right;"
+              class="jh-v-input mr-0 custom-input" dense filled single-line 
+              v-model.number="item.itemAmountPrePeriodAdjust" @blur="doUiAction('updateOccurAmount', { item })" type="number">
+            </v-text-field>
+          </template>
+
+          <template v-slot:item.item-amount-period-adjust="{ item }">
+            <span v-if="!item.isFormula || serverSearchInput.period.isCheckout === '已结账'" class="mr-7">{{ item.itemAmountPeriodAdjust | formatMoney }}</span>
+            <v-text-field 
+              v-if="item.isFormula && serverSearchInput.period.isCheckout === '待结账'"
+              style="text-align: right;"
+              class="jh-v-input mr-0 custom-input" dense filled single-line 
+              v-model.number="item.itemAmountPeriodAdjust" @blur="doUiAction('updateOccurAmount', { item })" type="number">
+            </v-text-field>
+          </template>
+
+          <template v-slot:item.item-amount-period-remark="{ item }">
+            <span v-if="!item.isFormula || serverSearchInput.period.isCheckout === '已结账'">{{ item.itemAmountPeriodRemark }}</span>
+            <v-text-field 
+              v-if="item.isFormula && serverSearchInput.period.isCheckout === '待结账'"
+              style="text-align: right;"
+              class="jh-v-input mr-0" dense filled single-line 
+              v-model="item.itemAmountPeriodRemark">
+            </v-text-field>
+          </template>
+          
+          <template v-slot:item.action="{ item }">
+            <span role="button" class="success--text"
+              v-if="item.isFormula && serverSearchInput.period.isCheckout === '待结账'"
+              @click="() => { item.itemAmountPeriodAdjust = item.itemAmountPeriod; }">
+              <v-icon color="success" size="16">mdi-rotate-left</v-icon>重置
+            </span>
+          </template>  
+          <!-- 表格底部右侧功能按钮 -->
+          <template v-slot:footer.prepend>
+            <v-menu top offset-y :close-on-content-click="false" v-model="isTableZebraLineMenuShown" :position-x="tableZebraLineMenuPosition.x" :position-y="tableZebraLineMenuPosition.y">
+              <v-list>
+                <v-list-item>
+                  <v-switch v-model="isTableZebraLineShown" hide-details class="ma-0" label="显示斑马纹" dense flat></v-switch>
+                </v-list-item>
+              </v-list>
+            </v-menu>
+          </template>
+          <!-- 没有数据 -->
+          <template v-slot:loading>
+            <div class="jh-no-data">数据加载中</div>
+          </template>
+          <template v-slot:no-data>
+            <div class="jh-no-data">暂无数据</div>
+          </template>
+          <template v-slot:no-results>
+            <div class="jh-no-data">暂无数据</div>
+          </template>
+          <!-- 表格分页 -->
+          <template v-slot:footer.page-text="pagination">
+            <span>{{pagination.pageStart}}-{{pagination.pageStop}}</span>
+            <span class="ml-1">共{{pagination.itemsLength}}条</span>
+          </template>
+        </v-data-table>
+      </v-card>
+    </v-container>
+  </div>
+</template>
+
+<script type="module">
+  Vue.component("report-cashFlow-formula2", {
+    template: '#report-cashFlow-formula2',
+    props: {},
+    data: () => ({
+      isMobile: window.innerWidth < 500,
+
+      validationRules: {
+        requireRules: [
+          v => !!v || '必填',
+        ],
+      },
+      constantObj: {},
+      searchInput: null,
+      serverSearchInput: {
+        period: {
+          periodId: null,
+          currentPeriodId: null,
+        },
+      },
+      
+      // 表格相关数据
+      isTableZebraLineMenuShown: false,
+      tableZebraLineMenuPosition: {x: null, y: null},
+      isTableZebraLineShown: true,
+
+      isTableLoading: true,
+      tableDataFromBackend: [],
+
+    }),
+    computed: {
+      tableData() {
+        return this.tableDataFromBackend;
+      },
+      headers() {
+        const headerList = [
+          { text: "项目", value: "item-name", sortable: false, width: 180 },
+          { text: "行次", value: "row", sortable: false, width: 20 },
+          { text: "本期数", value: "item-amount-period-adjust", align: 'end', sortable: false, width: 80 },
+          { text: "备注", value: "item-amount-period-remark", align: 'end', sortable: false, width: 40 },
+          { text: "操作", value: "action", align: 'center', width: 20 },
+        ];
+        headerList.splice(2, 0, { text: "1-6月数", value: "item-amount-pre-period-adjust", align: 'end', sortable: false, width: 80 });
+        return headerList;
+      },
+    },
+    watch: { },
+    async created() {},
+    mounted() { },
+    methods: {
+      async doUiAction(uiActionId, uiActionData) {
+        switch (uiActionId) {
+          case 'refreshTableData':
+            await this.refreshTableData();
+            break;
+          case 'updateOccurAmount':
+            await this.updateOccurAmount(uiActionData);
+            break;
+          case 'saveComputeAdjustList':
+            await this.saveComputeAdjustList();
+            await this.refreshTableData();
+            break;   
+          case 'resetComputeAdjustList':
+            await this.resetComputeAdjustList();
+            break;   
+          default:
+            console.error("[doUiAction] uiActionId not find", { uiActionId });
+            break;
+        }
+      },
+      /**
+       * uiActionId:  refreshTableData
+       * description: ✅获取表格数据
+       */
+      async refreshTableData() {
+        this.isTableLoading = true;
+        const result = await window.jianghuAxios({
+          data: {
+            appData: {
+              pageId: 'report-cashFlow2',
+              actionId: 'getItemListOfCashFlowOfFormula',
+              actionData: {
+                periodId: this.serverSearchInput.period.periodId,
+              },
+            }
+          }
+        });
+        const { rows } = result.data.appData.resultData;
+        const rowsWithAdjust = [];
+        rows.forEach(row => {
+          rowsWithAdjust.push({ ...row });
+          if (!row.computeFormula || row.computeFormula.startsWith("L")) return;
+          const formulaList = row.formulaList || [];
+          const computeAdjustList = row.computeAdjustList;
+          formulaList.forEach(formula => {
+            const computeAdjust = computeAdjustList.find(computeAdjust => computeAdjust.formulaId == formula.formulaId) || {};
+            rowsWithAdjust.push({
+              countDirection: formula.countDirection,
+              itemAmountPeriod: currency(formula.itemAmountPeriod).value || null,
+              itemAmountPeriodAdjust: currency(computeAdjust.itemAmountPeriodAdjust || formula.itemAmountPeriod).value || null,
+              itemAmountPeriodDesc: formula.itemAmountPeriodDesc,
+              itemAmountPeriodRemark: computeAdjust.itemAmountPeriodRemark,
+              isFormula: true,
+              formulaId: formula.formulaId, formulaName: formula.formulaName,
+              parentRow: row.row,
+              parentId: row.itemId,
+            })
+          })
+        });
+        this.tableDataFromBackend = rowsWithAdjust;
+        this.isTableLoading = false;
+      },
+      async updateOccurAmount({ item }) {
+        // TODO: 求和
+      },
+      async saveComputeAdjustList() {
+        const tableDataFromBackend = _.cloneDeep(this.tableDataFromBackend);
+        const itemList = [];
+        tableDataFromBackend
+          .filter(row => !row.isFormula && row.row)
+          .forEach(row => {
+            const computeAdjustList = tableDataFromBackend
+              .filter(adjust => adjust.parentRow==row.row)
+              .filter(adjust => adjust.itemAmountPeriodAdjust)
+              .filter(adjust => adjust.itemAmountPeriodAdjust != adjust.itemAmountPeriod);
+            if (computeAdjustList.length > 0) {
+              itemList.push({ itemId: row.itemId, computeAdjustList })
+            }  
+          })
+        await window.jianghuAxios({
+          data: {
+            appData: {
+              pageId: 'report-cashFlow2',
+              actionId: 'saveComputeAdjustList',
+              actionData: {
+                periodId: this.serverSearchInput.period.periodId,
+                itemList,
+              },
+            }
+          }
+        });
+      },
+      async resetComputeAdjustList() {
+        this.tableDataFromBackend.forEach(row => {
+          if (row.isFormula) {
+            row.itemAmountPeriodAdjust = row.itemAmountPeriod;
+          }
+        })
+      },
+      // ---------- 斑马纹开关 uiAction >>>>>>>>>> --------
+      async openTableZebraLineMenu(funObj) {
+        this.tableZebraLineMenuPosition.x = funObj.x - funObj.offsetX + 10;
+        this.tableZebraLineMenuPosition.y = window.innerHeight - 50;
+        this.isTableZebraLineMenuShown = !this.isTableZebraLineMenuShown;
+      },
+      // ---------- <<<<<<<<<< 斑马纹开关 uiAction --------
+    },
+  })
+</script>
+<style>
+.add-btn {
+  width: 100%;
+  margin-top: 5px;
+  padding: 5px;
+}
+.custom-input input {
+  text-align: right;
+}
+</style>

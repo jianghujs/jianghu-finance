@@ -1,0 +1,99 @@
+<template id="voucher-template-edit-form">
+  <v-container class="pa-0">
+    <v-row class="ma-0 pa-0">
+      <v-col cols="6">
+        <span class="jh-input-label">凭证名称</span>
+        <v-text-field class="jh-v-input " dense filled single-line
+          v-model="editItem.voucherTemplateName" :rules="validationRules.requireRules"></v-text-field>
+      </v-col>
+      <v-col cols="6">
+        <span class="jh-input-label">模板类型</span>
+        <v-select v-model="editItem.voucherType" color="success" class="jh-v-input" :items="constantObj.voucherType" dense filled single-line disabled :rules="validationRules.requireRules"></v-select>
+      </v-col>
+      <v-col cols="6">
+        <span class="jh-input-label">凭证字号</span>
+        <v-text-field class="jh-v-input " dense filled single-line disabled value="记" :rules="validationRules.requireRules"></v-text-field>
+      </v-col>
+
+      <v-col cols="12">
+          <voucher-entry ref="createEntryRef" v-model="value.voucherEntryList" :subject-list="subjectList" :rules="validationRules.requireRules"/>
+      </v-col>
+    </v-row>
+  </v-container>
+</template>
+
+<script type="module">
+  Vue.component("voucher-template-edit-form", {
+    template: '#voucher-template-edit-form',
+    props: { 
+      value: {
+        type: Object,
+        default: () => {
+          return {
+            voucherName: null,
+            computeSubjectId: null,
+            voucherEntryList: [],
+          }
+        }
+      },
+      editItem: {
+        type: Object,
+        default: () => {},
+      },
+      subjectList: {
+        type: Array,
+        default: () => []
+      },
+      loading: {
+        type: Boolean,
+        default: false,
+      }
+    },
+    data: () => ({
+      isFormValid: true,
+      validationRules: {
+        requireRules: [
+          v => !!v || '必填',
+        ],
+      },
+      constantObj: {
+        voucherType: constantObj.voucherType,
+        subjectBalanceDirection: [
+          { text: "借", value: "借" },
+          { text: "贷", value: "贷" }
+        ],
+        dataResourceKey: [
+          { text: "应发工资", value: "expectedPaySalary" },
+          { text: "实发工资", value: "realPaySalary" },
+          { text: "个人养老保险", value: "personalEndowmentInsurance" },
+          { text: "个人医疗保险", value: "personalMedicalInsurance" },
+          { text: "个人失业保险", value: "personalUnemploymentInsurance" },
+          { text: "个人住房公积金", value: "personalHousingFund" }
+        ]
+      },
+      voucherTemplateConfigHeaders: [
+        { text: "科目", value: "subject-id" },
+        { text: "借/贷", value: "subject-balance-direction", width: 130 },
+        { text: "取值", value: "data-resource-key", width: 220 },
+        { text: '操作', value: 'action', align: 'center', sortable: false, width: 80, class: 'fixed', cellClass: 'fixed' },
+      ]
+    }),
+    methods: {
+      async doUiAction(uiActionId, uiActionData) {
+        switch (uiActionId) {
+        
+          default:
+            console.error("[doUiAction] uiActionId not find", { uiActionId });
+            break;
+        }
+      },
+    }
+  })
+</script>
+<style>
+.add-btn {
+  width: 100%;
+  margin-top: 5px;
+  padding: 5px;
+}
+</style>

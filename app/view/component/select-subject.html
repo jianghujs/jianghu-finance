@@ -1,0 +1,73 @@
+<template id="select-subject">
+  <v-autocomplete 
+    class="jh-v-input bg-white"
+    :value="value"
+    prefix="科目: "
+    dense filled single-line
+    :clearable="clearable"
+    item-text="subjectIdLabel" 
+    item-value="subjectId"
+    :clearable="false"
+    :items="items"  
+    @change="onChange">
+  </v-autocomplete>
+</template>
+
+<script>
+  Vue.component('select-subject', {
+    template: '#select-subject',
+    props: {
+      value: {
+        type: Object,
+        default: () => {
+          return {}
+        }
+      },
+      clearable: {
+        type: Boolean,
+        default: true,
+      },
+      isShownParent: {
+        type: Boolean,
+        default: true,
+      }
+    
+    },
+    vuetify: new Vuetify(),
+    data: () => ({
+      items: []
+    }),
+    computed: {
+    },
+    watch: {},
+    async created() {
+      await this.getItems()
+    },
+    methods: {
+      async getItems() {
+        let where = {};
+        if (!this.isShownParent) {
+          where = { subjectHasChildren: '无下级科目' }
+        }
+        const result = await window.jianghuAxios({
+          data: {
+            appData: {
+              pageId: 'allPage',
+              actionId: 'selectSubjectList',
+              actionData: {},
+              where,
+              orderBy: [{column: 'subjectCategory', order: 'desc'}]
+            }
+          }
+        });
+        const { rows } = result.data.appData.resultData;
+        this.items = rows.filter(row => row.isShown == '显示');
+      },
+      onChange(val) {
+        // const subject = this.items.find(item => item.subjectId === val);
+        this.$emit('input', val)
+        this.$emit('change')
+      }
+    }
+  })
+</script>

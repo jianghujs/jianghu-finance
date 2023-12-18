@@ -1,0 +1,102 @@
+<!-- excelUtil.html start -->
+<script src="/<$ ctx.app.config.appId $>/public/js/xlsx.full.min.js"></script>
+<script>
+  var excelUtil = {
+
+    // 设置自动列宽
+    setAutoWidth(ws, data) {
+      /*set worksheet max width per col*/
+      const colWidth = data.map(row => row.map(val => {
+        /*if null/undefined*/
+        if (val == null) {
+          return { 'wch': 10 };
+        }
+        /*if chinese*/
+        else if (val.toString().charCodeAt(0) > 255) {
+          return { 'wch': val.toString().length * 2 };
+        } else {
+          return { 'wch': val.toString().length };
+        }
+      }))
+      /*start in the first row*/
+      let result = colWidth[0];
+      for (let i = 1; i < colWidth.length; i++) {
+        for (let j = 0; j < colWidth[i].length; j++) {
+          if (result[j]['wch'] < colWidth[i][j]['wch']) {
+            result[j]['wch'] = colWidth[i][j]['wch'];
+          }
+        }
+      }
+      ws['!cols'] = result;
+    },
+
+    importData() {
+      return new Promise(resolve => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.xlsx, .xls';
+        input.onchange = e => {
+          const files = e.target.files;
+          if (files.length === 0) {
+            return;
+          }
+          const f = files[0];
+          const reader = new FileReader();
+          reader.onload = e => {
+            const data = e.target.result;
+            const workbook = XLSX.read(data, { type: 'binary' });
+            const firstSheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[firstSheetName];
+            const json = XLSX.utils.sheet_to_json(worksheet);
+            console.log(json);
+            resolve(json);
+          };
+          reader.readAsBinaryString(f);
+        };
+        input.click();
+      })
+    },
+
+    // 导出excel
+    exportData(params) {
+      // deleteRows Array<number>
+      const { key, data, header, autoWidth = true, deleteRows } = params;
+      let { filename } = params;
+      if (!filename) {
+        filename = dayjs().format('YYYYMMDDHHmmss') + '_' + (document.title || '导出文件').replace(/\[(.*)\]/g, '$1 - ');
+      }
+      const wb = XLSX.utils.book_new();
+      const arr = data.map(v => key.map(j => { return v[j] }));
+      arr.unshift(header);
+      const ws = XLSX.utils.aoa_to_sheet(arr);
+      if (autoWidth) {
+        this.setAutoWidth(ws, arr);
+      }
+      XLSX.utils.book_append_sheet(wb, ws, filename);
+      // 从大到小排序 deleteRows
+      if (deleteRows && deleteRows.length > 0) {
+        deleteRows.sort((a, b) => b - a);
+        deleteRows.forEach(index => {
+          this.deleteRow(ws, index);
+        });
+      }
+      XLSX.writeFile(wb, filename + '.xlsx');
+    },
+    deleteRow(ws, index) {
+      const range = XLSX.utils.decode_range(ws['!ref']);
+
+      for (let row = index; row < range.e.r; row++) {
+        for (let col = range.s.c; col <= range.e.c; col++) {
+          ws[this.encodeCell(row, col)] = ws[this.encodeCell(row + 1, col)];
+        }
+      }
+      range.e.r--;
+      ws['!ref'] = XLSX.utils.encode_range(range.s, range.e);
+    },
+    encodeCell(r, c) {
+      return XLSX.utils.encode_cell({ r, c });
+    }
+  }
+
+</script>
+<!-- excelUtil.html end -->

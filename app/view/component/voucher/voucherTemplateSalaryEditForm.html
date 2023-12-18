@@ -1,0 +1,150 @@
+<template id="voucher-template-salary-edit-form">
+  <v-container class="pa-0">
+    <v-row class="ma-0 pa-0">
+      <v-col cols="6">
+        <span class="jh-input-label">凭证名称</span>
+        <v-text-field class="jh-v-input " dense filled single-line
+          v-model="editItem.voucherTemplateName" :rules="validationRules.requireRules"></v-text-field>
+      </v-col>
+      <v-col cols="6">
+        <span class="jh-input-label">凭证字号</span>
+        <v-text-field class="jh-v-input " dense filled single-line disabled value="记" :rules="validationRules.requireRules"></v-text-field>
+      </v-col>
+
+      <v-col cols="12">
+        <v-card elevation="0" outlined>
+          <v-data-table 
+            :loading="loading" 
+            :headers="voucherTemplateConfigHeaders" 
+            :items="editItem.voucherTemplateConfig.voucherEntryList" 
+            hide-default-footer
+            class="elevation-0 mt-0 mb-xs-4 flex-fill d-flex flex-column">
+            <!-- 处理显示列 -->
+            <template v-slot:item.subject-id="{ item }">
+              <template v-if="(item.subjectBalanceDirection === '借' && editItem.voucherTemplateConfig.incomeExpendType === '收入') || (item.subjectBalanceDirection === '贷' && editItem.voucherTemplateConfig.incomeExpendType === '支出')">
+                <v-autocomplete class="jh-v-input" :items="voucherSubjectList" item-text="subjectIdLabel" item-value="subjectId" dense filled single-line v-model="item.subjectId"> </v-autocomplete>
+              </template>
+              <template v-else>
+                <v-autocomplete class="jh-v-input" :items="subjectList" item-text="subjectIdLabel" item-value="subjectId" dense filled single-line v-model="item.subjectId"> </v-autocomplete>
+              </template>
+            </template>
+            <template v-slot:item.subject-balance-direction="{ item }">
+              <v-autocomplete class="jh-v-input" :items="constantObj.subjectBalanceDirection" dense filled single-line v-model="item.subjectBalanceDirection"> </v-autocomplete>
+            </template>
+            <template v-slot:item.data-resource-key="{ item }">
+              <v-autocomplete class="jh-v-input" :items="constantObj.dataResourceKey" dense filled single-line v-model="item.dataResourceKey"> </v-autocomplete>
+            </template>
+            <template v-slot:item.action="{ item, index }">
+              <span role="button" class="error--text jh-font-size-3 pr-2" @click="doUiAction('deleteItem', {item, index})">
+                <v-icon size="14" class="error--text">mdi-delete</v-icon>删除
+              </span>
+            </template>
+
+            <!-- 没有数据 -->
+            <template v-slot:loading>
+              <div class="jh-no-data">数据加载中</div>
+            </template>
+            <template v-slot:no-data>
+              <div class="jh-no-data">暂无数据</div>
+            </template>
+            <template v-slot:no-results>
+              <div class="jh-no-data">暂无数据</div>
+            </template>
+            <!-- 表格分页 -->
+            <template v-slot:footer.page-text="pagination">
+              <span>{{pagination.pageStart}}-{{pagination.pageStop}}</span>
+              <span class="ml-1">共{{pagination.itemsLength}}条</span>
+            </template>
+          </v-data-table>
+        </v-card>
+        <v-btn class="add-btn" @click="doUiAction('addItem')">添加一条数据</v-btn>
+      </v-col>
+    </v-row>
+  </v-container>
+</template>
+
+<script type="module">
+  Vue.component("voucher-template-salary-edit-form", {
+    template: '#voucher-template-salary-edit-form',
+    props: { 
+      value: {
+        type: Object,
+        default: () => {
+          return {
+            voucherName: null,
+            computeSubjectId: null,
+            voucherEntryList: [],
+          }
+        }
+      },
+      editItem: {
+        type: Object,
+        default: () => {},
+      },
+      subjectList: {
+        type: Array,
+        default: () => []
+      },
+      loading: {
+        type: Boolean,
+        default: false,
+      }
+    },
+    data: () => ({
+      isFormValid: true,
+      validationRules: {
+        requireRules: [
+          v => !!v || '必填',
+        ],
+      },
+      constantObj: {
+        subjectBalanceDirection: [
+          { text: "借", value: "借" },
+          { text: "贷", value: "贷" }
+        ],
+        dataResourceKey: [
+          { text: "应发工资", value: "expectedPaySalary" },
+          { text: "实发工资", value: "realPaySalary" },
+          { text: "个人养老保险", value: "personalEndowmentInsurance" },
+          { text: "个人医疗保险", value: "personalMedicalInsurance" },
+          { text: "个人失业保险", value: "personalUnemploymentInsurance" },
+          { text: "个人住房公积金", value: "personalHousingFund" }
+        ]
+      },
+      voucherTemplateConfigHeaders: [
+        { text: "科目", value: "subject-id" },
+        { text: "借/贷", value: "subject-balance-direction", width: 130 },
+        { text: "取值", value: "data-resource-key", width: 220 },
+        { text: '操作', value: 'action', align: 'center', sortable: false, width: 80, class: 'fixed', cellClass: 'fixed' },
+      ]
+    }),
+    methods: {
+      async doUiAction(uiActionId, uiActionData) {
+        switch (uiActionId) {
+          case 'addItem':
+            await this.doAddItem();
+            break;
+          case 'deleteItem':
+            await this.doDeleteItem(uiActionData);
+            break;
+          default:
+            console.error("[doUiAction] uiActionId not find", { uiActionId });
+            break;
+        }
+      },
+      async doAddItem() {
+        this.value.voucherEntryList.push({subjectBalanceDirection: '借'});
+      },
+      async doDeleteItem({index}) {
+        this.value.voucherEntryList.splice(index, 1);
+      },
+    }
+  })
+</script>
+<style>
+.add-btn {
+  width: 100%;
+  margin-top: 5px;
+  padding: 5px;
+}
+</style>

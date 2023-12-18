@@ -1,0 +1,771 @@
+``{% extends 'template/jhTemplateV4.html'%}
+
+{% block vueTemplate %}
+
+<script type="text/html" id="app-template">
+  <div>
+    <v-app mobile-breakpoint="sm">
+      <jh-menu />
+      <v-main class="mt-15">
+        <!-- 头部内容 >>>>>>>>>>>>> -->
+        <div class="jh-page-second-bar px-8">
+          <v-row class="align-center">
+            <v-col cols="12" xs="12" sm="12" md="4" xl="3" class="pb-0 pb-md-2">
+              <div class="py-4 text-body-1 font-weight-bold d-flex align-center">科目管理
+                <!-- 帮助页按钮 -->
+                <span role="button" class="success--text font-weight-regular jh-font-size-13 mx-2" @click="jumpToUrl">
+                  <v-icon size="13" class="success--text">mdi-help-circle-outline</v-icon>帮助
+                </span>
+                <select-appaId/>
+              </div>
+            </v-col>
+            <!-- <<<<<<<< pc端的搜索条件表单 -->
+
+              <v-col cols="12" xs="12" sm="12" md="8" xl="9"class="text-md-right mb-3 mb-md-0 pt-0 pt-md-3">
+                <v-btn-toggle v-model="selectedScene" mandatory dense class="mr-2" color="success"> 
+                  <v-btn small v-for="scene, index in sceneList"  @click="doUiAction('useScene', {scene, index})" :key="index"> {{scene.name}} </v-btn> 
+                </v-btn-toggle>
+              </v-col>
+          </v-row>
+        </div>
+        <!-- <<<<<<<<<<<<< 头部内容 -->
+
+        <div class="jh-page-body-container px-8">
+          <!-- 页面主要内容 -->
+          <v-container class="fullScreen d-flex flex-column pa-xs-0 pa-0">
+           
+            <v-card class="rounded-lg">
+              <v-row class="ma-0 pa-4 align-center">
+
+                <v-col cols="auto" class="d-flex">
+                  <v-btn color="success" dark class="elevation-0 mr-2" @click="doUiAction('startCreateItem', {})" small>
+                    <v-icon size="14">mdi-plus</v-icon>
+                    新增科目</v-btn>
+                  <v-btn class="elevation-0 mr-2 " color="primary" small outlined @click="doUiAction('exportExcel')"><v-icon size="14">mdi-export-variant</v-icon>导出excel</v-btn>
+
+                  <v-btn-toggle v-model="selectedSubjectTagList" dense multiple class="mr-2" color="success">
+                    <v-btn small v-for="subjectTag in constantObj.subjectTagList" :value="subjectTag.tag" :key="subjectTag.tag" 
+                      style="min-width: 30px;">
+                      {{ subjectTag.tag }}
+                    </v-btn>
+                  </v-btn-toggle>
+                </v-col>
+
+                <v-spacer></v-spacer>
+      
+                <v-col cols="auto" class="mt-2 mt-md-0">
+                  <v-text-field color="success" v-model="searchInput" prefix="搜索：" class="jh-v-input" dense filled single-line></v-text-field>
+                </v-col>
+              </v-row>
+              <v-data-table 
+                fixed-header
+                :headers="headers"
+                :items="tableData"
+                :search="searchInput"
+                :footer-props="{ itemsPerPageOptions: [20, 50, -1], itemsPerPageText: '每页行数', itemsPerPageAllText: '所有'}"
+                :items-per-page="-1"
+                mobile-breakpoint="0"
+                :loading="isTableLoading"
+                checkbox-color="success"
+                :class="{'zebraLine': isTableZebraLineShown }"
+                class="jh-fixed-table-height elevation-0 mt-0 mb-xs-4">
+                <!-- 处理显示列 -->
+                <template v-slot:item.subjectName="{ item }">
+                  <span :title="item.subjectLabel" :style="{'margin-left': (item.subjectLevel - 1) * 20 + 'px'}">{{item.subjectName}}<v-chip v-if="item.subjectTag.includes('新')" color="primary" x-small>新</v-chip></span>
+                </template>
+                <template v-slot:item.subjectTag="{ item }">                 
+                  <v-chip x-small v-if="item.subjectTag.includes('借')" color="blue"  text-color="white">借</v-chip>
+                  <v-chip x-small v-if="item.subjectTag.includes('贷')" color="red"  text-color="white">贷</v-chip>
+                  <v-chip x-small v-if="item.subjectTag.includes('父')" color="indigo"  text-color="white">父</v-chip>
+                  <v-chip x-small v-if="item.subjectTag.includes('子')" color="teal"  text-color="white">子</v-chip>
+                  <v-chip x-small v-if="item.subjectTag.includes('新')" >新</v-chip>
+                  <v-chip x-small v-if="item.subjectTag.includes('币')" color="green" text-color="white">币</v-chip>
+                  <v-chip x-small v-if="item.subjectTag.includes('辅')" color="orange" text-color="white">辅</v-chip>
+                </template>
+                <template v-slot:item.subjectLevel="{ item }">
+                  {{ constantObj.subjectLevelObj[item.subjectLevel] || item.subjectLevel }}
+                </template>      
+                <template v-slot:item.assistList="{ item }">
+                  {{ item.subjectHasChildren == '无下级科目'? item.assistList: '' }}
+                </template>     
+                <template v-slot:item.currencyList="{ item }">
+                  {{ item.subjectHasChildren == '无下级科目'? item.currencyList: '' }}
+                </template>   
+                <template v-slot:item.subjectBalanceDirection="{ item }">
+                  <v-chip x-small dark :color="item.subjectBalanceDirection | directionBgColor">{{item.subjectBalanceDirection}}</v-chip>
+                </template>  
+                <!-- 表格操作按钮 -->
+                <template v-slot:item.action="{ item }">
+                  <div class="d-flex align-center justify-center">
+                    <span role="button" class="d-none d-md-block success--text jh-font-size-3 pr-2"
+                          @click="doUiAction('startUpdateItem', {item})">
+                      <v-icon size="14" class="success--text">mdi-note-edit-outline</v-icon>修改
+                    </span>
+                    <v-menu offset-y>
+                      <template v-slot:activator="{ on, attrs }">
+                        <span v-bind="attrs" v-on="on" role="button" class="success--text jh-font-size-3">
+                          <v-icon size="14" class="success--text">mdi-chevron-down</v-icon>更多
+                        </span>
+                      </template>
+                      <v-list dense class="pb-0">
+                        <v-list-item @click="doUiAction('startUpdateItem', { item })">
+                          <v-list-item-title class="warning--text">
+                            <v-icon small class="success--text">mdi-note-edit-outline</v-icon>
+                            <span class="success--text">修改</span>
+                          </v-list-item-title>
+                        </v-list-item>
+                        <v-list-item @click="doUiAction('startCreateChildrenSubject', { parentSubject: item })">
+                          <v-list-item-title class="warning--text">
+                            <v-icon small class="warning--text">mdi-plus-outline</v-icon>
+                            <span class="warning--text">新建下级</span>
+                          </v-list-item-title>
+                        </v-list-item>
+                        <v-list-item @click="doUiAction('deleteItem', {item: item})">
+                          <v-list-item-title class="error--text">
+                            <v-icon small class="error--text">mdi-trash-can-outline</v-icon>
+                            <span class="error--text">删除</span>
+                          </v-list-item-title>
+                        </v-list-item>
+                      </v-list>
+                    </v-menu>
+                  </div>
+                </template>
+                <template v-slot:item.isShow="{item}">
+                  <v-switch
+                    class="table-switch"
+                    v-model="item.isShown"
+                    small
+                    :label="`${isMobile ? '' : item.isShown}`"
+                    true-value="显示"
+                    false-value="隐藏"
+                    @change="doUiAction('updateItemIsShown', {item})"
+                  ></v-switch>
+                </template>
+
+                <!-- 表格底部右侧功能按钮 -->
+                <template v-slot:footer.prepend>
+                
+                  <v-menu top offset-y :close-on-content-click="false" v-model="isTableZebraLineMenuShown" :position-x="tableZebraLineMenuPosition.x" :position-y="tableZebraLineMenuPosition.y">
+                    <v-list>
+                      <v-list-item>
+                        <v-switch v-model="isTableZebraLineShown" hide-details class="ma-0" label="显示斑马纹" dense flat></v-switch>
+                      </v-list-item>
+                    </v-list>
+                  </v-menu>
+                </template>
+                <!-- 没有数据 -->
+                <template v-slot:loading>
+                  <div class="jh-no-data">数据加载中</div>
+                </template>
+                <template v-slot:no-data>
+                  <div class="jh-no-data">暂无数据</div>
+                </template>
+                <template v-slot:no-results>
+                  <div class="jh-no-data">暂无数据</div>
+                </template>
+                <!-- 表格分页 -->
+                <template v-slot:footer.page-text="pagination">
+                  <span>{{pagination.pageStart}}-{{pagination.pageStop}}</span>
+                  <span class="ml-1">共{{pagination.itemsLength}}条</span>
+                </template>
+              </v-data-table>
+            </v-card>
+          </v-container>
+
+          <!-- 新增 -->
+          <v-navigation-drawer v-if="isAddDrawerShow" v-model="isAddDrawerShow" :permanent="isAddDrawerShow" fixed temporary right width="80%" class="elevation-24">
+            <v-row no-gutters>
+              <span class="text-h7 font-weight-bold pa-4">新增科目</span>
+            </v-row>
+            <v-divider class="jh-divider"></v-divider>
+
+            <v-form v-model="isFormValid" v-if="isAddDrawerShow" ref="form" lazy-validation>
+             
+              <!-- 抽屉表单 -->
+              <v-row class="mt-0 px-4">
+                <v-col v-if="addItem.subjectIdTotal"
+                  cols="12" sm="12" md="4">
+                  <span class="jh-input-label">上级科目</span>
+                  <v-text-field class="jh-v-input " dense filled single-line disabled :value="addItem.subjectIdTotal + '  ' + addItem.subjectNameTotal"></v-text-field>
+                </v-col>
+                
+                <v-col cols="12" class="pa-0"></v-col>
+                
+                <v-col cols="12" sm="12" md="4">
+                  <span class="jh-input-label">科目编码</span>
+                  <v-text-field class="jh-v-input " dense filled single-line 
+                    v-model="addItem['subjectId']"
+                    :rules="[
+                      v => !!v || '必填',
+                      v => tableDataFromBackend.findIndex(item => item.subjectId == v) === -1 || '科目编码已存在',
+                      v => `${addItem.subjectId}`.length === addItem.subjectLevel*2+2 || '科目编码长度不符合要求',
+                      v => !addItem.subjectIdTotal || `${addItem.subjectId}`.startsWith(`${addItem.subjectIdTotal}`) || '科目编码必须包含上级科目编码',
+                    ]"
+                  ></v-text-field>
+                </v-col>
+                <v-col cols="12" sm="12" md="4">
+                  <span class="jh-input-label">科目名称</span>
+                  <v-text-field class="jh-v-input " dense filled single-line v-model="addItem['subjectName']"
+                    :rules="[
+                      v => !!v || '必填'
+                    ]"
+                  ></v-text-field>
+                </v-col>
+
+                <v-col cols="12" class="pa-0"></v-col>
+
+                <v-col cols="12" sm="12" md="4">
+                  <span class="jh-input-label">科目分类</span>
+                  <v-select :items="constantObj.subjectCategory" dense filled single-line v-model="addItem['subjectCategory']"
+                    :disabled="addItem.subjectIdTotal || serverSearchInput.subjectCategory"
+                    :rules=validationRules.requireRules></v-select>
+                </v-col>
+                
+                <v-col cols="12" sm="12" md="4">
+                  <span class="jh-input-label">科目余额方向</span>
+                  <v-select :items="constantObj.subjectDirection" dense filled single-line v-model="addItem['subjectBalanceDirection']"
+                    :rules=validationRules.requireRules></v-select>
+                </v-col>
+
+                <v-col cols="12" class="pa-0"></v-col>
+
+                <v-col cols="12" sm="12" md="4">
+                  <span class="jh-input-label">辅助核算</span>
+                  <v-select :items="constantObj.assist" dense filled single-line multiple item-value="text" v-model="addItem['assistList']"></v-select>
+                </v-col>
+
+                <v-col cols="12" class="pa-0"></v-col>
+
+                <v-col cols="12" sm="12" md="4">
+                  <span class="jh-input-label">外币核算</span>
+                  <v-select :items="currencyList" item-text="currencyName" item-value="currencyId" dense filled single-line multiple v-model="addItem['currencyList']"></v-select>                 
+                </v-col>
+              </v-row>
+              <!-- 抽屉操作按钮 -->
+              <v-row class="justify-end mx-0 mt-8 px-6">
+                <v-btn class="ml-2" @click="isAddDrawerShow = false" small><v-icon size="14">mdi-close</v-icon>取消</v-btn>
+                <v-btn class="ml-2" color="success" @click="doUiAction('createItem')" small><v-icon size="14">mdi-content-save-check-outline</v-icon>提交</v-btn>
+              </v-row>
+            </v-form>
+            <!-- 抽屉关闭按钮 -->
+            <v-btn elevation="0" color="success" fab absolute top left small tile class="drawer-close-float-btn" @click="isAddDrawerShow = false">
+              <v-icon>mdi-close</v-icon>
+            </v-btn>
+          </v-navigation-drawer>
+
+          <!-- 编辑抽屉 -->
+          <v-navigation-drawer v-if="isEditDrawerShow" v-model="isEditDrawerShow" :permanent="isEditDrawerShow" fixed temporary right width="80%" class="elevation-24">
+            <v-row no-gutters>
+              <span class="text-h7 font-weight-bold pa-4">修改科目</span>
+            </v-row>
+            <v-divider class="jh-divider"></v-divider>
+
+            <v-form v-model="isFormValid" v-if="isEditDrawerShow" ref="form" lazy-validation>
+             
+              <!-- 抽屉表单 -->
+              <v-row class="mt-0 px-4">  
+
+                <v-col cols="12" sm="12" md="4">
+                  <span class="jh-input-label">科目编码</span>
+                  <v-text-field class="jh-v-input " dense filled single-line disabled v-model="editItem['subjectId']"></v-text-field>
+                </v-col>
+                
+                <v-col cols="12" sm="12" md="4">
+                  <span class="jh-input-label">科目名称</span>
+                  <v-text-field class="jh-v-input " dense filled single-line v-model="editItem['subjectName']"
+                    :rules="[
+                      v => !!v || '必填'
+                    ]"
+                  ></v-text-field>
+                </v-col>
+                
+                <v-col cols="12" class="pa-0"></v-col>
+
+                <v-col cols="12" sm="12" md="4">
+                  <span class="jh-input-label">科目分类</span>
+                  <v-text-field class="jh-v-input " dense filled single-line disabled v-model="editItem['subjectCategory']"></v-text-field>
+                </v-col>
+
+                <v-col cols="12" sm="12" md="4">
+                  <span class="jh-input-label">科目余额方向</span>
+                  <v-text-field class="jh-v-input " dense filled single-line disabled v-model="editItem['subjectBalanceDirection']"></v-text-field>
+                </v-col>
+
+                <v-col cols="12" class="pa-0"></v-col>
+
+                <v-col cols="12" sm="12" md="4"
+                  v-if="editItem.subjectHasChildren === '无下级科目'">
+                  <span class="jh-input-label">辅助核算</span>
+                  <v-select :items="constantObj.assist" dense filled single-line multiple item-value="text" v-model="editItem['assistList']"></v-select>
+                </v-col>
+
+                <v-col cols="12" class="pa-0"></v-col>
+
+                <v-col cols="12" sm="12" md="4">
+                  <span class="jh-input-label">外币核算</span>
+                  <v-select :items="currencyList" item-text="currencyName" item-value="currencyId" dense filled single-line multiple v-model="editItem['currencyList']"></v-select>                 
+                </v-col>
+
+              </v-row>
+              <!-- 抽屉操作按钮 -->
+              <v-row class="justify-end mx-0 mt-8 px-6">
+                <v-btn class="ml-2" @click="isEditDrawerShow = false" small><v-icon size="14">mdi-close</v-icon>取消</v-btn>
+                <v-btn class="ml-2" color="success" @click="doUiAction('updateItem')" small><v-icon size="14">mdi-content-save-check-outline</v-icon>保存</v-btn>
+              </v-row>
+            </v-form>
+            <!-- 抽屉关闭按钮 -->
+            <v-btn elevation="0" color="success" fab absolute top left small tile class="drawer-close-float-btn" @click="isEditDrawerShow = false">
+              <v-icon>mdi-close</v-icon>
+            </v-btn>
+          </v-navigation-drawer>
+        </div>
+
+        <!-- 帮助页抽屉 >>>>>>>>>>>>> -->
+        <!-- <<<<<<<<<<<<< 帮助页抽屉 -->
+
+      </v-main>
+          
+    </v-app>
+    <jh-toast />
+    <jh-mask />
+    <jh-confirm-dialog />
+  </div>
+</script>
+<div id="app">
+</div>
+
+{% endblock %}
+
+{% block vueScript %}
+{% include 'component/jianghuJs/select-appaId.html' %}
+{% include 'common/jianghuJs/fixedTableHeightV4.html' %}
+{% include 'common/excelUtil.html' %}
+{% include 'common/vueFilters.html' %}
+{% include 'common/constantUtil.html' %}
+
+<script type="module">
+new Vue({
+  el: '#app',
+  template: '#app-template',
+  vuetify: new Vuetify(),
+  data: () => ({
+    isMobile: window.innerWidth < 500,
+    
+    // 面包屑
+    breadcrumbs: [
+      {
+        text: '首页',
+        disabled: true,
+      },
+      {
+        text: '科目管理',
+        disabled: true,
+      }
+    ],
+
+    // 表格相关数据
+    isTableZebraLineMenuShown: false,
+    tableZebraLineMenuPosition: {x: null, y: null},
+    isTableZebraLineShown: true,
+
+    selectedScene: 0,
+    sceneList: [
+      {"form":{},"name":"全部","id":"scene-fixed-all"},
+      {"form":{"subjectCategory":"资产"},"name":"资产","id":"scene-fixed-2"},
+      {"form":{"subjectCategory":"负债"},"name":"负债","id":"scene-fixed-3"},
+      {"form":{"subjectCategory":"权益"},"name":"权益","id":"scene-fixed-4"},
+      {"form":{"subjectCategory":"成本"},"name":"成本","id":"scene-fixed-5"},
+      {"form":{"subjectCategory":"损益"},"name":"损益","id":"scene-fixed-5"}
+    ],
+    selectedSubjectTagList:[],
+
+    isFormValid: true,
+    validationRules: {
+      requireRules: [
+        v => !!v || '必填',
+      ],
+    },
+    constantObj: {
+      subjectCategory: [
+        {text: '资产', value: '资产'},
+        {text: '负债', value: '负债'},
+        {text: '权益', value: '权益'},
+        {text: '成本', value: '成本'},
+        {text: '损益', value: '损益'},
+      ],
+      subjectDirection: [
+        {text: '借', value: '借'},
+        {text: '贷', value: '贷'},
+      ],
+      assist: constantObj.assistList,
+      subjectLevelObj: {
+        1: '一级科目', 2: '二级科目', 3: '三级科目', 4: '四级科目', 5: '五级科目',
+        6: '六级科目', 7: '七级科目', 8: '八级科目', 9: '九级科目', 10: '十级科目',
+      },
+      currencyList:[],
+      subjectTagList:[
+        {tag:"借"},
+        {tag:"贷"},        
+        {tag:"父"},
+        {tag:"子"},
+        {tag:"新"},
+        {tag:"辅"},
+        {tag:"币"},
+      ],
+    },
+    headers: [
+      {text: "科目编码", value: "subjectId", width: window.innerWidth > 500 ? 80 : 50, class: window.innerWidth > 500 && 'fixed', cellClass: window.innerWidth > 500 && 'fixed'}, 
+      {text: "科目名称", value: "subjectName", width: window.innerWidth > 500 ? 180 : 50, class: window.innerWidth > 500 && 'fixed', cellClass: window.innerWidth > 500 && 'fixed'}, 
+      {text: "科目分类", value: "subjectCategory", width: 80}, 
+      
+      {text: "是否显示", value: "isShow", align: 'left', width: 90}, 
+      {text: "科目标签", value: "subjectTag", width: 200},
+      //{text: "科目余额方向", value: "subjectBalanceDirection", width: 50},
+      {text: "科目级别", value: "subjectLevel", width: 50}, 
+      {text: "是否有下级科目", value: "subjectHasChildren", width: 80}, 
+      {text: "辅助核算", value: "assistList", width: 180}, 
+      {text: "外币核算", value: "currencyList", width: 180}, 
+      {text: "备注", value: "remark", width: 100}, 
+      {text: '操作', value: 'action', align: 'center', sortable: false, width: window.innerWidth > 500 ? 120 : 50, class: 'fixed', cellClass: 'fixed'},
+      //{text: "", value: "subjectTag", width: 0, hide: true}, 
+    ],
+
+    searchInput: null,
+    isTableLoading: true,
+    tableDataFromBackend: [],
+
+    isEditDrawerShow: false,
+    editItem: {},
+    isAddDrawerShow: false,
+    addItem: {},
+    serverSearchInput: {
+      subjectCategory: "资产"
+    }
+  }),
+  computed: {
+    tableData() {
+      const funObj = this.sceneList[this.selectedScene];
+      const { subjectCategory } = funObj.form
+      let tableData = this.tableDataFromBackend;
+      if (subjectCategory) {
+        tableData = tableDataFromBackend.filter(item=> item.subjectCategory === subjectCategory);
+      }
+
+      if (this.selectedSubjectTagList.length > 0) {
+        tableData = tableData.filter(item => this.selectedSubjectTagList.every(subjectTag => item.subjectTag.includes(subjectTag)));
+      }
+      return tableData;
+    },
+  },
+  watch: {
+  },
+  async created() {
+    await this.doUiAction('refreshTableData');
+    await this.getCurrencyList();
+    
+    // Tip: 测试代码
+    // await this.doUiAction('startUpdateItem', { item: this.tableDataFromBackend[0] });
+  },
+  mounted() {},
+  methods: {
+    async doUiAction(uiActionId, uiActionData) {
+      switch (uiActionId) {
+        case 'refreshTableData':
+          await this.refreshTableData();
+          await this.prepareGetTableData();
+          break;
+        case 'useScene':
+          await this.useScene(uiActionData);
+          break;
+        case 'openTableZebraLineMenu':
+          await this.openTableZebraLineMenu(uiActionData);
+          break;
+        case 'startCreateChildrenSubject':
+          await this.clearItemDataOfChildrenSubject(uiActionData);
+          await this.openCreateItemDialog();
+          break;  
+        case 'startCreateItem':
+          await this.clearItemData(uiActionData);
+          await this.openCreateItemDialog();
+          break;
+        case 'createItem':
+          await this.prepareValidate();
+          await this.confirmCreateItemDialog();
+          await this.doCreateItem();
+          await this.closeDrawerShow();
+          await this.refreshTableData();
+          break;
+        case 'startUpdateItem':
+          await this.prepareItemData(uiActionData);
+          await this.openUpdateDialog();
+          break;
+        case 'updateItem':
+          await this.prepareValidate();
+          await this.confirmUpdateItemDialog();
+          await this.doUpdateItem();
+          await this.closeDrawerShow();
+          await this.refreshTableData();
+          break;
+        case 'deleteItem':
+          await this.confirmDeleteItemDialog(uiActionData);
+          await this.doDeleteItem(uiActionData);
+          await this.refreshTableData(uiActionData);
+          break;  
+        case 'exportExcel':
+          await this.exportExcel();
+          break;
+        case 'updateItemIsShown':
+          await this.prepareItemIsShownData(uiActionData);
+          await this.doUpdateItem();
+          break;
+        default:
+          console.error("[doUiAction] uiActionId not find", { uiActionId });
+          break;
+      }
+    },
+    // =================================uiAction 公共方法 start ======================================
+    /**
+     * uiActionId:  prepareValidate
+     * description: ✅表单校验
+    */
+    async prepareValidate() {
+      if (this.$refs.form.validate() === false) {
+        window.vtoast.fail({ message: "输入有误, 请检查!" });
+        throw new Error("[prepareValidate] false");
+      }
+    },
+
+    /**
+     * uiActionId:  refreshTableData
+     * description: ✅获取表格数据
+    */
+    async refreshTableData() {
+      this.isTableLoading = true;
+      const result = await window.jianghuAxios({
+        data: {
+          appData: {
+            pageId: 'setting-subjectManagement',
+            actionId: 'getAmendSubjectList',
+            actionData: {},
+            where: this.backendSearchData,
+            orderBy: [{column: 'subjectId', order: 'asc'}]
+          }
+        }
+      });
+      const { rows } = result.data.appData.resultData;
+
+      this.tableDataFromBackend = rows;
+      this.isTableLoading = false;
+    },    
+    async prepareGetTableData() {
+      this.backendSearchData = _.pickBy(this.serverSearchInput, value => !!value && value !== '全部');
+    },
+    // ---------- 场景 uiAction >>>>>>>>>> --------
+    useScene(funObj) {
+      this.selectedScene = funObj.index;
+      this.serverSearchInput = _.cloneDeep(funObj.scene.form);
+    },
+    // ---------- <<<<<<<<<<< 场景 uiAction --------
+    // ---------- 斑马纹开关 uiAction >>>>>>>>>> --------
+    async openTableZebraLineMenu(funObj) {
+      this.tableZebraLineMenuPosition.x = funObj.x - funObj.offsetX + 10;
+      this.tableZebraLineMenuPosition.y = window.innerHeight - 50;
+      this.isTableZebraLineMenuShown = !this.isTableZebraLineMenuShown;
+    },
+    // ---------- <<<<<<<<<< 斑马纹开关 uiAction --------
+    // =================================uiAction 公共方法 end ======================================
+    /**
+     * uiActionId:  startCreateItem
+     * description: ✅获取表格数据
+    */
+    async clearItemDataOfChildrenSubject({ parentSubject }) {
+      const child = _.filter(this.tableData, item => item.subjectLevel == (parentSubject.subjectLevel + 1) && `${item.subjectId}`.startsWith(`${parentSubject.subjectId}`))
+      // 排除结尾是99的科目
+      const filteredChild = _.filter(child, item => !`${item.subjectId}`.endsWith('99'));
+      const maxSubjectIdData = _.maxBy(filteredChild, 'subjectId');
+
+      this.addItem = {
+        subjectCategory: parentSubject.subjectCategory,
+        subjectBalanceDirection: parentSubject.subjectBalanceDirection,
+        subjectNameTotal: parentSubject.subjectName,
+        subjectIdTotal: parentSubject.subjectId,
+        subjectLevel: parentSubject.subjectLevel + 1,
+        subjectId: maxSubjectIdData ? parseInt(maxSubjectIdData.subjectId) + 1 : `${parentSubject.subjectId}01`,
+        assistList: [],
+        currencyList:[]
+      };
+    },
+    async clearItemData() {
+      this.addItem = {
+        subjectCategory: this.serverSearchInput.subjectCategory,
+        subjectBalanceDirection: '借',
+        subjectLevel: 1,
+        subjectId: null,
+        assistList: [],
+        currencyList:[]
+
+      };
+    },
+    async openCreateItemDialog() {
+      this.isAddDrawerShow = true;
+    },
+
+    /**
+     * uiActionId:  createItem
+     * description: ✅获取表格数据
+    */
+    async confirmCreateItemDialog() {
+      if (await window.confirmDialog({title: "新增", content: "确定新增吗？"}) === false) {
+        throw new Error("取消");
+      }
+    },
+    async doCreateItem() {
+      const { id, ...data } = this.addItem;
+      data.assistList = data.assistList.join(',');
+      data.currencyList = data.currencyList.join(',');
+      const { subjectIdTotal, subjectNameTotal } = this.addItem;
+      await window.vtoast.loading("新增科目");
+      await window.jianghuAxios({
+        data: {
+          appData: {
+            pageId: 'setting-subjectManagement',
+            actionId: 'createSubject',
+            actionData: data
+          }
+        }
+      })
+      // Tip: 捕获 subject_has_voucher_entry ===》给用户二次确认操作
+      .catch(async (err) => {
+        const { errorCode, errorReason } = err;
+        if (errorCode === 'subject_has_voucher_entry') {
+          if (await window.confirmDialog({title: "提示", content: `您正在为科目“${subjectNameTotal}”增加第一个下级科目，系统将把该科目的数据全部转移到新增的下级科目中，该操作不可逆，您是否要继续？`}) === true) {
+            await window.jianghuAxios({
+              data: {
+                appData: {
+                  pageId: 'setting-subjectManagement',
+                  actionId: 'createSubject',
+                  actionData: { ...data, force: true }
+                }
+              }
+            })
+            return;
+          }
+        }
+
+        throw err;
+      })
+      await window.vtoast.success("新增科目成功");
+    },
+    async closeDrawerShow() {
+      this.isEditDrawerShow = false;
+      this.isAddDrawerShow = false;
+    },
+
+    /**
+     * uiActionId:  startUpdateItem
+     * description: ✅获取表格数据
+    */
+    async prepareItemData({item}) {
+      this.editItem = {
+        ...item,
+        assistList: item.assistList ? item.assistList.split(',') : [],
+        currencyList:item.currencyList ? item.currencyList.split(',') : []
+      };
+    },
+    async prepareItemIsShownData({item}) {
+      this.editItem = {
+        ...item,
+        assistList: item.assistList ? item.assistList.split(',') : [],
+        currencyList:item.currencyList ? item.currencyList.split(',') : []
+      };
+    },
+    async openUpdateDialog() {
+      this.isEditDrawerShow = true;
+    },
+    /**
+     * uiActionId:  updateItem
+     * description: ✅获取表格数据
+    */
+    async confirmUpdateItemDialog() {
+      if (await window.confirmDialog({title: "修改", content: "确定修改吗？"}) === false) {
+        throw new Error("取消");
+      }
+    },
+    async doUpdateItem() {
+      const { id, ...data } = this.editItem;
+      data.assistList = data.assistList.join(',');
+      data.currencyList = data.currencyList.join(',');
+      await window.vtoast.loading("修改数据");
+      await window.jianghuAxios({
+        data: {
+          appData: {
+            pageId: 'setting-subjectManagement',
+            actionId: 'updateItem',
+            actionData: data,
+            where: {id}
+          }
+        }
+      })
+      console.log(data.currencyList)
+      await window.vtoast.success("修改数据成功");
+    },
+    async confirmDeleteItemDialog({item}) {
+      if (await window.confirmDialog({title: "删除科目", content: `确定删除"${item.subjectId}--${item.subjectName}"吗？`}) === false) {
+        throw new Error("取消");
+      }
+    },
+    async doDeleteItem({item}) {
+      await window.vtoast.loading("删除科目");
+      await window.jianghuAxios({
+        data: {
+          appData: {
+            pageId: 'setting-subjectManagement',
+            actionId: 'removeSubject',
+            actionData: { subjectId: item.subjectId },
+          }
+        }
+      });
+      await window.vtoast.success("删除科目");
+    },
+
+    async exportExcel() {
+      const params = {
+        header: this.headers.filter(header => header.text != '操作').map(header => header.text),
+        key: this.headers.filter(header => header.text != '操作').map(header => header.value),
+        data: this.tableData,
+        filename: dayjs().format('YYYYMMDDHHmmss') + '_' + '科目管理'
+      };
+      excelUtil.exportData(params);
+    },
+    jumpToUrl() {
+        window.open('https://cn.jianghujs.org/doc/page/article/11603', '_blank');
+      },
+
+    async getCurrencyList(){
+      const result = await window.jianghuAxios({
+        data: {
+          appData: {
+            pageId: 'setting-subjectManagement',
+            actionId: 'getCurrency',
+            actionData: {},
+            where: {
+                appaId: this.appaId
+              }
+          }
+        }
+      });
+      const { rows } = result.data.appData.resultData;
+      this.currencyList = rows;
+    },
+
+  }
+})
+</script>
+
+<style scoped>
+  .table-switch {
+    margin: 9px 0; 
+    height: 30px;
+  }
+</style>
+{% endblock %}

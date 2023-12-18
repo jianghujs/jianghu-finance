@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="zh-cmn-Hans">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta charset="utf-8" name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>打印凭证</title>
+
+    <style>
+        /* 容器 */
+        .nop-page {
+            font-size: 14px !important;
+            line-height: 21px !important;
+            font-family: 'Times New Roman', Times, serif;
+        }
+
+        /* section-1 */
+        .section-1 {
+            text-align: center;
+        }
+
+        .section-1 .title {
+            font-size: 30px;
+            line-height: 30px;
+        }
+
+        /* section-2 */
+        .section-2 {
+            margin: 8px 0;
+            line-height: 20px;
+        }
+
+        .section-2>div:nth-child(1) {
+            text-align: center;
+            position: relative;
+        }
+
+        .section-2>div:nth-child(1) p{
+            position: absolute;
+            right: 0;
+            top: 0;
+        }
+
+        .section-2>div:nth-child(2) {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .section-2>div:nth-child(2) .pagination{
+            margin-left: 10px;
+        }
+
+        /* section-3 */
+        .section-3 {
+            width: 100%;
+            font-size: 14px;
+            text-align: center;
+            border-collapse: collapse;
+            line-height: 14px;
+        }
+
+        .section-3 th {
+            font-weight: normal;
+            padding: 15px 5px;
+        }
+
+        .section-3 td {
+            border-right: 1px solid #ddd;
+            padding: 5px;
+            vertical-align: middle !important;
+            height: 45px;
+        }
+
+        .section-3 thead,
+        .section-3 tbody{
+            border: 1px solid #ddd;
+        }
+
+        .section-3 thead tr th,
+        .section-3 tbody tr td div {
+            text-align: center;
+        }
+
+        .section-3 tbody tr:first-child {
+            vertical-align: bottom;
+        }
+        
+        .section-3 tbody td>div{
+            max-height: 30px;
+            line-height: 15px;
+            overflow: hidden;
+        }
+
+        .section-3 tfoot tr{
+            border-top: 1px solid #ddd;
+        }
+        
+        .section-3 .total-wrapper{
+            border: 1px solid #ddd;
+        }
+
+        .section-3 .signature-wrapper td{
+            border: none;
+        }
+
+        .section-3 .total-cn {
+            text-align: left;
+        }
+
+        .section-3 .text-left {
+            text-align: left;
+        }
+
+        .section-3 .text-right {
+            text-align: right;
+        }
+        
+        /* section-4 */
+        .section-4 {
+            margin-top: 8px;
+        }
+
+        .section-4 .signature {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .section-4 .signature div:last-child {
+            width: 25%;
+        }
+        .section-4 .signature input{
+            border: none;
+            font-family: 'Times New Roman', Times, serif;
+        }
+
+        /* 底部分页 */
+        .nop-book .page-num-simple {
+            padding-bottom: 0.6cm !important;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="content-box" style="display: none">
+        {% for voucher in voucherInfo %}
+        {% for chunk in voucher.voucherEntryPadded %}
+        <table class="section-3" data-op-type="table">
+            <caption data-op-type="mix-box">
+                <div class="section-1" data-op-type="mix-box">
+                    <div class="title">
+                        记账凭证
+                    </div>
+                </div>
+                <div class="section-2" data-op-type="mix-box">
+                    <div>
+                        <$ voucher.voucherAt $>
+                        <p>
+                            <span>附单据数：<$ voucher.voucherFileCount $> 张</span>
+                        </p>
+                    </div>
+        
+                    <div>
+                        <p>
+                            <span>核算单位：</span>
+                            <span> <$ constantObj.companyName $> </span>
+                        </p>
+                        <p>
+                            <span><$ voucher.voucherId $></span>
+                            <span class="pagination"> <$ loop.index $>/<$ voucher.pageTotal $> </span>
+                        </p>
+                    </div>
+                </div>
+            </caption>
+            <thead>
+                <th width="100">摘要</th>
+                <th width="150">会计科目</th>
+                <th width="80">借方</th>
+                <th width="80">贷方</th>
+            </thead>
+            <tbody class="nop-fill-box">
+                {% for entry in chunk %}
+                <tr>
+                    <td data-split-repeat="true">
+                        <div data-op-type="block" class="text-left">
+                            <$ entry.entryAbstract $>
+                        </div>
+                    </td>
+                    <td data-split-repeat="true">
+                        <div data-op-type="block" class="text-left">
+                            <$ entry.subjectId $> <$ entry.subjectName $>
+                        </div>
+                    </td>
+                    <td data-split-repeat="true">
+                        <div data-op-type="block" class="text-right">
+                            <$ entry.debit $>
+                        </div>
+                    </td>
+                    <td data-split-repeat="true">
+                        <div data-op-type="block" class="text-right">
+                            <$ entry.credit $>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr class="total-wrapper">
+                    <td colspan="2" data-split-repeat="true">
+                        <div class="total-cn" data-op-type='block'>
+                            <p>合计: <span><$ voucher.totalCreditCN $></span></p>
+                        </div>
+                    </td>
+                    <td data-split-repeat="true">
+                        <div data-op-type='block' class="text-right">
+                            <p > <$ voucher.totalDebit $> </p>
+                        </div>
+                    </td>
+                    <td data-split-repeat="true">
+                        <div data-op-type='block' class="text-right">
+                            <p><$ voucher.totalCredit $> </p>
+                        </div>
+                    </td>
+                </tr>
+                <tr class="signature-wrapper">
+                    <td colspan="4" data-split-repeat="true">
+                        <div class="section-4" data-op-type="mix-box">
+                            <div class="signature">
+                                <div>记账：</div>
+                                <div>审核：</div>
+                                <div>出纳：</div>
+                                <div>制单：<$ voucher.documentCreator $></div>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+            </tfoot>
+        </table>
+        {% endfor %}
+        {% endfor %}
+    </div>
+
+    <script src="/<$ ctx.app.config.appId $>/public/js/lib/polyfill.min.js"></script>
+    <script src="/<$ ctx.app.config.appId $>/public/js/lib/jquery.min.js"></script>
+    <script src="/<$ ctx.app.config.appId $>/public/js/lib/lodash.min.js"></script>
+    <script src="/<$ ctx.app.config.appId $>/public/js/lib/bookjs-eazy.min.js"></script>
+    <script>
+        bookConfig = {
+            pageSize: "ISO_A4",
+            orientation: 'landscape',
+            pageSizeOption : {
+                width : '140mm', 
+                height : '240mm',
+            },
+            padding: "10mm 18mm 10mm 18mm",
+            // simplePageNum: {
+            //     pageBegin: 0,
+            //     pageEnd: -1,
+            //     pendant: "<div class=\"page-num-simple\"><span style=\"\">${PAGE} / ${TOTAL_PAGE}</span></div>"
+            // },
+            toolBar: {
+                webPrint: true
+            },
+            start: true,
+        };
+    </script>
+</body>
+
+</html>

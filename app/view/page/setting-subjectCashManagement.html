@@ -1,0 +1,402 @@
+{% extends 'template/jhTemplateV4.html'%}
+
+{% block vueTemplate %}
+
+<script type="text/html" id="app-template">
+  <div>
+    <v-app mobile-breakpoint="sm">
+      <jh-menu />
+      <v-main class="mt-15">
+        <!-- 头部内容 >>>>>>>>>>>>> -->
+        <div class="jh-page-second-bar px-8">
+          <v-row class="align-center" no-gutters>
+            <v-col class="d-flex align-center" cols="12" xs="12" md="6">
+              <div>
+                <div class="py-4 text-body-1 font-weight-bold d-flex align-center">科目现金流量对照
+                  <!-- 帮助页按钮 -->
+                  <span role="button" class="success--text font-weight-regular jh-font-size-13 mx-2" @click="jumpToUrl">
+                  <v-icon size="13" class="success--text">mdi-help-circle-outline</v-icon>帮助
+                </span>
+                  <select-appaId/>
+                </div>
+              </div>
+            </v-col>
+            <!-- pc端的搜索条件表单 >>>>>>>> -->
+            <v-col cols="12" xs="12" md="6" class="pt-0 pt-md-3 mb-3 mb-md-0">
+              <v-row class="ma-0" class="justify-md-end" no-gutters>
+                <v-col cols="7" class="text-right">
+                  <v-btn-toggle mandatory dense class="mr-0 mr-md-2" color="success"> 
+                    <v-btn small v-for="item, index in constantObj.subjectCategory"  @click="selectSubjectCategory = item.value;" :key="index"> {{item.text}} </v-btn> 
+                  </v-btn-toggle>
+                </v-col>
+
+                <v-col cols="3" class="d-none d-md-flex">
+                  <v-text-field
+                    prefix="初始期间: " 
+                    v-model="periodStart.periodId" 
+                    class="jh-v-input bg-white" dense filled single-line readonly>
+                  </v-text-field>
+                </v-col>
+                <v-btn class="elevation-0 d-sm-block w-sm-full ml-2" color="primary" small @click="doUiAction('refreshTableData')">
+                  <v-icon size="14">mdi-magnify</v-icon>查询
+                </v-btn>
+              </v-row>
+            </v-col>
+            
+          </v-row>
+        </div>
+        <!-- <<<<<<<<<<<<< 头部内容 -->
+
+        <div class="jh-page-body-container px-8">
+          <!-- 页面主要内容 -->
+          <v-container class="fullScreen d-flex flex-column pa-xs-0 pa-0">
+            <v-card class="rounded-lg">
+              <v-row class="ma-0 pa-4 align-center">
+                <v-col cols="12" xs="12" sm="6" md="6" xl="6" class="pa-0">
+                 
+                  <v-btn color="primary" @click="doUiAction('resetSubjectCashflow')" outlined small>重置</v-btn>
+                  <v-btn class="mr-2" text @click="doUiAction('refreshTableData')" small>
+                    <v-icon size="14">
+                      mdi-refresh
+                    </v-icon>
+                    刷新</v-btn>
+                </v-col>
+                <v-spacer></v-spacer>
+                 
+                </v-col>
+              </v-row>
+              <v-data-table 
+                fixed-header
+                :headers="headers"
+                :items="tableData"
+                :search="searchInput"
+                item-key="subjectId"
+                :footer-props="{ itemsPerPageOptions: [20, 50, -1], itemsPerPageText: '每页行数', itemsPerPageAllText: '所有'}"
+                :items-per-page="-1"
+                mobile-breakpoint="0"
+                :loading="isTableLoading"
+                checkbox-color="success"
+                :class="{'zebraLine': isTableZebraLineShown }"
+                class="jh-fixed-table-height elevation-0 mt-0 mb-xs-4">
+                <!-- 处理显示列 -->
+                <template v-slot:item.subjectName="{ item }">
+                  <span :style="{'margin-left': (item.subjectLevel - 1) * 20 + 'px'}">{{item.subjectName}}
+                  </span>
+                </template>    
+                <template v-slot:item.subjectBalanceDirection="{ item }">
+                  <v-chip dark x-small :color="item.subjectBalanceDirection | directionBgColor">{{item.subjectBalanceDirection}}</v-chip>
+                </template>
+                
+                <template v-slot:item.cashFlowInItemId="{ item }">
+                  <v-text-field v-if="!item.cashFlowInItemId && item.cashFlowInItemName || item.subjectHasChildren === '有下级科目'" class="jh-v-input" dense single-line filled :value="item.cashFlowInItemName || '--'" disabled></v-text-field>
+
+                  <v-autocomplete
+                  v-else
+                  class="jh-v-input"
+                  dense filled single-line  
+                  v-model="item.cashFlowInItemId"
+                  :items="cashflowList" 
+                  item-text="itemName" 
+                  item-value="itemId"
+                  @change="doUiAction('updateSubjectCashflow', {item, event: $event})"
+                  >
+                </v-autocomplete>
+                </template>
+
+                <template v-slot:item.cashFlowOutItemId="{ item }">
+                  <v-text-field v-if="!item.cashFlowOutItemId && item.cashFlowOutItemName || item.subjectHasChildren === '有下级科目'" class="jh-v-input" dense single-line filled :value="item.cashFlowOutItemName || '--'" disabled></v-text-field>
+
+                  <v-autocomplete 
+                  v-else
+                  class="jh-v-input"
+                  dense filled single-line  
+                  v-model="item.cashFlowOutItemId"
+                  :items="cashflowList" 
+                  item-text="itemName"
+                  item-value="itemId"
+                  @change="doUiAction('updateSubjectCashflow', {item, event: $event})"
+                  >
+                </v-autocomplete>
+                </template>
+                
+                <!-- 表格底部右侧功能按钮 -->
+                <template v-slot:footer.prepend>
+                  <v-menu top offset-y :close-on-content-click="false" v-model="isTableZebraLineMenuShown" :position-x="tableZebraLineMenuPosition.x" :position-y="tableZebraLineMenuPosition.y">
+                    <v-list>
+                      <v-list-item>
+                        <v-switch v-model="isTableZebraLineShown" hide-details class="ma-0" label="显示斑马纹" dense flat></v-switch>
+                      </v-list-item>
+                    </v-list>
+                  </v-menu>
+                </template>
+                <!-- 没有数据 -->
+                <template v-slot:loading>
+                  <div class="jh-no-data">数据加载中</div>
+                </template>
+                <template v-slot:no-data>
+                  <div class="jh-no-data">暂无数据</div>
+                </template>
+                <template v-slot:no-results>
+                  <div class="jh-no-data">暂无数据</div>
+                </template>
+                <!-- 表格分页 -->
+                <template v-slot:footer.page-text="pagination">
+                  <span>{{pagination.pageStart}}-{{pagination.pageStop}}</span>
+                  <span class="ml-1">共{{pagination.itemsLength}}条</span>
+                </template>
+              </v-data-table>
+            </v-card>
+          </v-container>
+
+        </div>
+        <!-- 帮助页抽屉 >>>>>>>>>>>>> -->
+        <!-- <<<<<<<<<<<<< 帮助页抽屉 -->
+
+      </v-main>
+    </v-app>
+    <jh-toast />
+    <jh-mask />
+    <jh-confirm-dialog />
+  </div>
+</script>
+<div id="app">
+</div>
+
+{% endblock %}
+
+{% block vueScript %}
+{% include 'component/jianghuJs/select-appaId.html' %}
+{% include 'common/jianghuJs/fixedTableHeightV4.html' %}
+{% include 'common/excelUtil.html' %}
+{% include 'common/vueFilters.html' %}
+{% include 'common/constantUtil.html' %}
+
+<script type="module">
+
+  new Vue({
+    el: '#app',
+    template: '#app-template',
+    vuetify: new Vuetify(),
+    data: () => ({
+
+      // 表格相关数据
+      isTableZebraLineMenuShown: false,
+      tableZebraLineMenuPosition: { x: null, y: null },
+      isTableZebraLineShown: true,
+
+      // 下拉选项
+      constantObj: {
+      },
+      isFormValid: true,
+      validationRules: {
+        requireRules: [
+          v => !!v || '必填',
+        ],
+      },
+      constantObj: {
+        subjectCategory: [
+          { text: '全部', value: '' },
+          { text: '资产', value: '资产' },
+          { text: '负债', value: '负债' },
+          { text: '权益', value: '权益' },
+          { text: '成本', value: '成本' },
+          { text: '损益', value: '损益' },
+        ],
+      },
+
+      isOpenEdit: false,
+      periodStart: {
+        periodId: null,
+        isCheckout: null, // 已结账 未结账
+      },
+      periodList: [],
+
+      selectSubjectCategory: '',  // ‘’ ===》全部
+      searchInput: null,
+      isTableLoading: true,
+      tableDataFromBackend: [],
+      headers: [
+        { text: "科目编码", value: "subjectId", class: 'fixed', cellClass: 'fixed' },
+        { text: "科目名称", value: "subjectName" },
+        { text: "方向", value: "subjectBalanceDirection" },
+        { text: "流入对应现金流量项目", value: "cashFlowInItemId", width: 300 },
+        { text: "流出对应现金流量项目", value: "cashFlowOutItemId", width: 300 },
+      ],
+
+      cashflowList: [],
+    }),
+    computed: {
+      tableData() {
+        let tableDataList = this.tableDataFromBackend
+        if (this.selectSubjectCategory) {
+          tableDataList = tableDataList.filter(row => row.subjectCategory === this.selectSubjectCategory);
+        }
+
+        return tableDataList
+      }
+    },
+    watch: {
+
+    },
+    async created() {
+      await this.doUiAction('selectPeriodStart');
+      await this.doUiAction('getCashflowList');
+      await this.doUiAction('refreshTableData');
+    },
+    mounted() { },
+    methods: {
+      async doUiAction(uiActionId, uiActionData) {
+        switch (uiActionId) {
+          case 'selectPeriodStart':
+            await this.selectPeriodStart();
+            break;
+          case 'refreshTableData':
+            await this.refreshTableData();
+            break;
+          case 'getCashflowList':
+            await this.getCashflowList();
+            break;
+          case 'updateSubjectCashflow':
+            await this.updateSubjectCashflow(uiActionData);
+            break;
+          case 'resetSubjectCashflow':
+            await this.confirmResetCashflowDialog();
+            await this.resetSubjectCashflow();
+            await this.refreshTableData();
+          default:
+            console.error("[doUiAction] uiActionId not find", { uiActionId });
+            break;
+        }
+      },
+      // =================================uiAction 公共方法 start ======================================
+      async selectPeriodStart() {
+        const result = await window.jianghuAxios({
+          data: {
+            appData: {
+              pageId: 'setting-subjectBalanceStart',
+              actionId: 'selectPeriodList',
+              actionData: {},
+              where: { isPeriodStart: '是' },
+            }
+          }
+        });
+        const { rows } = result.data.appData.resultData;
+        if (rows.length === 0) {
+          this.isTableLoading = false;
+          window.vtoast.fail({ message: "请创建第一个会计期间!" });
+          throw new Error("[selectPeriodStart] false; 请创建第一个会计期间");
+        }
+        if (rows.length === 1) {
+          this.periodStart = rows[0];
+        }
+        if (rows.length > 1) {
+          this.isTableLoading = false;
+          window.vtoast.fail({ message: "初始会计期间不能有多个!" });
+          throw new Error("[selectPeriodStart] false; 初始会计期间不能有多个");
+        }
+      },
+      /**
+       * uiActionId:  refreshTableData
+       * description: ✅获取表格数据
+      */
+      async refreshTableData() {
+        this.isTableLoading = true;
+        const where = {
+          periodId: this.periodStart.periodId,
+          isPeriodStart: '是',
+        };
+        const result = await window.jianghuAxios({
+          data: {
+            appData: {
+              pageId: 'setting-subjectCashManagement',
+              actionId: 'getSubjectCashflowList',
+              actionData: {},
+              where: {},
+              orderBy: [{ column: 'subjectId', order: 'asc' }]
+            }
+          }
+        });
+        const { rows } = result.data.appData.resultData;
+
+        this.tableDataFromBackend = rows;
+        this.isTableLoading = false;
+      },
+      // =================================uiAction 公共方法 end ======================================
+
+      // ---------- 现金流 >>>>>>>>>>>>> ----------
+      async getCashflowList() {
+        const result = await window.jianghuAxios({
+          data: {
+            appData: {
+              pageId: 'setting-subjectCashManagement',
+              actionId: 'getCashflowList',
+              actionData: {},
+              where: { level: 1 },
+              orderBy: [{ column: 'itemId', order: 'asc' }]
+            }
+          }
+        });
+        let { rows } = result.data.appData.resultData;
+        rows = rows.filter(item => !item.itemName.includes('：'))
+        this.cashflowList = rows;
+      },
+
+      async updateSubjectCashflow({ item, event }) {
+        const { subjectId } = item
+
+        const selectedItem = this.cashflowList.find(item => item.itemId === event) || {}
+
+        item.cashFlowInItemName = selectedItem.itemName
+        item.cashFlowOutItemName = selectedItem.itemName
+
+        const updateData = _.pick(item, [
+          'cashFlowInItemId',
+          'cashFlowInItemName',
+          'cashFlowOutItemId',
+          'cashFlowOutItemName',
+        ])
+
+        await window.jianghuAxios({
+          data: {
+            appData: {
+              pageId: 'setting-subjectCashManagement',
+              actionId: 'updateSubjectCashflow',
+              actionData: updateData,
+              where: { subjectId },
+            }
+          }
+        });
+      },
+
+      async confirmResetCashflowDialog() {
+        if (await window.confirmDialog({ title: "重置", content: "确定重置吗？" }) === false) {
+          throw new Error("取消");
+        }
+      },
+      async resetSubjectCashflow() {
+        await window.vtoast.loading("重置数据");
+        await window.jianghuAxios({
+          data: {
+            appData: {
+              pageId: 'setting-subjectCashManagement',
+              actionId: 'resetSubjectCashflow',
+            }
+          }
+        });
+        await window.vtoast.success("重置数据成功");
+      },
+      // ---------- <<<<<<<<<<<<< 现金流 ----------
+
+      jumpToUrl() {
+        window.open('https://cn.jianghujs.org/doc/page/article/11603', '_blank');
+      }
+    }   
+  })
+</script>
+
+<style>
+  .custom-input input {
+    text-align: right;
+  }
+</style>
+{% endblock %}

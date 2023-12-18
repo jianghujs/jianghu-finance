@@ -1,0 +1,50 @@
+<template id="mobileHintBlock">
+  <v-card class="d-block d-md-none text-center pa-4">
+    <v-card-text class="font-weight-bold text-h5">
+      仅在PC电脑端显示
+    </v-card-text>
+  </v-card>
+</template>
+
+<script type="module">
+Vue.component("mobileHintBlock", {
+  template: '#mobileHintBlock',
+  data: () => ({
+    // 表单
+    validationRules: {
+      
+    },
+    // 常量
+    constantObj: {
+      userList: []
+    },
+    // 组件变量
+    isDrawerShow: false,
+  }),
+  computed: {
+
+  },
+  watch: {
+
+  },
+  created() {
+
+  },
+  mounted() {
+
+  },
+  methods: {
+    async doUiAction(uiActionId, uiActionData) {
+      switch (uiActionId) {
+        default:
+          console.error("[doUiAction] uiActionId not find", { uiActionId });
+          break;
+      }
+    },
+  }
+});
+</script>
+
+<style>
+
+</style>

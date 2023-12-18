@@ -1,0 +1,235 @@
+<template id="select-subject-tree">
+  <div class="select-subject-tree-container">
+    <!-- server input 展开菜单样式 -->
+    <v-menu v-if="serverInput" class="jh-v-input" transition="scale-transition" offset-y min-width="auto" :close-on-content-click="false"
+      v-model="isMenuShown">
+
+      <template v-slot:activator="{on, attrs}">
+        <v-text-field v-bind="attrs" v-on="on" v-model="search" @input="setSearchStr" :loading="isSubjectListLoading" 
+          class="jh-v-input bg-white" dense single-line filled prefix="科目"></v-text-field>
+      </template>
+      <v-row class="ma-0" style="width: 400px; max-width: 80vw">
+        <v-col cols="12" class="">
+          <v-btn small :outlined="currentCate !== category" v-for="(category, index) in subjectCategoryList"
+            :key="index" :dark="currentCate === category" @click="currentCate = currentCate === category ? '' : category" color="gery darken-1"
+            class="mr-1">
+            {{ category }}
+          </v-btn>
+        </v-col>
+        <v-col cols="12" class="select-subject-box">
+          <v-treeview hoverable activatable dense :open-all="openAll" :active="subjectId" key="subjectId" :open-on-click="openOnClick"
+            :items="subjectListByCate" item-text="subjectLabel" item-key="subjectId" color="primary" :search="searchStr"
+            :filter="filterSubjectList" @update:active="onChange">
+            <template v-if="showAssistList" v-slot:append="{ item, open }">
+              {{ item.assistList }}
+            </template>
+          </v-treeview>
+        </v-col>
+        <v-overlay :value="isSubjectListLoading" color="white" dark absolute :opacity="0.7">
+          <v-progress-circular indeterminate size="32" color="grey"></v-progress-circular>
+        </v-overlay>
+      </v-row>
+    </v-menu>
+    <!-- 平铺容器样式 -->
+    <v-row v-else class="ma-0 pb-10" style="max-width: 100%">
+      <v-col>
+        <v-text-field v-model="search" :loading="isSubjectListLoading" 
+          class="jh-v-input" dense single-line filled prefix="过滤科目"></v-text-field>
+      </v-col>
+      <v-col cols="12" class="">
+        <v-btn x-small :outlined="currentCate !== category" v-for="(category, index) in subjectCategoryList"
+          :key="index" :dark="currentCate === category" @click="currentCate = currentCate === category ? '' : category" :color="`${currentCate === category ? 'success' : 'grey'} darken-1`"
+          class="mr-1 px-1">
+          {{ category }}
+        </v-btn>
+      </v-col>
+      <v-col cols="12" class="jh-fixed-table-height overflow-y-auto " style="padding-bottom: 50px">
+        <v-treeview hoverable activatable dense :open-all="openAll" :active="subjectId" key="subjectId" selection-type="independent" 
+          :items="subjectListByCate" item-text="subjectLabel" item-key="subjectId" :open-on-click="openOnClick" color="primary" :search="search"
+          :filter="filterSubjectList" @update:active="onChange">
+          <template v-if="showAssistList" v-slot:append="{ item, open }">
+            {{ item.assistList }}
+          </template>
+        </v-treeview>
+      </v-col>
+      <v-overlay :value="isSubjectListLoading" color="white" dark absolute :opacity="0.7">
+        <v-progress-circular indeterminate size="32" color="grey"></v-progress-circular>
+      </v-overlay>
+    </v-row>
+  </div>
+
+</template>
+
+<script>
+  Vue.component('select-subject-tree', {
+    template: '#select-subject-tree',
+    props: {
+      value: {
+        type: String | Number,
+        default: ''
+      },
+      clearable: {
+        type: Boolean,
+        default: true,
+      },
+      levelFilter: {
+        type: String,
+        default: '', // 无下级科目、有下级科目、全部
+      },
+      openAll: {
+        type: Boolean,
+        default: false,
+      },
+      serverInput: {
+        type: Boolean,
+        default: false,
+      },
+      openOnClick: {
+        type: Boolean,
+        default: false,
+      },
+      showAssistList: {
+        type: Boolean,
+        default: false,
+      },
+    },
+    vuetify: new Vuetify(),
+    data: () => ({
+      subjectListBackup: [],
+      subjectList: [],
+      isSubjectMenuShown: false,
+      search: '',
+      isSubjectListLoading: true,
+      searchStr: '',
+      subjectCategoryList: [],
+      currentCate: '',
+      isMenuShown: false,
+    }),
+    computed: {
+      subjectListByCate() {
+        if (!this.currentCate) {
+          return this.subjectList
+        }
+        return this.subjectList.filter(item => item.subjectCategory === this.currentCate)
+      },
+      subjectId() {
+        if (!this.value) {
+          return [];
+        }
+        return [this.value];
+      },
+    },
+    watch: {
+      value: {
+        handler(val, oldVal) {
+          console.log('value', JSON.stringify(val) );
+          if (this.serverInput) {
+            this.changeSearchInput();
+          }
+        }
+      }
+    },
+    async created() {
+      this.getSubjectList();
+    },
+    mounted() {
+    },
+    methods: {
+      async getSubjectList() {
+        this.isSubjectListLoading = true;
+        let where = {};
+        const levelFilter = ['无下级科目', '有下级科目', ''].includes(this.levelFilter) ? this.levelFilter : '';
+        if (levelFilter) {
+          where = { subjectHasChildren: levelFilter }
+        }
+        where.isShown = '显示';
+        const result = await window.jianghuAxios({
+          data: {
+            appData: {
+              pageId: 'allPage',
+              actionId: 'selectSubjectList',
+              actionData: {},
+              where,
+              orderBy: [{ column: 'subjectCategory', order: 'desc' }]
+            }
+          }
+        });
+        const { rows } = result.data.appData.resultData;
+        this.subjectListBackup = rows;
+        this.subjectList = this.buildSubjectList(rows);
+        this.subjectCategoryList = this.buildSubjectCategory(rows);
+        this.isSubjectListLoading = false;
+        let subjectId = this.value;
+        this.value = '';
+        if (!subjectId) {
+          subjectId = this.subjectList[0].subjectId;
+        }
+        setTimeout(() => {
+          this.onChange([subjectId]);
+        }, 100);
+      },
+      buildSubjectList(rows) {
+        rows.forEach(p => {
+          p.subjectLabel = p.subjectId + ' ' + p.subjectName;
+        })
+        // subjectLevel 1 2 3 
+        const parent = rows.filter(r => r.subjectLevel === 1);
+        return parent.map(p => {
+          p.children = rows.filter(c => c.subjectLevel === 2 && c.subjectId.includes(p.subjectId))
+          p.children.forEach(c => {
+            c.children = rows.filter(cc => cc.subjectLevel === 3 && cc.subjectId.includes(c.subjectId))
+          })
+          return p
+        })
+      },
+      buildSubjectCategory(rows) {
+        // 排重所有 subjectCategory
+        const subjectCategoryList = [];
+        rows.forEach(r => {
+          if (!subjectCategoryList.includes(r.subjectCategory)) {
+            subjectCategoryList.push(r.subjectCategory)
+          }
+        })
+        return subjectCategoryList;
+      },
+      filterSubjectList(item, search, textKey) {
+        return ('&' + item['subjectId'] + ' ' + item['subjectName']).includes('&' + search)
+      },
+      changeSearchInput() {
+        if (!this.value || !this.subjectListBackup.length) {
+          this.search = '';
+          return;
+        }
+        const subject = this.subjectListBackup.find(item => item.subjectId === this.value);
+        if (subject) {
+          this.search = subject.subjectId + ' ' + subject.subjectName;
+        } else {
+          this.search = '';
+        }
+      },
+      setSearchStr(val) {
+        this.searchStr = val;
+      },
+      onChange([subjectId]) {
+        if (subjectId !== this.value) {
+          this.value = subjectId;
+        }
+        this.isMenuShown = false;
+        this.$emit('input', subjectId)
+        this.$emit('change')
+      }
+    }
+  })
+</script>
+<style>
+  .select-subject-adjust-container {
+    min-width: 250px;
+  }
+  .select-subject-box {
+    height: 400px;
+    overflow: auto;
+  }
+  .v-btn:not(.v-btn--round).v-size--x-small {
+    padding: 0 8px;
+  }
+</style>

@@ -1,0 +1,764 @@
+{% extends 'template/jhTemplateV4.html'%}
+
+{% block vueTemplate %}
+
+<script type="text/html" id="app-template">
+  <div>
+    <v-app mobile-breakpoint="sm">
+      <jh-menu />
+      <v-main class="mt-15">
+        <!-- 头部内容 >>>>>>>>>>>>> -->
+        <div class="jh-page-second-bar px-8">
+          <v-row class="align-center" no-gutters>
+            <v-col cols="12" xs="12" sm="12" md="4" xl="3">
+              <div class="py-4 text-body-1 font-weight-bold d-flex align-center">资产负债
+                <!-- 帮助页按钮 -->
+                <span role="button" class="success--text font-weight-regular jh-font-size-13 mx-2" @click="jumpToUrl">
+                  <v-icon size="13" class="success--text">mdi-help-circle-outline</v-icon>帮助
+                </span>
+                <select-appaId/>
+              </div>
+            </v-col>
+            
+            <!-- pc端的搜索条件表单 >>>>>>>> -->
+            <v-col cols="12" xs="12" sm="12" md="8" xl="9" class="d-flex align-center mt-3 mt-md-0">
+              <v-row class="align-center jh-backend-form-container justify-end ma-0 pt-xs-0">
+                <v-switch class="mr-2 hidden-xs-only" v-model="showItemStartAmountPeriod" label="期初数"></v-switch>
+                <v-switch class="mr-2 hidden-xs-only" v-model="showItemEndAmountYear" label="年末数"></v-switch>
+                <v-col cols="12" xs="10" sm="10" md="4" xl="3" class="px-0 pr-md-2">
+                  <select-period v-model="serverSearchInput.period" @change="doUiAction('refreshTableData')"/>
+                </v-col>
+                <v-btn class="w-sm-full" color="success" small @click="doUiAction('refreshTableData')">
+                  <v-icon size="14">mdi-magnify</v-icon>查询
+                </v-btn>
+              </v-row>
+            </v-col>
+            <!-- <<<<<<<< pc端的搜索条件表单 -->
+          </v-row>
+        </div>
+        <!-- <<<<<<<<<<<<< 头部内容 -->
+
+        <div class="jh-page-body-container px-8">
+
+          <!-- 页面主要内容 -->
+          <v-container class="fullScreen d-flex flex-column pa-xs-0 pa-0">
+            <v-card class="rounded-lg">
+              <v-row class="ma-0 pa-4 align-center">
+        
+                <v-col cols="12" xs="12" sm="6" md="6" xl="6" class="pa-0">
+                  <v-btn class="elevation-0 ml-2" small @click="exportExcelOfAsset" color="primary" outlined><v-icon size="14">mdi-export-variant</v-icon>导出excel</v-btn>
+                </v-col>
+        
+                <v-spacer></v-spacer>
+        
+                <v-col cols="12" xs="8" sm="4" md="3" xl="2" class="pa-0 mt-2 mt-md-0">
+                  <v-text-field v-model="searchInput" prefix="搜索：" class="jh-v-input" dense filled single-line>
+                  </v-text-field>
+                </v-col>
+              </v-row>
+              <v-data-table 
+                fixed-header 
+                :headers="headers" 
+                :items="assetData" 
+                :search="searchInput"
+                :items-per-page="-1"
+                :footer-props="{ itemsPerPageOptions: [20, 50, -1], itemsPerPageText: '每页行数', itemsPerPageAllText: '所有'}"
+                :items-per-page="-1"
+                mobile-breakpoint="0"
+                sort-by="id"
+                :sort-desc="false"
+                :loading="isTableLoading" checkbox-color="success"
+                :class="{'zebraLine': isTableZebraLineShown }"
+                class="jh-fixed-table-height elevation-0 mt-0 mb-xs-4 table-scroll">
+                <template v-slot:item="{ item }">
+                  <tr @mouseover="showFormulaId = item.id">  
+                    <td>
+                      <span :title="`${item.itemName}  ${item.computeFormula||''}`" class="item-name" :style="{'margin-left': (item.level * 20) + 'px'}">{{item.itemName}}</span>
+                    </td>  
+                    <td>{{ item.row }}</td>  
+                    <td>
+                      <span style="width:15px; display: inline-block;">{{item.formulaCount || ''}}</span>
+                      <v-icon v-if="item.editable === '是'" small @click="doUiAction('startEditFormula', {item})">
+                        mdi-clipboard-edit-outline
+                      </v-icon>
+                    </td>  
+                    <td v-if="showItemStartAmountPeriod">
+                      <v-menu :close-on-content-click="false" v-if="item.id==showFormulaId" offset-x location="end">
+                        <template v-slot:activator="{ on, attrs }">
+                          <v-icon v-bind="attrs" v-on="on" color="success" size="16">mdi-equal-box</v-icon>
+                        </template>
+                  
+                        <div class="pa-2" @mouseleave="showFormulaId=null">
+                          <p class="pa-0 ma-0">公式：{{item.formulaListStr2 || item.computeFormula}}</p>
+                          <p class="pa-0 ma-0">{{item.itemStartAmountPeriod | formatMoney2}}=</p>
+                          <p class="pa-0 ma-0" v-for="formula in item.formulaList">
+                            &nbsp;&nbsp;{{formula.countDirection}}{{formula.formulaName}}({{formula.accessRule}}，{{formula.itemStartAmountPeriod | formatMoney2}})
+                          </p>
+                        </div>
+                      </v-menu>
+                      <span class="float-right">{{item.itemStartAmountPeriod | formatMoney}}</span>
+                    </td>  
+                    <td >
+                      <v-menu :close-on-content-click="false" v-if="item.id==showFormulaId" offset-x location="end">
+                        <template v-slot:activator="{ on, attrs }">
+                          <v-icon v-bind="attrs" v-on="on" color="success" size="16">mdi-equal-box</v-icon>
+                        </template>
+                  
+                        <div class="pa-2" @mouseleave="showFormulaId=null">
+                          <p class="pa-0 ma-0">公式：{{item.formulaListStr2 || item.computeFormula}}</p>
+                          <p class="pa-0 ma-0">{{item.itemEndAmountPeriod | formatMoney2}}=</p>
+                          <p class="pa-0 ma-0" v-for="formula in item.formulaList">
+                            &nbsp;&nbsp;{{formula.countDirection}}{{formula.formulaName}}({{formula.accessRule}}，{{formula.itemEndAmountPeriod | formatMoney2}})
+                          </p>
+                        </div>
+                      </v-menu>
+                      <span class="float-right">{{item.itemEndAmountPeriod | formatMoney}}</span>
+                    </td>  
+                    <td>
+                      <v-menu :close-on-content-click="false" v-if="item.id==showFormulaId" offset-x location="end">
+                        <template v-slot:activator="{ on, attrs }">
+                          <v-icon v-bind="attrs" v-on="on" color="success" size="16">mdi-equal-box</v-icon>
+                        </template>
+                  
+                        <div class="pa-2" @mouseleave="showFormulaId=null">
+                          <p class="pa-0 ma-0">公式：{{item.formulaListStr2 || item.computeFormula}}</p>
+                          <p class="pa-0 ma-0">{{item.itemStartAmountYear | formatMoney2}}=</p>
+                          <p class="pa-0 ma-0" v-for="formula in item.formulaList">
+                            &nbsp;&nbsp;{{formula.countDirection}}{{formula.formulaName}}({{formula.accessRule}}，{{formula.itemStartAmountYear | formatMoney2}})
+                          </p>
+                        </div>
+                      </v-menu>
+                      <span class="float-right">{{item.itemStartAmountYear | formatMoney}}</span>
+                    </td>  
+                    <td v-if="showItemEndAmountYear">
+                      <v-menu :close-on-content-click="false" v-if="item.id==showFormulaId" offset-x location="end">
+                        <template v-slot:activator="{ on, attrs }">
+                          <v-icon v-bind="attrs" v-on="on" color="success" size="16">mdi-equal-box</v-icon>
+                        </template>
+                  
+                        <div class="pa-2" @mouseleave="showFormulaId=null">
+                          <p class="pa-0 ma-0">公式：{{item.formulaListStr2 || item.computeFormula}}</p>
+                          <p class="pa-0 ma-0">{{item.itemEndAmountYear | formatMoney2}}=</p>
+                          <p class="pa-0 ma-0" v-for="formula in item.formulaList">
+                            &nbsp;&nbsp;{{formula.countDirection}}{{formula.formulaName}}({{formula.accessRule}}，{{formula.itemEndAmountYear | formatMoney2}})
+                          </p>
+                        </div>
+                      </v-menu>
+                      <span class="float-right">{{item.itemEndAmountYear | formatMoney}}</span>
+                    </td>  
+                    <!-- 负债和所有者权益 -->
+                    <td>
+                      <span :title="`${item.itemName2}  ${item.computeFormula2||''}`" class="item-name" :style="{'margin-left': (item.level2 * 20) + 'px'}">{{item.itemName2}}</span>
+                    </td>  
+                    <td>{{ item.row2 }}</td>  
+                    <td>
+                      <span style="width:15px; display: inline-block;">{{item.formulaCount2 || ''}}</span>
+                      <v-icon v-if="item.editable2 === '是'" small @click="doUiAction('startEditFormula', {item: item.item2})">
+                        mdi-clipboard-edit-outline
+                      </v-icon>
+                    </td>  
+                    <td v-if="showItemStartAmountPeriod">
+                      <v-menu :close-on-content-click="false" v-if="item.id==showFormulaId" offset-x location="end">
+                        <template v-slot:activator="{ on, attrs }">
+                          <v-icon v-bind="attrs" v-on="on" color="success" size="16">mdi-equal-box</v-icon>
+                        </template>
+                  
+                        <div class="pa-2" @mouseleave="showFormulaId=null">
+                          <p class="pa-0 ma-0">公式：{{item.formulaListStr22 || item.computeFormula2}}</p>
+                          <p class="pa-0 ma-0">{{item.itemName2}}(期初数，{{item.itemStartAmountPeriod2 | formatMoney2}})</p>
+                          <p class="pa-0 ma-0" v-for="formula in item.formulaList2">
+                            {{formula.countDirection}}{{formula.formulaName}}(期初数，{{formula.itemStartAmountPeriod | formatMoney2}})
+                          </p>
+                        </div>
+                      </v-menu>
+                      <span class="float-right">{{item.itemStartAmountPeriod22 | formatMoney}}</span>
+                    </td>  
+                    <td >
+                      <v-menu :close-on-content-click="false" v-if="item.id==showFormulaId" offset-x location="end">
+                        <template v-slot:activator="{ on, attrs }">
+                          <v-icon v-bind="attrs" v-on="on" color="success" size="16">mdi-equal-box</v-icon>
+                        </template>
+                  
+                        <div class="pa-2" @mouseleave="showFormulaId=null">
+                          <p class="pa-0 ma-0">公式：{{item.formulaListStr22 || item.computeFormula2}}</p>
+                          <p class="pa-0 ma-0">{{item.itemName2}}(期末数，{{item.itemEndAmountPeriod2 | formatMoney2}})</p>
+                          <p class="pa-0 ma-0" v-for="formula in item.formulaList2">
+                            {{formula.countDirection}}{{formula.formulaName}}(期末数，{{formula.itemEndAmountPeriod | formatMoney2}})
+                          </p>
+                        </div>
+                      </v-menu>
+                      <span class="float-right" :class="{ 'red-text': item.itemEndAmountPeriod2 < 0 }">{{item.itemEndAmountPeriod2 | formatMoney}}</span>
+                    </td>  
+                    <td>
+                      <v-menu :close-on-content-click="false" v-if="item.id==showFormulaId" offset-x location="end">
+                        <template v-slot:activator="{ on, attrs }">
+                          <v-icon v-bind="attrs" v-on="on" color="success" size="16">mdi-equal-box</v-icon>
+                        </template>
+                  
+                        <div class="pa-2" @mouseleave="showFormulaId=null">
+                          <p class="pa-0 ma-0">公式：{{item.formulaListStr22 || item.computeFormula2}}</p>
+                          <p class="pa-0 ma-0">{{item.itemName2}}(年初数，{{item.itemStartAmountYear2 | formatMoney2}})</p>
+                          <p class="pa-0 ma-0" v-for="formula in item.formulaList2">
+                            {{formula.countDirection}}{{formula.formulaName}}(年初数，{{formula.itemStartAmountYear | formatMoney2}})
+                          </p>
+                        </div>
+                      </v-menu>
+                      <span class="float-right">{{item.itemStartAmountYear2 | formatMoney}}</span>
+                    </td>  
+                    <td v-if="showItemEndAmountYear">
+                      <v-menu :close-on-content-click="false" v-if="item.id==showFormulaId" offset-x location="end">
+                        <template v-slot:activator="{ on, attrs }">
+                          <v-icon v-bind="attrs" v-on="on" color="success" size="16">mdi-equal-box</v-icon>
+                        </template>
+                  
+                        <div class="pa-2" @mouseleave="showFormulaId=null">
+                          <p class="pa-0 ma-0">公式：{{item.formulaListStr22 || item.computeFormula2}}</p>
+                          <p class="pa-0 ma-0">{{item.itemName2}}(年末数，{{item.itemEndAmountYear2 | formatMoney2}})</p>
+                          <p class="pa-0 ma-0" v-for="formula in item.formulaList2">
+                            {{formula.countDirection}}{{formula.formulaName}}(年末数，{{formula.itemEndAmountYear | formatMoney2}})
+                          </p>
+                        </div>
+                      </v-menu>
+                      <span class="float-right">{{item.itemEndAmountYear2 | formatMoney}}</span>
+                    </td> 
+                  </tr>  
+                </template> 
+
+              
+
+                <!-- 表格底部右侧功能按钮 -->
+                <template v-slot:footer.prepend>
+                
+                  <v-menu top offset-y :close-on-content-click="false" v-model="isTableZebraLineMenuShown" :position-x="tableZebraLineMenuPosition.x" :position-y="tableZebraLineMenuPosition.y">
+                    <v-list>
+                      <v-list-item>
+                        <v-switch v-model="isTableZebraLineShown" hide-details class="ma-0" label="显示斑马纹" dense flat></v-switch>
+                      </v-list-item>
+                    </v-list>
+                  </v-menu>
+                </template>
+                <!-- 没有数据 -->
+                <template v-slot:loading>
+                  <div class="jh-no-data">数据加载中</div>
+                </template>
+                <template v-slot:no-data>
+                  <div class="jh-no-data">暂无数据</div>
+                </template>
+                <template v-slot:no-results>
+                  <div class="jh-no-data">暂无数据</div>
+                </template>
+                <!-- 表格分页 -->
+                <template v-slot:footer.page-text="pagination">
+                  <span>{{pagination.pageStart}}-{{pagination.pageStop}}</span>
+                  <span class="ml-1">共{{pagination.itemsLength}}条</span>
+                </template>
+              </v-data-table>
+            </v-card>
+
+
+          </v-container>
+
+          <!-- 编辑公式 -->
+          <v-navigation-drawer v-model="isAddDrawerShow" :permanent="isAddDrawerShow" fixed temporary right width="80%"
+            class="elevation-24">
+            <v-row>
+              <span class="text-subtitle-1 font-weight-medium pa-6 pl-7">{{editItem.itemName}}--编辑公式</span>
+              <span class="title pa-6 pl-1 pr-1" style="width: 200px;">
+                <select-period v-if="isAddDrawerShow" 
+                  v-model="editItem.period" :clearable="false"
+                  @change="doUiAction('selectFormulaList', {})"
+                  />
+              </span>
+            </v-row>
+            <v-form v-model="isFormValid" v-if="isAddDrawerShow" ref="form" lazy-validation>
+              <report-assetLiability-formula 
+                v-model="formulaList" 
+                :item="editItem" :subjectList="subjectList" 
+                :loadingFormulaList="loadingFormulaList"
+                @doDeleteItem="doUiAction('doDeleteFormulaItem', { item: $event})"/>
+              <!-- 抽屉操作按钮 -->
+              <v-row class="justify-end mx-0 mt-8 px-6">
+                <v-btn class="ml-2" small @click="isAddDrawerShow = false"><v-icon size="14">mdi-close</v-icon>取消</v-btn>
+                <v-btn class="ml-2" small color="success" @click="doUiAction('doSubmitFormula', {})"><v-icon size="14">mdi-content-save-check-outline</v-icon>保存</v-btn>
+              </v-row>
+            </v-form>
+            <!-- 抽屉关闭按钮 -->
+            <v-btn elevation="0" color="success" fab absolute top left small tile class="drawer-close-float-btn" @click="isAddDrawerShow = false">
+              <v-icon>mdi-close</v-icon>
+            </v-btn>
+
+          </v-navigation-drawer>
+        </div>
+        <!-- 帮助页抽屉 >>>>>>>>>>>>> -->
+        <!-- <<<<<<<<<<<<< 帮助页抽屉 -->
+      </v-main>
+          
+    </v-app>
+    <jh-toast />
+    <jh-mask />
+    <jh-confirm-dialog />
+  </div>
+</script>
+<div id="app">
+</div>
+
+{% endblock %}
+
+{% block vueScript %}
+{% include 'component/jianghuJs/select-appaId.html' %}
+{% include 'common/jianghuJs/fixedTableHeightV4.html' %}
+{% include 'component/select-period.html' %}
+{% include 'component/report-assetLiability-formula.html' %}
+{% include 'common/excelUtil.html' %}
+{% include 'common/tableHeaderAndBorder.html' %}
+{% include 'common/vueFilters.html' %}
+
+<script type="module">
+  new Vue({
+    el: '#app',
+    template: '#app-template',
+    vuetify: new Vuetify(),
+    data: () => ({
+      isMobile: window.innerWidth < 500,
+
+      // 面包屑
+      breadcrumbs: [
+        {
+          text: '首页',
+          disabled: true,
+        },
+        {
+          text: '资产负债',
+          disabled: true,
+        }
+      ],
+
+      // 下拉选项
+      constantObj: {
+      },
+      // 表格相关数据
+      isTableZebraLineMenuShown: false,
+      tableZebraLineMenuPosition: { x: null, y: null },
+      isTableZebraLineShown: true,
+      isFormValid: true,
+      validationRules: {
+        requireRules: [
+          v => !!v || '必填',
+        ],
+      },
+      constantObj: {
+        types: [
+          { text: '资产', vlaue: '资产' },
+          { text: '负债', vlaue: '负债' },
+        ],
+      },
+      serverSearchInput: {
+        direction: ['资产', '负债'],
+        period: {
+          periodId: null,
+          currentPeriodId: null,
+        },
+      },
+      searchInput: null,
+      liabilitiesSearchInput: null,
+      isTableLoading: true,
+
+      assetList: [],
+      liabilityList: [],
+
+      editItem: {
+        period: {
+          periodId: null,
+          currentPeriodId: null,
+        }
+      },
+
+      showItemStartAmountPeriod: false,
+      showItemEndAmountYear: false,
+      isAddDrawerShow: false,
+      subjectList: [],
+      formulaList: [],
+      formulaListOfYearStart: [],
+      loadingFormulaList: false,
+
+      showFormulaId: null,
+    }),
+    computed: {
+      assetData() {
+        return this.assetList
+      },
+      liabilityData() {
+        return this.liabilityList
+      },
+      headers() {
+        let headerList = [
+          { text: "资产", value: "itemName", sortable: false, width: 120 },
+          { text: "行次", value: "row", sortable: false, width: 20 },
+          { text: "公式数-科目", value: "formulaCount", width: 80 },
+        ];
+        if (this.showItemStartAmountPeriod) {
+          headerList.push({ text: "期初数", value: "itemStartAmountPeriod", align: 'end', sortable: false, width: 80 })
+        }
+        headerList.push({ text: "期末数", value: "itemEndAmountPeriod", align: 'end', sortable: false, width: 80 })
+        headerList.push({ text: "年初数", value: "itemStartAmountYear", align: 'end', sortable: false, width: 80 })
+        if (this.showItemEndAmountYear) {
+          headerList.push({ text: "年末数", value: "itemEndAmountYear", align: 'end', sortable: false, width: 80 })
+        }
+
+        headerList = headerList.concat([
+          { text: "负债和所有者权益", value: "itemName2", sortable: false, width: 120 },
+          { text: "行次", value: "row2", sortable: false, width: 20 },
+          { text: "公式数-科目", value: "formulaCount2", width: 80 },
+        ])
+        if (this.showItemStartAmountPeriod) {
+          headerList.push({ text: "期初数", value: "itemStartAmountPeriod2", align: 'end', sortable: false, width: 80 })
+        }
+        headerList.push({ text: "期末数", value: "itemEndAmountPeriod2", align: 'end', sortable: false, width: 80 })
+        headerList.push({ text: "年初数", value: "itemStartAmountYear2", align: 'end', sortable: false, width: 80 })
+        if (this.showItemEndAmountYear) {
+          headerList.push({ text: "年末数", value: "itemEndAmountYear2", align: 'end', sortable: false, width: 80 })
+        }
+
+        return headerList;
+      },
+    },
+    watch: {},
+    async created() {
+    },
+    async mounted() {
+      this.doUiAction('tableScrollSync');
+    },
+    methods: {
+      async doUiAction(uiActionId, uiActionData) {
+        switch (uiActionId) {
+          case 'tableScrollSync':
+            await this.tableScrollSync();
+            break;
+          case 'refreshTableData':
+            await this.refreshTableData();
+            await this.getSubjectList();
+            // Tip: 测试代码
+            // this.doUiAction('startEditFormula', { item: this.assetList[1] });
+            break;
+          case 'openTableZebraLineMenu':
+            await this.openTableZebraLineMenu(uiActionData);
+            break;
+          case 'startEditFormula':
+            await this.startEditFormula(uiActionData);
+            break;
+          case 'selectFormulaList':
+            uiActionData.force = false; // Tip: 强制刷新 formulaList
+            await this.selectFormulaList(uiActionData);
+            break;
+          case 'doDeleteFormulaItem':
+            uiActionData.force = true; // Tip: 强制刷新 formulaList
+            await this.doDeleteFormulaItem(uiActionData);
+            await this.selectFormulaList(uiActionData);
+            break;
+          case 'doSubmitFormula':
+            uiActionData.force = true;
+            await this.prepareValidate();
+            await this.doSubmitFormula();
+            await this.selectFormulaList(uiActionData);
+            await this.refreshTableData();
+            break;
+          default:
+            console.error("[doUiAction] uiActionId not find", { uiActionId });
+            break;
+        }
+      },
+      async tableScrollSync() {
+        const containerList = document.querySelectorAll('.v-data-table__wrapper');
+        containerList.forEach(container => {
+          container.addEventListener('scroll', (event) => {
+            const scrollTop = event.target.scrollTop;
+            document.querySelectorAll('.v-data-table__wrapper').forEach((element) => {
+              if (element !== event.target) {
+                element.scrollTop = scrollTop;
+              }
+            });
+          });
+        })
+      },
+      async startEditFormula({ item }) {
+        this.formulaList = []
+        this.isAddDrawerShow = true
+
+        this.editItem = {
+          ...item,
+          itemEndAmountPeriodSum: 0,
+          itemStartAmountYearSum: 0,
+          period: {
+            periodId: null,
+            currentPeriodId: null,
+          }
+        }
+      },
+
+      async prepareValidate() {
+        if (this.$refs.form.validate() === false) {
+          window.vtoast.fail({ message: "输入有误, 请检查!" });
+          throw new Error("[prepareValidate] false");
+        }
+      },
+
+      /**
+       * uiActionId:  refreshTableData
+       * description: ✅获取表格数据
+      */
+      async refreshTableData() {
+        this.isTableLoading = true;
+        const result = await window.jianghuAxios({
+          data: {
+            appData: {
+              pageId: 'report-assetLiability',
+              actionId: 'getItemListOfAssetLiability',
+              actionData: {
+                periodId: this.serverSearchInput.period.periodId
+              },
+              where: {},
+            }
+          }
+        });
+
+        const { rows, assetList, liabilityList } = result.data.appData.resultData;
+
+        // liabilityList 对齐 适配
+        const targetIndex = liabilityList.findIndex(item => item.itemName == '所有者权益（或股东权益）：');
+        const id = liabilityList[targetIndex].id;
+        liabilityList.splice(targetIndex + 1, 0, { id }, { id }, { id }, { id }, { id }, { id });
+
+        assetList.forEach((item, index)=> {
+          item.item2 = liabilityList[index]
+          item.itemName2 = liabilityList[index]?.itemName;
+          item.row2 = liabilityList[index]?.row;
+          item.formulaCount2 = liabilityList[index]?.formulaCount;
+          item.itemStartAmountPeriod2 = liabilityList[index]?.itemStartAmountPeriod;
+          item.itemEndAmountPeriod2 = liabilityList[index]?.itemEndAmountPeriod;
+          item.itemStartAmountYear2 = liabilityList[index]?.itemStartAmountYear;
+          item.itemEndAmountYear2 = liabilityList[index]?.itemEndAmountYear;
+          item.formulaCount2 = liabilityList[index]?.formulaCount;
+          item.editable2 = liabilityList[index]?.editable;
+          item.computeFormula2 = liabilityList[index]?.computeFormula;
+          item.level2 = liabilityList[index]?.level;
+          item.formulaList2 = liabilityList[index]?.formulaList;
+          item.formulaListStr22 = liabilityList[index]?.formulaListStr2;
+        })
+        this.assetList = assetList;
+        this.liabilityList = liabilityList;
+
+        this.isTableLoading = false;
+      },
+      // ---------- 斑马纹开关 uiAction >>>>>>>>>> --------
+      async openTableZebraLineMenu(funObj) {
+        this.tableZebraLineMenuPosition.x = funObj.x - funObj.offsetX + 10;
+        this.tableZebraLineMenuPosition.y = window.innerHeight - 50;
+        this.isTableZebraLineMenuShown = !this.isTableZebraLineMenuShown;
+      },
+      // ---------- <<<<<<<<<< 斑马纹开关 uiAction --------
+      // =================================uiAction 公共方法 end ======================================
+      async getSubjectList() {
+        const result = await window.jianghuAxios({
+          data: {
+            appData: {
+              pageId: 'report-assetLiability',
+              actionId: 'selectSubjectList',
+              actionData: {},
+              where: {},
+              orderBy: [{ column: 'subjectId', order: 'asc' }]
+            }
+          }
+        });
+        const { rows } = result.data.appData.resultData;
+
+        this.subjectList = rows;
+      },
+      formatNegativeAmountTo0(amount) {
+        if (!amount) { return 0; }
+        return amount < 0 ? 0 : amount;
+      },
+      async selectFormulaList({ force = false }) {
+        if (force !== true && this.formulaList.findIndex(v => !v.id) > -1) {
+          window.confirmDialog({ title: "警告", content: "请保存公式!" })
+          throw new Error("请保存公式!");
+        }
+
+        this.loadingFormulaList = true
+        const { itemId } = this.editItem;
+        const result = await window.jianghuAxios({
+          data: {
+            appData: {
+              pageId: 'report-assetLiability',
+              actionId: 'selectFormulaList',
+              actionData: {},
+              where: {
+                itemId,
+                // Tip：|| '' ===> 默认什么都查不到
+                periodId: this.editItem.period.periodId || ''
+              },
+              orderBy: [{ column: 'id', order: 'asc' }]
+            }
+          }
+        });
+        this.loadingFormulaList = false
+        const { rows } = result.data.appData.resultData;
+        this.formulaList = rows;
+
+        this.formulaList.forEach(formula => {
+          const { subjectBalanceDirection } = formula;
+          if (formula.accessRule === '余额') {
+            formula.itemEndAmountPeriod = subjectBalanceDirection === '借' ? formula.endDebit : formula.endCredit;
+            formula.itemEndAmountYear = subjectBalanceDirection === '借' ? formula.endDebitYear : formula.endCreditYear;
+            formula.itemStartAmountPeriod = subjectBalanceDirection === '借' ? formula.startDebit : formula.startCredit;
+            formula.itemStartAmountYear = subjectBalanceDirection === '借' ? formula.startDebitYear : formula.startCreditYear;
+          }
+
+          if (formula.accessRule === '科目借方余额') {
+
+            formula.itemEndAmountPeriod = this.formatNegativeAmountTo0(formula.endDebit - formula.endCredit);
+            formula.itemEndAmountYear = this.formatNegativeAmountTo0(formula.endDebitYear - formula.endCreditYear);
+            formula.itemStartAmountPeriod = this.formatNegativeAmountTo0(formula.startDebit - formula.startCredit);
+            formula.itemStartAmountYear = this.formatNegativeAmountTo0(formula.startDebitYear - formula.startCreditYear);
+          }
+
+          if (formula.accessRule === '科目贷方余额') {
+            formula.itemEndAmountPeriod = this.formatNegativeAmountTo0(formula.endCredit - formula.endDebit);
+            formula.itemEndAmountYear = this.formatNegativeAmountTo0(formula.endCreditYear - formula.endDebitYear);
+            formula.itemStartAmountPeriod = this.formatNegativeAmountTo0(formula.startCredit - formula.startDebit);
+            formula.itemStartAmountYear = this.formatNegativeAmountTo0(formula.startCreditYear - formula.startDebitYear);
+          }
+        })
+
+
+        this.editItem.itemEndAmountPeriodSum = _.reduce(this.formulaList, function (sum, formula) {
+          if (formula.countDirection === '+') {
+            return sum + formula.itemEndAmountPeriod;
+          }
+          if (formula.countDirection === '-') {
+            return sum - formula.itemEndAmountPeriod;
+          }
+          return sum;
+        }, 0);
+        this.editItem.itemStartAmountYearSum = _.reduce(this.formulaList, function (sum, formula) {
+          if (formula.countDirection === '+') {
+            return sum + formula.itemStartAmountYear;
+          }
+          if (formula.countDirection === '-') {
+            return sum - formula.itemStartAmountYear;
+          }
+          return sum;
+        }, 0);
+      },
+      async doDeleteFormulaItem({ item }) {
+        if (!item.id) {
+          window.vtoast.success('删除公式');
+          return;
+        }
+        window.vtoast.loading('删除公式');
+        await window.jianghuAxios({
+          data: {
+            appData: {
+              pageId: 'report-assetLiability',
+              actionId: 'deleteFormulaItem',
+              where: {
+                itemId: item.itemId,
+                subjectId: item.subjectId,
+              },
+            }
+          }
+        })
+        window.vtoast.success('删除公式');
+      },
+      async doSubmitFormula() {
+        window.vtoast.loading("公式保存");
+        await window.jianghuAxios({
+          data: {
+            appData: {
+              pageId: 'report-assetLiability',
+              actionId: 'saveFormulaListOfAssetLiability',
+              actionData: {
+                itemId: this.editItem.itemId,
+                formulaList: this.formulaList
+              }
+            }
+          }
+        })
+        window.vtoast.success("公式保存");
+      },
+      async exportExcelOfAsset() {
+        const excelDataList = _.cloneDeep(this.assetList);
+        excelDataList.forEach(item => {
+          if (item.computeFormula) {
+            const { computeFormula } = item;
+            item.computeFormula = computeFormula.replace(/L/g, 'D');
+            item.computeFormula2 = computeFormula.replace(/L/g, 'E');
+          }
+          if (item.formulaListStr) {
+            item.formulaListStr = `[${item.formulaListStr}]`;
+            item.formulaListStr2 = `[${item.formulaListStr2}]`;
+          }
+        })
+        const headers = _.cloneDeep(this.headers);
+        headers.push(
+          { text: "期末数-行公式", value: "computeFormula", sortable: false, width: 5 },
+          { text: "年初数-行公式", value: "computeFormula", sortable: false, width: 5 },
+          { text: "科目公式", value: "formulaListStr", sortable: false, width: 5 },
+          { text: "科目(取值)公式", value: "formulaListStr2", sortable: false, width: 5 },
+        )
+        const params = {
+          header: headers.filter(header => header.text != '操作').map(header => header.text),
+          key: headers.filter(header => header.text != '操作').map(header => header.value),
+          data: excelDataList,
+          filename: dayjs().format('YYYYMMDDHHmmss') + '_' + '资产表',
+          // deleteRows: [0, 1, 17]
+        };
+        excelUtil.exportData(params);
+      },
+      async exportExcelOfLiability() {
+        const excelDataList = _.cloneDeep(this.liabilityList);
+        excelDataList.forEach(item => {
+          if (item.computeFormula) {
+            item.computeFormula = item.computeFormula.replace(/L/g, 'D');
+            item.computeFormula2 = item.computeFormula.replace(/L/g, 'E');
+          }
+          if (item.formulaListStr) {
+            item.formulaListStr = `[${item.formulaListStr}]`;
+            item.formulaListStr2 = `[${item.formulaListStr2}]`;
+          }
+        })
+        const headers = _.cloneDeep(this.headers);
+        headers.push(
+          { text: "期末数-行公式", value: "computeFormula", sortable: false, width: 5 },
+          { text: "年初数-行公式", value: "computeFormula", sortable: false, width: 5 },
+          { text: "科目公式", value: "formulaListStr", sortable: false, width: 5 },
+          { text: "科目(取值)公式", value: "formulaListStr2", sortable: false, width: 5 },
+        )
+        const params = {
+          header: headers.filter(header => header.text != '操作').map(header => header.text),
+          key: headers.filter(header => header.text != '操作').map(header => header.value),
+          data: excelDataList,
+          filename: dayjs().format('YYYYMMDDHHmmss') + '_' + '负债表',
+          // deleteRows: [0, 1, 13, 20]
+        };
+        excelUtil.exportData(params);
+      },
+
+      jumpToUrl() {
+        window.open('https://cn.jianghujs.org/doc/page/article/11603', '_blank');
+      }
+    }   
+  })
+</script>
+
+<style scoped>
+  .item-name {
+    display: block;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+  .red-text {
+    color: red;
+  }
+</style>
+{% endblock %}

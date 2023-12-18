@@ -1,0 +1,98 @@
+<template id="select-period-range">
+  <v-select
+    class="jh-v-input bg-white"
+    v-model="value"
+    :items="items"
+    prefix="期间:"
+    dense filled single-line
+    :clearable="clearable"
+    item-text="periodId" 
+    item-value="periodId" 
+    :return-object="true"
+    :menu-props="{ button: true, offsetY: true }"
+    :disabled="disabled"
+    :loading="isPeriodListLoading"
+    multiple
+    @change="onChange">
+    <template v-slot:selection="{ item, index }">
+      <span v-if="index === 0">{{ item.periodId }}</span>
+      <span v-if="index > 0 && index === value.length-1">--{{ item.periodId }}</span>
+    </template>
+    <template v-slot:item="{ item, index }">
+      <template v-slot:append></template>
+      {{ item.periodId }}
+    </template>
+  </v-select>
+</template>
+
+
+<script>
+  
+  Vue.component('select-period-range', {
+    template: '#select-period-range',
+    props: {
+      value: [], // Object/Array
+      disabled: {
+        type: Boolean,
+        default: false,
+      },
+      clearable: {
+        type: Boolean,
+        default: false,
+      },
+    },
+    vuetify: new Vuetify(),
+    data: () => ({
+      selectPeriodAllSwitch: JSON.parse('<$ ctx.app.config.selectPeriodAllSwitch | dump | safe $>'),
+      items: [ ],
+      currentPeriod: null,
+      isPeriodListLoading: true
+    }),
+    computed: {
+    },
+    watch: {},
+    async created() {
+      await this.getItems()
+      await this.selectDefaultPeriod()
+    },
+    methods: {
+      async getItems() {
+        const result = await window.jianghuAxios({
+          data: {
+            appData: {
+              pageId: 'allPage',
+              actionId: 'selectPeriodList',
+              actionData: {},
+              where: {},
+              orderBy: [{column: 'periodId', order: 'desc'}]
+            }
+          }
+        });
+        const { rows } = result.data.appData.resultData;
+        this.currentPeriod = rows.find(row => row.isCheckout == '待结账') || rows[0];
+        rows.forEach(row => {
+          row.currentPeriodId = this.currentPeriod.periodId;
+        });
+        this.items = rows;
+        this.isPeriodListLoading = false;
+      },
+      selectDefaultPeriod() {
+        if (this.value && this.value.length > 0) {
+          this.onChange(this.value);
+          return;
+        }
+        this.onChange(this.selectPeriodAllSwitch ? this.items : [this.currentPeriod]);
+      },
+      onChange(periodList) {
+        if (periodList && periodList.length > 0) {
+          const maxPeriod = _.maxBy(periodList, 'periodId');
+          const minPeriod = _.minBy(periodList, 'periodId');
+          periodList = this.items.filter(item => maxPeriod.periodId >= item.periodId && item.periodId >= minPeriod.periodId)
+        }
+        this.value = _.orderBy(periodList, ['periodId'], ['desc']);
+        this.$emit('input', this.value)
+        this.$emit('change')
+      },
+    }
+  })
+</script>

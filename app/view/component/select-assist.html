@@ -1,0 +1,120 @@
+<template id="select-assist">
+  <v-row dense>
+    <v-col cols="6" xs="12" class="pr-md-1">
+      <v-autocomplete
+      class="jh-v-input bg-white"
+      :value="assistType"
+      :items="constantObj.assistType"
+      prefix="辅助类:"
+      dense filled single-line
+      :clearable="false"
+      :menu-props="{ button: true, offsetY: true }"
+      @change="onAssistTypeChange">
+    </v-autocomplete>
+    </v-col>
+    <v-col cols="6" xs="12" class="pr-md-1">
+      <v-autocomplete
+      class="jh-v-input bg-white"
+      :value="assistId"
+      :items="constantObj[assistType]"
+      prefix="辅助项:"
+      dense filled single-line
+      :clearable="false"
+      item-text="assistName" item-value="assistId"
+      :menu-props="{ button: true, offsetY: true }"
+      @change="onAssistIdChange">
+    </v-autocomplete>
+    </v-col>
+  </v-row>
+</template>
+
+<script>
+  Vue.component('select-assist', {
+    template: '#select-assist',
+    props: {
+      subjectId: {
+        type: String,
+        default: () => {
+          return ""
+        }
+      },
+      assistType: {
+        type: String,
+        default: () => {
+          return ""
+        }
+      },
+      assistId: {
+        type: [String, Number],
+        default: () => {
+          return ""
+        }
+      }
+    },
+    vuetify: new Vuetify(),
+    data: () => ({
+      constantObj: {
+        customer: [], 
+        supplier: [], 
+        staff: [], 
+        project: [], 
+        depart: [],
+        assistType: constantObj.assistList,
+      },
+    }),
+    computed: {
+    },
+    watch: {
+      subjectId: {
+        handler: function (val, oldVal) {
+          this.getItems();
+        },
+      },
+    },
+    async created() {
+      await this.getItems()
+    },
+    methods: {
+      async getItems() {
+        const result = await window.jianghuAxios({
+          data: {
+            appData: {
+              pageId: 'allPage',
+              actionId: 'selectAssistList',
+              actionData: { 
+                subjectId: this.subjectId
+              },
+              where: {},
+              orderBy: [{column: 'assistId', order: 'desc'}]
+            }
+          }
+        });
+        const resultData = result.data.appData.resultData;
+
+        for (let key in resultData) {
+          const assistType = constantObj.assistList.find((assist) => assist.text === key).value
+          this.constantObj[assistType] = [{ assistId: '', assistName: '' }].concat(resultData[key]);
+        }
+        if (this.constantObj.assistType.length > 0) {
+          if (!this.assistType) {
+            this.assistType = this.constantObj.assistType[0].value;
+            this.$emit('update:assistType', this.assistType);
+          }
+          const assistData = this.constantObj[this.assistType];
+          if (!this.assistId && assistData && assistData.length > 0) {
+            this.assistId = assistData[0].assistId;
+            this.$emit('update:assistId', this.assistId);
+          }
+        }
+      },
+      onAssistTypeChange(val) {
+        this.$emit('update:assistType', val)
+        this.$emit('change')
+      },
+      onAssistIdChange(val) {
+        this.$emit('update:assistId', val)
+        this.$emit('change')
+      }
+    }
+  })
+</script>

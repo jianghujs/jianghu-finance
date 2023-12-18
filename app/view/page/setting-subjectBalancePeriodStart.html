@@ -1,0 +1,438 @@
+{% extends 'template/jhTemplateV4.html'%}
+
+{% block vueTemplate %}
+
+<script type="text/html" id="app-template">
+  <div>
+    <v-app mobile-breakpoint="sm">
+      <jh-menu />
+      <v-main class="mt-15">
+        <!-- 头部内容 >>>>>>>>>>>>> -->
+        <div class="jh-page-second-bar px-8">
+          <v-row class="align-center" no-gutters>
+            <v-col class="d-flex align-center" cols="12" xs="12" md="6">
+              <div>
+                <div class="py-4 text-body-1 font-weight-bold d-flex align-center">科目初始余额
+                  <select-appaId/>
+                </div>
+              </div>
+            </v-col>
+            <!-- pc端的搜索条件表单 >>>>>>>> -->
+            <v-col cols="12" xs="12" md="6" class="pt-0 pt-md-3 mb-3 mb-md-0">
+              <v-row class="ma-0" class="justify-md-end" no-gutters>
+                <v-col cols="7" class="text-right">
+                  <v-btn-toggle mandatory dense class="mr-0 mr-md-2" color="success"> 
+                    <v-btn small v-for="item, index in constantObj.subjectCategory"  @click="selectSubjectCategory = item.value; doUiAction('refreshTableData');" :key="index"> {{item.text}} </v-btn> 
+                    <v-btn class="elevation-0" 
+                      @click="selectSubjectCategory = ''; doUiAction('refreshTableData');" small>
+                      全部
+                    </v-btn>
+                  </v-btn-toggle>
+                </v-col>
+
+                <v-col cols="5" class="d-none d-md-flex">
+                  <v-text-field
+                  prefix="初始会计期间: " 
+                  v-model="periodStart.periodId" 
+                  class="jh-v-input bg-white" dense filled single-line readonly>
+                </v-text-field>
+                </v-col>
+              </v-row>
+            </v-col>
+            
+          </v-row>
+        </div>
+        <!-- <<<<<<<<<<<<< 头部内容 -->
+
+        <div class="jh-page-body-container px-8">
+          <!-- 页面主要内容 -->
+          <v-container class="fullScreen d-flex flex-column pa-xs-0 pa-0">
+            <v-card class="rounded-lg">
+              <v-row class="ma-0 pa-4 align-center">
+                <v-col cols="12" xs="12" sm="6" md="6" xl="6" class="pa-0">
+                  <v-btn class="elevation-0 mr-2" 
+                    color="warning" 
+                    
+                    @click="doUiAction('checkSubjectBalance', { } )" small>
+                    试算平衡
+                  </v-btn>
+             
+                  <v-btn class="elevation-0 mr-2 px-1" 
+                    :disabled="periodStart.isCheckout === '已结账'"
+                    color="success"
+                    append-icon="mdi-account-circle"
+                    @click="doUiAction('updateSubjectBalanceForPeriodStart', {} )" small>
+                    保存
+                    <v-icon v-if="periodStart.isCheckout === '已结账'" class="mr-1" right color="warning" @click="window.vtoast.show({ message: '初始会计期间已结账, 禁止保存初始余额!', icon: 'mdi-help-circle' })">mdi-help-circle</v-icon>
+                  </v-btn>
+                 
+                  <v-btn class="elevation-0 mr-2 green" color="primary" small outlined @click="doUiAction('exportExcel')">导出excel</v-btn>
+
+                  
+                </v-col>
+                <v-spacer></v-spacer>
+
+                <v-col cols="4" xs="12" class="text-right pa-0 mt-2 mt-md-0">
+                  <v-text-field color="success" v-model="searchInput" prefix="搜索：" class="jh-v-input" dense filled single-line></v-text-field>
+                </v-col>
+              </v-row>
+              <v-data-table 
+                fixed-header
+                :headers="headers"
+                :items="tableData"
+                :search="searchInput"
+                :footer-props="{ itemsPerPageOptions: [20, 50, -1], itemsPerPageText: '每页行数', itemsPerPageAllText: '所有'}"
+                :items-per-page="-1"
+                mobile-breakpoint="0"
+                :loading="isTableLoading"
+                checkbox-color="success"
+                :class="{'zebraLine': isTableZebraLineShown }"
+                class="jh-fixed-table-height elevation-0 mt-0 mb-xs-4">
+                <!-- 处理显示列 -->
+                <template v-slot:item.subjectName="{ item }">
+                  <span :style="{'margin-left': (item.subjectLevel - 1) * 20 + 'px'}">{{item.subjectName}}</span>
+                </template>    
+                <template v-slot:item.subjectBalanceDirection="{ item }">
+                  <v-chip dark x-small :color="item.subjectBalanceDirection | directionBgColor">{{item.subjectBalanceDirection}}</v-chip>
+                </template>  
+                <template v-slot:item.periodStartBalance="{ item }">
+                  <v-text-field 
+                    style="text-align: right;"
+                    v-if="item.subjectHasChildren === '无下级科目' && item.subjectBalanceDirection === '借'"
+                    :disabled="periodStart.isCheckout === '已结账'"
+                    class="jh-v-input mr-0 custom-input" dense filled single-line 
+                    v-model.number="item.startDebit" type="number">
+                  </v-text-field>
+                  <v-text-field 
+                    v-if="item.subjectHasChildren === '无下级科目' && item.subjectBalanceDirection === '贷'"
+                    :disabled="periodStart.isCheckout === '已结账'"
+                    class="jh-v-input mr-0 custom-input" dense filled single-line 
+                    v-model.number="item.startCredit" type="number">
+                  </v-text-field>
+                  <span v-if="item.subjectHasChildren === '有下级科目'" class="pr-6">
+                    {{ item.subjectBalanceDirection === '借' ? $options.filters.formatMoney(item.startDebit) : $options.filters.formatMoney(item.startCredit) }}
+                  </span>
+                </template>
+
+                <!-- 表格底部右侧功能按钮 -->
+                <template v-slot:footer.prepend>
+                
+                  <v-menu top offset-y :close-on-content-click="false" v-model="isTableZebraLineMenuShown" :position-x="tableZebraLineMenuPosition.x" :position-y="tableZebraLineMenuPosition.y">
+                    <v-list>
+                      <v-list-item>
+                        <v-switch v-model="isTableZebraLineShown" hide-details class="ma-0" label="显示斑马纹" dense flat></v-switch>
+                      </v-list-item>
+                    </v-list>
+                  </v-menu>
+                </template>
+                <!-- 没有数据 -->
+                <template v-slot:loading>
+                  <div class="jh-no-data">数据加载中</div>
+                </template>
+                <template v-slot:no-data>
+                  <div class="jh-no-data">暂无数据</div>
+                </template>
+                <template v-slot:no-results>
+                  <div class="jh-no-data">暂无数据</div>
+                </template>
+                <!-- 表格分页 -->
+                <template v-slot:footer.page-text="pagination">
+                  <span>{{pagination.pageStart}}-{{pagination.pageStop}}</span>
+                  <span class="ml-1">共{{pagination.itemsLength}}条</span>
+                </template>
+              </v-data-table>
+            </v-card>
+          </v-container>
+
+          <!-- 试算平衡 -->
+          <v-row justify="space-around">
+            <v-col cols="auto">
+              <v-dialog v-model="checkSubjectBalanceDialog" transition="dialog-bottom-transition" max-width="600">
+                <template v-slot:default="dialog">
+                  <v-card>
+                    
+                    <v-row no-gutters>
+                      <span class="text-h7 font-weight-bold pa-4">试算平衡</span>
+                    </v-row>
+                    <v-divider class="jh-divider"></v-divider>
+                    <v-card-text>
+                      <v-simple-table>
+                        <template v-slot:default>
+                          <thead>
+                            <tr>
+                              <th class="text-left">项目</th>
+                              <th class="text-left">借方金额</th>
+                              <th class="text-left">贷方金额</th>
+                              <th class="text-left">差额</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td>期初余额</td>
+                              <td>{{ debitSum }}</td>
+                              <td>{{ creditSum }}</td>
+                              <td>
+                                <span v-if="debitSum - creditSum !== 0" class="error--text">
+                                  {{ debitSum - creditSum }} 
+                                  <v-btn
+                                      @click="window.vtoast.show({ message: '借贷不平衡!', icon: 'mdi-help-circle' })"
+                                      text icon small>
+                                    <v-icon small>mdi-help-circle</v-icon>
+                                  </v-btn>
+                                </span>
+                                <span v-if="debitSum - creditSum === 0" class="green--text">{{ debitSum - creditSum }}</span>
+                              </td>
+                            </tr>
+                          </tbody>
+                        </template>
+                      </v-simple-table>
+                    </v-card-text>
+                    <v-card-actions class="justify-end">
+                      <v-btn text @click="checkSubjectBalanceDialog = false">关闭</v-btn>
+                    </v-card-actions>
+                  </v-card>
+                </template>
+              </v-dialog>
+            </v-col>
+          </v-row>  
+        </div>
+
+      </v-main>
+          
+    </v-app>
+    <jh-toast />
+    <jh-mask />
+    <jh-confirm-dialog />
+  </div>
+</script>
+<div id="app">
+</div>
+
+{% endblock %}
+
+{% block vueScript %}
+{% include 'component/jianghuJs/select-appaId.html' %}
+{% include 'common/jianghuJs/fixedTableHeightV4.html' %}
+{% include 'common/excelUtil.html' %}
+{% include 'common/vueFilters.html' %}
+
+<script type="module">
+new Vue({
+  el: '#app',
+  template: '#app-template',
+  vuetify: new Vuetify(),
+  data: () => ({
+    
+    // 面包屑
+    breadcrumbs: [
+      {
+        text: '首页',
+        disabled: true,
+      },
+      {
+        text: '科目初始余额',
+        disabled: true,
+      }
+    ],
+
+    // 表格相关数据
+    isTableZebraLineMenuShown: false,
+    tableZebraLineMenuPosition: {x: null, y: null},
+    isTableZebraLineShown: true,
+
+    // 下拉选项
+    constantObj: {
+    },
+    isFormValid: true,
+    validationRules: {
+      requireRules: [
+        v => !!v || '必填',
+      ],
+    },
+    constantObj: {
+      subjectCategory: [
+        {text: '资产', value: '资产'},
+        {text: '负债', value: '负债'},
+        {text: '权益', value: '权益'},
+        {text: '成本', value: '成本'},
+        {text: '损益', value: '损益'},
+      ],
+    },
+
+    isOpenEdit: false,
+    periodStart: {
+      periodId: null,
+      isCheckout: null, // 已结账 未结账
+    },
+    periodList: [],
+
+    selectSubjectCategory: '资产',
+    searchInput: null,
+    isTableLoading: true,
+    tableDataFromBackend: [],
+    headers: [
+      {text: "科目编码", value: "subjectId", width: window.innerWidth > 500 ? 60 : 50, class: window.innerWidth > 500 && 'fixed', cellClass: window.innerWidth > 500 && 'fixed'}, 
+      {text: "科目名称", value: "subjectName", width: window.innerWidth > 500 ? 150 : 50, class: 'fixed', cellClass: 'fixed'}, 
+      {text: "科目分类", value: "subjectCategory", width: 100}, 
+      {text: "是否有下级科目", value: "subjectHasChildren", width: 80}, 
+      {text: "科目余额方向", value: "subjectBalanceDirection", width: 80}, 
+      {text: "初始余额", value: "periodStartBalance", align: 'end', width: 120}, 
+      // {text: "借方", value: "debit", width: 120}, 
+      // {text: "贷方", value: "credit", width: 120}, 
+      // {text: "年初余额", value: "occurAmount", width: 120}, 
+    ],
+
+    checkSubjectBalanceDialog: false,
+    debitSum: 0,
+    creditSum: 0,
+  }),
+  computed: {
+    tableData() {
+      if (!this.selectSubjectCategory) {
+        return this.tableDataFromBackend;
+      }
+      if (this.selectSubjectCategory) {
+        return this.tableDataFromBackend.filter(row => row.subjectCategory === this.selectSubjectCategory);
+      }
+    }
+  },
+  watch: {},
+  async created() {
+    await this.doUiAction('selectPeriodStart');
+    await this.doUiAction('refreshTableData');
+  },
+  mounted() {},
+  methods: {
+    async doUiAction(uiActionId, uiActionData) {
+      switch (uiActionId) {
+        case 'selectPeriodStart':
+          await this.selectPeriodStart();
+          break;
+        case 'refreshTableData':
+          await this.refreshTableData();
+          break;
+        case 'openTableZebraLineMenu':
+          await this.openTableZebraLineMenu(uiActionData);
+          break;
+        case 'updateSubjectBalanceForPeriodStart':
+          await this.updateSubjectBalanceForPeriodStart();
+          await this.refreshTableData();
+          break;
+        case 'checkSubjectBalance':
+          await this.checkSubjectBalanceByLocalData(uiActionData);
+          break;
+        case 'exportExcel':
+          await this.exportExcel();
+          break;
+        default:
+          console.error("[doUiAction] uiActionId not find", { uiActionId });
+          break;
+      }
+    },
+    // =================================uiAction 公共方法 start ======================================
+    async selectPeriodStart() {
+      const result = await window.jianghuAxios({
+        data: {
+          appData: {
+            pageId: 'setting-subjectBalancePeriodStart',
+            actionId: 'selectPeriodList',
+            actionData: {},
+            where: { isPeriodStart: '是' },
+          }
+        }
+      });
+      const { rows } = result.data.appData.resultData;
+      if (rows.length === 0) {
+        this.isTableLoading = false;
+        window.vtoast.fail({ message: "请创建第一个会计期间!" });
+        throw new Error("[selectPeriodStart] false; 请创建第一个会计期间");
+      }
+      if (rows.length === 1) {
+        this.periodStart = rows[0];
+      }
+      if (rows.length > 1) {
+        this.isTableLoading = false;
+        window.vtoast.fail({ message: "初始会计期间不能有多个!" });
+        throw new Error("[selectPeriodStart] false; 初始会计期间不能有多个");
+      }
+    },
+    /**
+     * uiActionId:  refreshTableData
+     * description: ✅获取表格数据
+    */
+    async refreshTableData() {
+      this.isTableLoading = true;
+      const where = { 
+        periodId: this.periodStart.periodId,
+        isPeriodStart: '是',
+      };
+      const result = await window.jianghuAxios({
+        data: {
+          appData: {
+            pageId: 'setting-subjectBalancePeriodStart',
+            actionId: 'selectSubjectBalanceList',
+            actionData: {},
+            where: { 
+              periodId: this.periodStart.periodId,
+              isPeriodStart: '是',
+            },
+            orderBy: [{column: 'subjectId', order: 'asc'}]
+          }
+        }
+      });
+      const { rows } = result.data.appData.resultData;
+      this.tableDataFromBackend = rows;
+      this.isTableLoading = false;
+    },
+    // ---------- 斑马纹开关 uiAction >>>>>>>>>> --------
+    async openTableZebraLineMenu(funObj) {
+      this.tableZebraLineMenuPosition.x = funObj.x - funObj.offsetX + 10;
+      this.tableZebraLineMenuPosition.y = window.innerHeight - 50;
+      this.isTableZebraLineMenuShown = !this.isTableZebraLineMenuShown;
+    },
+    // ---------- <<<<<<<<<< 斑马纹开关 uiAction --------
+    // =================================uiAction 公共方法 end ======================================
+    async updateSubjectBalanceForPeriodStart() { 
+      await window.vtoast.loading("保存");
+      await window.jianghuAxios({
+        data: {
+          appData: {
+            pageId: 'setting-subjectBalancePeriodStart',
+            actionId: 'updateSubjectBalanceForPeriodStart',
+            actionData: {
+              periodId: this.periodStart.periodId,
+              subjectBalanceList: this.tableDataFromBackend,
+            },
+          }
+        }
+      });
+      await window.vtoast.success("保存成功");
+    },
+    async checkSubjectBalanceByLocalData() {
+      const subjectList = this.tableDataFromBackend.filter(item => item.subjectHasChildren === '无下级科目')
+      this.debitSum = _.sumBy(subjectList, 'startDebit').toFixed(2);
+      this.creditSum = _.sumBy(subjectList, 'startCredit').toFixed(2);
+      if (this.debitSum !== this.creditSum) {
+        await window.vtoast.fail("您录入的初始余额不平衡，请仔细核对!");
+      }
+      this.checkSubjectBalanceDialog = true;
+    },
+
+    async exportExcel() {
+      const params = {
+        header: this.headers.filter(header => header.text != '操作').map(header => header.text),
+        key: this.headers.filter(header => header.text != '操作').map(header => header.value),
+        data: this.tableData,
+        filename: dayjs().format('YYYYMMDDHHmmss') + '_' + '科目初始余额'
+      };
+      excelUtil.exportData(params);
+    }
+  }
+})
+</script>
+
+<style>
+  .custom-input input { text-align: right;}
+</style>
+{% endblock %}
+

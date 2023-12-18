@@ -1,0 +1,98 @@
+<!-- jhConfirmInputDialog.html >>>>>>>>>>>>> -->
+<script type="text/html" id="jh-confirm-input-dialog">
+  <v-dialog
+    v-model="isConfirmInputDialogShown"
+    max-width="290"
+    @click:outside="confirmInputDialogStatus = false; isConfirmInputDialogShown = false">
+    <v-card>
+      <v-card-title v-if="confirmInputDialogContent.title">{{ confirmInputDialogContent.title }}</v-card-title>
+      
+     <v-form ref="form" class="px-4">
+      <v-text-field
+        v-model="inputValue"
+        :rules="inputRules"
+        class="jh-v-input" dense filled single-line
+        required
+      ></v-text-field>
+     </v-form>
+
+      <v-card-text v-if="confirmInputDialogContent.content" v-html="confirmInputDialogContent.content" class="pa-6 text-pre-line"></v-card-text>
+
+      <v-card-actions>
+        <v-spacer></v-spacer>
+        <v-btn text @click="confirmInputDialogStatus = false; isConfirmInputDialogShown = false">
+          取消
+        </v-btn>
+        <v-btn color="primary" text @click="validateAndProceed">
+          确定
+        </v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
+  </script>
+  
+  <script>
+  Vue.component("jh-confirm-input-dialog", {
+    template: "#jh-confirm-input-dialog",
+    vueComponent: 'jh-confirm-input-dialog',
+    mixins: [window.jianghuUiActionMixins || {}],
+    vuetify: new Vuetify(),
+    data: () => ({
+      isConfirmInputDialogShown: false,
+      confirmInputDialogContent: {title: '', action: null},
+      confirmInputDialogStatus: null,
+      inputValue: '',
+      verifyValue: '',
+      inputRules: []
+    }),
+    computed: {
+      isMobile() {
+        return window.innerWidth < 600;
+      },
+    },
+    destroyed() {
+      if (this.interval) {
+        clearInterval(this.interval)
+      }
+    },
+    watch: {
+      isConfirmInputDialogShown(v) {
+        window.dialogIsOpen = v;
+      }
+    },
+    async created() {
+      window.confirmInputDialog = this.confirmInputDialog;
+    },
+    methods: {
+      validateAndProceed() {
+        if (this.$refs.form.validate()) {
+          this.confirmInputDialogStatus = true;
+          this.isConfirmInputDialogShown = false;
+        }
+      },
+      async confirmInputDialog({title, content, cancelBtn = true, confirmColor = 'green darken-1', verifyValue}) {
+        this.confirmInputDialogContent.title = title;
+        this.confirmInputDialogContent.content = content;
+        this.verifyValue = verifyValue
+        this.inputRules = [
+          v => !!v || '输入必填',
+          v => (v === verifyValue) || `输入的值必须为"${verifyValue}"`
+        ]
+        this.isConfirmInputDialogShown = true;
+        this.confirmInputDialogStatus = null;
+        return new Promise((resolve) => {
+          this.interval = setInterval(() => {
+            if (this.confirmInputDialogStatus != null) {
+              clearInterval(this.interval);
+              resolve(this.confirmInputDialogStatus)
+              this.isConfirmInputDialogShown = false;
+              this.confirmInputDialogStatus = null;
+            }
+          }, 60)
+        })
+      },
+    },
+  })
+  </script>
+  <!-- <<<<<<<<<<<<< jhConfirmInputDialog.html -->
+  

@@ -1,0 +1,510 @@
+{% extends 'template/jhTemplateV4.html'%}
+
+{% block vueTemplate %}
+
+<script type="text/html" id="app-template">
+  <div>
+    <v-app mobile-breakpoint="sm">
+      <jh-menu />
+      <v-main class="mt-15">
+        <!-- 头部内容 >>>>>>>>>>>>> -->
+        <div class="jh-page-second-bar px-8">
+          <v-row class="align-center" no-gutters>
+            <v-col cols="12" xs="12" sm="12" md="4" xl="3">
+              <div class="py-4 text-body-1 font-weight-bold d-flex align-center">科目余额
+                <!-- 帮助页按钮 -->
+                <span role="button" class="success--text font-weight-regular jh-font-size-13 mx-2" @click="jumpToUrl">
+                  <v-icon size="13" class="success--text">mdi-help-circle-outline</v-icon>帮助
+                </span>
+                <select-appaId/>
+              </div>
+            </v-col>
+            <!-- pc端的搜索条件表单 >>>>>>>> -->
+            <v-col cols="12" xs="12" sm="12" md="8" xl="9" class="d-flex align-center mt-3 mt-md-0">
+              <v-row class="align-center jh-backend-form-container justify-end ma-0 py-1 pb-xs-2">
+                <v-col cols="12" xs="6" sm="6" md="5" xl="4" class="px-0 pr-md-2">
+                  <select-period v-model="serverSearchInput.period" @change="doUiAction('refreshTableData')"/>
+                </v-col>
+                <v-btn class="w-sm-full" color="success" small @click="doUiAction('refreshTableData')">
+                  <v-icon size="14">mdi-magnify</v-icon>查询
+                </v-btn>
+              </v-row>
+            </v-col>
+          </v-row>
+        </div>
+        <!-- <<<<<<<<<<<<< 头部内容 -->
+
+        <div class="jh-page-body-container px-8">
+
+        <!-- 页面主要内容 -->
+          <v-card class="rounded-lg">
+            <v-row class="ma-0 pa-4">
+              <v-col cols="12" xs="4" sm="4" md="4" xl="4" class="pa-0">
+                <v-btn class="elevation-0 mr-2 " color="primary" small outlined @click="doUiAction('exportExcel')">
+                  <v-icon size="14">mdi-export-variant</v-icon>
+                  导出excel</v-btn>
+
+                  <v-btn class="elevation-0 mr-2 d-none d-md-inline-block" color="primary" small @click="doUiAction('toggleTablePanel')">
+                    <!-- 展开/收缩icon -->
+                    <v-icon size="14">{{hideSubjectIdList.length ? 'mdi-chevron-double-down' : 'mdi-chevron-double-up'}}</v-icon>
+                    一键展开/收缩</v-btn>
+              </v-col>
+
+              <v-spacer></v-spacer>
+
+              <v-col cols="12" xs="4" sm="3" md="2" xl="2" class="pa-0">
+                <v-select
+                  class="jh-v-input"
+                  v-model="isShownInput"
+                  :items="constantObj.isShown"
+                  prefix="科目显示设置："
+                  dense filled single-line>
+                </v-select>
+              </v-col>
+              <v-col cols="12" xs="12" sm="4" md="3" xl="2" class="pa-0 pl-md-2 pr-0 mt-2 mt-md-0">
+                <v-text-field v-model="searchInput" prefix="搜索：" class="jh-v-input" dense filled single-line></v-text-field>
+              </v-col>
+            </v-row>
+            <v-data-table 
+              fixed-header
+              :headers="headers"
+              :items="tableData"
+              :search="searchInput"
+              :footer-props="{ itemsPerPageOptions: [20, 50, -1], itemsPerPageText: '每页行数', itemsPerPageAllText: '所有'}"
+              :items-per-page="-1"
+              mobile-breakpoint="0"
+              :loading="isTableLoading"
+              checkbox-color="success"
+              hide-default-header
+              :class="{'zebraLine': isTableZebraLineShown }"
+              class="jh-fixed-table-height elevation-0 mt-0 mb-xs-4">
+              <!-- 自渲染多级表头 -->
+
+              <template #header="{ }">
+                <thead class="v-data-table-header">
+                  <tr>
+                    <th v-for="(header,i) in headers" 
+                    v-if="!header.hidden"
+                    :key="i" 
+                    :class="(header.class || '') + (header.children ? ' colspan-th' : '')" 
+                    :style="{width: header.width + 'px', minWidth: header.width + 'px', textAlign: header.children ? 'center' : header.align}"
+                    :rowspan="header.children?1:2" 
+                    :colspan="header.children?header.children:1"
+                  >
+                      {{ header.children ? header.text.split('-')[0] : header.text }}
+                    </th>
+                  </tr>
+                  <tr class="subheader-tr">
+                    <th v-for="(h1,i1) in subHeaders"
+                    :class="h1.class" style="text-align: center;"  :key="i1">
+                      {{ h1.text }}
+                    </th>
+                  </tr>
+                </thead>
+              </template>
+              <!-- 多行展开测试 -->
+              <!-- <template v-slot:expanded-item="{ headers, item }">
+                <td v-for="(header, index) in headers" :key="index" :class="header.class">
+                  {{ item[header.value] }}
+                </td>
+              </template> -->
+              <!-- 处理显示列 -->
+              <template v-slot:item.subjectTag="{ item }"></template>
+
+              <template v-slot:item.action="{ item }">
+                  <template v-if="!isMobile">
+                    <span role="button" class="fixed success--text" @click="doUiAction('openSubjectDetail', item)">
+                      <v-icon color="success" small>mdi-file-document-outline</v-icon>明细账</span>
+                    <span role="button" class="fixed success--text" @click="doUiAction('openSubjectAdjust', item)">
+                      <v-icon color="success" small>mdi-skype-business</v-icon>核算项目余额</span>
+                  </template>
+                  
+                  <v-menu v-if="isMobile" offset-y>
+                    <v-list>
+                      <v-list-item>
+                        <div @click="doUiAction('openSubjectDetail', item)">
+                          
+                          明细账</div>
+                        <div @click="doUiAction('openSubjectAdjust', item)">
+                          
+                          核算项目余额</div>
+                      </v-list-item>
+                    </v-list>
+                  </v-menu>
+              </template>  
+              <template v-slot:item.subjectId="{ item }">
+                <span :style="{'margin-left': (item.subjectLevel - 1) * 20 + 'px'}">
+                  <v-icon small style="cursor: pointer;"
+                  v-if="item.subjectHasChildren === '有下级科目' && !item.showChildren"
+                  @click="showChildren(item)">mdi-chevron-right</v-icon>
+                  <v-icon small  style="cursor: pointer;" v-else-if="item.subjectHasChildren === '有下级科目' && item.showChildren"
+                  @click="showChildren(item)">mdi-chevron-down</v-icon>
+                  <!-- <div v-else style="width: 16px; display: inline-block;"></div> -->
+                  {{item.subjectId}}
+                </span>
+              </template>  
+              <template v-slot:item.subjectName="{ item }">
+                <span role="button" :style="{'margin-left': (item.subjectLevel - 1) * 15 + 'px'}">{{item.subjectName}}</span>
+                
+              </template>  
+              <template v-slot:item.subjectBalanceDirection="{ item }">
+                <v-chip x-small dark :color="item.subjectBalanceDirection | directionBgColor">{{item.subjectBalanceDirection}}</v-chip>
+                
+              </template>  
+              <template v-slot:item.startAmount="{item}">
+                <span>{{ (item.startAmount) | formatMoney}}</span>
+              </template>
+              <template v-slot:item.occurDebit="{item}">
+                <span>{{item.occurDebit | formatMoney}}</span>
+              </template>
+              <template v-slot:item.occurCredit="{item}">
+                <span>{{item.occurCredit | formatMoney}}</span>
+              </template>
+              <template v-slot:item.occurAmount="{item}">
+                <span>{{item.occurAmount | formatMoney}}</span>
+              </template>
+              <template v-slot:item.endAmount="{item}">
+                <span>{{ (item.endAmount) | formatMoney}}</span>
+              </template>
+              <template v-slot:item.startAmountYear="{item}">
+                <span>{{ (item.startAmountYear) | formatMoney}}</span>
+              </template>
+              <template v-slot:item.occurDebitYear="{item}">
+                <span>{{item.occurDebitYear | formatMoney}}</span>
+              </template>
+              <template v-slot:item.occurCreditYear="{item}">
+                <span>{{item.occurCreditYear | formatMoney}}</span>
+              </template>
+              <template v-slot:item.occurAmountYear="{item}">
+                <span>{{item.occurAmountYear | formatMoney}}</span>
+              </template>
+              <template v-slot:item.endAmountYear="{item}">
+                <span>{{ (item.endAmountYear) | formatMoney}}</span>
+              </template>
+
+              <!-- 表格底部右侧功能按钮 -->
+              <template v-slot:footer.prepend>
+                <div class="d-none d-md-flex" style="flex: auto;">{{searchSummary}}</div>
+
+             
+                <v-menu top offset-y :close-on-content-click="false" v-model="isTableZebraLineMenuShown" :position-x="tableZebraLineMenuPosition.x" :position-y="tableZebraLineMenuPosition.y">
+                  <v-list>
+                    <v-list-item>
+                      <v-switch v-model="isTableZebraLineShown" hide-details class="ma-0" label="显示斑马纹" dense flat></v-switch>
+                    </v-list-item>
+                  </v-list>
+                </v-menu>
+              </template>
+              <!-- 没有数据 -->
+              <template v-slot:loading>
+                <div class="jh-no-data">数据加载中</div>
+              </template>
+              <template v-slot:no-data>
+                <div class="jh-no-data">暂无数据</div>
+              </template>
+              <template v-slot:no-results>
+                <div class="jh-no-data">暂无数据</div>
+              </template>
+              <!-- 表格分页 -->
+              <template v-slot:footer.page-text="pagination">
+                <span>{{pagination.pageStart}}-{{pagination.pageStop}}</span>
+                <span class="ml-1">共{{pagination.itemsLength}}条</span>
+              </template>
+            </v-data-table>
+          </v-card>
+        </div>
+
+        <!-- 帮助页抽屉 >>>>>>>>>>>>> -->
+        <!-- <<<<<<<<<<<<< 帮助页抽屉 -->
+
+      </v-main>
+          
+    </v-app>
+    <jh-toast />
+    <jh-mask />
+    <jh-confirm-dialog />
+  </div>
+</script>
+<div id="app">
+</div>
+
+{% endblock %}
+
+{% block vueScript %}
+{% include 'component/jianghuJs/select-appaId.html' %}
+{% include 'common/jianghuJs/fixedTableHeightV4.html' %}
+{% include 'component/select-period.html' %}
+{% include 'component/select-period-range.html' %}
+{% include 'common/excelUtil.html' %}
+{% include 'common/tableHeaderAndBorder.html' %}
+{% include 'common/vueFilters.html' %}
+
+<script type="module">
+  new Vue({
+    el: '#app',
+    template: '#app-template',
+    vuetify: new Vuetify(),
+    data: () => ({
+      isMobile: window.innerWidth < 500,
+
+      // 面包屑
+      breadcrumbs: [
+        {
+          text: '首页',
+          disabled: true,
+        },
+        {
+          text: '科目余额',
+          disabled: true,
+        }
+      ],
+
+      // 表格相关数据
+      isTableZebraLineMenuShown: false,
+      tableZebraLineMenuPosition: { x: null, y: null },
+      isTableZebraLineShown: true,
+      isFormValid: true,
+      validationRules: {
+        requireRules: [
+          v => !!v || '必填',
+        ],
+      },
+      constantObj: {
+        isShown: ['全部', '显示', '隐藏'],
+      },
+      serverSearchInput: {
+        period: [],
+      },
+      searchInput: null,
+      isShownInput: '显示',
+      isTableLoading: true,
+      tableDataFromBackend: [],
+      headers: [
+        // { text: "", value: "data-table-expand", width: 50, class: 'fixed', cellClass: 'fixed' },
+        {text: "科目编码", value: "subjectId", width: window.innerWidth > 500 ? 50 : 50, class: 'fixed', cellClass: 'fixed'}, 
+        {text: "科目名称", value: "subjectName", width: window.innerWidth > 500 ? 150 : 100, class: 'fixed', cellClass: 'fixed'}, 
+        { text: "科目显示", value: "isShown", align: 'center', width: 80 },
+        { text: "余额方向", value: "subjectBalanceDirection", align: 'center', width: 80 },
+
+        { text: "期初余额", value: "startAmount", align: 'end', width: 120, children: 1 }, 
+        { text: "本期发生额-借方", value: "occurDebit", align: 'end', width: 160, children: 2 },
+        { text: "本期发生额-贷方", value: "occurCredit", align: 'end', width: 80, hidden: true },
+        // { text: "本期实际损益发生额", value: "occurAmount", align: 'end', width: 80, hidden: true },
+        { text: "期末余额", value: "endAmount", align: 'end', width: 120, children: 1 },
+
+        { text: "年初余额", value: "startAmountYear", align: 'end', width: 120, children: 1 },
+        { text: "本年累计发生额-借方", value: "occurDebitYear", align: 'end', width: 80, children: 2 },
+        { text: "本年累计发生额-贷方", value: "occurCreditYear", align: 'end', width: 80, hidden: true },
+        // { text: "本年实际损益发生额", value: "occurAmountYear", align: 'end', width: 80, hidden: true },
+        { text: "年末余额", value: "endAmountYear", align: 'end', width: 120, children: 1 },
+        { text: "现金", value: "cashFlowInItemName", align: 'end', width: 550, children: 2 },
+        { text: "现金", value: "cashFlowOutItemName", align: 'end', width: 270, hidden: true },
+        
+        {text: "", value: "subjectTag", width: 0, hide: true}, 
+        { text: "操作", value: "action", align: 'center', width: 180, class: 'fixed', cellClass: 'fixed' },
+      ],
+      periodList: [],
+      subHeaders:[
+        { text: "" }, 
+        { text: "借方" }, { text: "贷方" }, 
+        // { text: "损益发生额" }, 
+        { text: "" }, 
+        { text: "" },
+        { text: "借方" }, { text: "贷方" }, 
+        // { text: "损益发生额" }, 
+        { text: "" },
+        { text: "流入" }, { text: "流出" }, 
+      ],
+      hideSubjectIdList: [],
+    }),
+    computed: {
+      tableData() {
+        // return this.tableDataFromBackend;
+        // TODO: 如果子节点有数据 则将父节点展示出来
+        const rows = this.tableDataFromBackend
+          .filter(row => {
+            return row.startDebit || row.startCredit || row.startAmount || 
+                   row.occurDebit || row.occurCredit || row.occurAmount ||
+                   row.endDebit || row.endCredit || row.endAmount ||
+                   row.occurDebitYear || row.occurCreditYear
+          });
+        if (this.isShownInput === '全部') {
+          return rows.filter(row => !this.hideSubjectIdList.includes(row.subjectId));
+        }
+        rows.forEach(row => {
+          row.startAmount = row.startDebit || row.startCredit;
+          row.occurAmount = row.subjectCategory === '损益'? row.occurAmount: '';
+          row.endAmount = row.endCredit || row.endDebit;
+          row.startAmountYear = row.startDebitYear || row.startCreditYear;
+          row.occurAmountYear = row.subjectCategory === '损益'? row.occurAmountYear: '';
+          row.endAmountYear = row.endDebitYear || row.endCreditYear;
+        })
+        return rows.filter(row => row.isShown === this.isShownInput && !this.hideSubjectIdList.includes(row.subjectId));
+      },
+      searchSummary() {
+        const conditions = [];
+        if (this.serverSearchInput.period) {
+          conditions.push(`会计期间: ${this.serverSearchInput.period.periodId}`);
+        }
+        return conditions.length > 0 ? `${conditions.join('，')}，共${this.tableData.length}条记录` : `共${this.tableData.length}条记录`;
+      }
+    },
+    watch: {},
+    async created() {
+    },
+    mounted() { },
+    methods: {
+      async doUiAction(uiActionId, uiActionData) {
+        switch (uiActionId) {
+          case 'refreshTableData':
+            await this.refreshTableData();
+            break;
+          case 'openTableZebraLineMenu':
+            await this.openTableZebraLineMenu(uiActionData);
+            break;
+          case 'exportExcel':
+            await this.exportExcel();
+            break;
+          case 'openSubjectDetail':
+            await this.openSubjectDetail(uiActionData);
+            break;
+          case 'openSubjectAdjust':
+            await this.openSubjectAdjust(uiActionData);
+            break;
+          case 'toggleTablePanel':
+            await this.toggleTablePanel();
+            break;
+          default:
+            console.error("[doUiAction] uiActionId not find", { uiActionId });
+            break;
+        }
+      },
+
+      /**
+       * uiActionId:  refreshTableData
+       * description: ✅获取表格数据
+      */
+      async refreshTableData() {
+        this.isTableLoading = true;
+        const periodId = this.serverSearchInput.period.periodId;
+        const result = await window.jianghuAxios({
+          data: {
+            appData: {
+              pageId: 'account-subjectBalance',
+              actionId: 'selectItemList',
+              where: {periodId},
+              orderBy: [{ column: 'subjectId', order: 'asc' }]
+            }
+          }
+        });
+        const { rows } = result.data.appData.resultData;
+        this.hideSubjectIdList = rows.filter(r => r.subjectLevel > 1).map(r => r.subjectId);
+        this.tableDataFromBackend = rows;
+        // this.tableDataFromBackend = this.buildTableData(rows);
+        this.isTableLoading = false;
+      },
+      buildTableData(rows) {
+        // subjectLevel 1 2 3 
+        const parent = rows.filter(r => r.subjectLevel === 1);
+        return parent.map(p => {
+          p.expanded = rows.filter(c => c.subjectLevel === 2 && c.subjectId.includes(p.subjectId))
+          p.expanded.forEach(c => {
+            c.expanded = rows.filter(cc => cc.subjectLevel === 3 && cc.subjectId.includes(c.subjectId))
+          })
+          return p
+        })
+      },
+      showChildren(row) {
+        row.showChildren = !row.showChildren
+        // 获取所有子节点
+        if (row.showChildren) {
+          const childrenSubjectIdList = this.tableDataFromBackend.filter(r => r.subjectLevel === row.subjectLevel + 1 && r.subjectId.includes(row.subjectId)).map(r => r.subjectId)
+          this.hideSubjectIdList = this.hideSubjectIdList.filter(id => !childrenSubjectIdList.includes(id))
+        } else {
+          const childrenSubjectIdList = this.tableDataFromBackend.filter(r => r.subjectLevel > row.subjectLevel && r.subjectId.includes(row.subjectId)).map(r => r.subjectId)
+          this.hideSubjectIdList = [...this.hideSubjectIdList, ...childrenSubjectIdList]
+          // tableDataFromBackend childrenSubjectIdList showChildren 重置为false
+          this.tableDataFromBackend.forEach(r => {
+            if (childrenSubjectIdList.includes(r.subjectId)) {
+              r.showChildren = false
+            }
+          })
+        }
+      },
+      // ---------- 斑马纹开关 uiAction >>>>>>>>>> --------
+      async openTableZebraLineMenu(funObj) {
+        this.tableZebraLineMenuPosition.x = funObj.x - funObj.offsetX + 10;
+        this.tableZebraLineMenuPosition.y = window.innerHeight - 50;
+        this.isTableZebraLineMenuShown = !this.isTableZebraLineMenuShown;
+      },
+      // ---------- <<<<<<<<<< 斑马纹开关 uiAction --------
+      // =================================uiAction 公共方法 end ======================================
+
+      async exportExcel() {
+        const params = {
+          header: this.headers.filter(header => header.text != '操作').map(header => header.text),
+          key: this.headers.filter(header => header.text != '操作').map(header => header.value),
+          data: this.tableData,
+          filename: dayjs().format('YYYYMMDDHHmmss') + '_' + '科目余额'
+        };
+        excelUtil.exportData(params);
+      },
+
+
+      getMainHeader(headers) {
+        return headers.filter((i) => i.children);
+      },
+      getSubHeader(headers) {
+        let result = [];
+        headers
+          .filter((i) => i.children)
+          .forEach((v) => {
+            v.children.forEach((child) => {
+              if (v.class) {
+                child.class = v.class;
+              }
+            });
+            result = result.concat(v.children);
+          });
+          debugger
+        return result;
+      },
+      getRows(rows) {
+        const result = {};
+        _.forEach(rows, (i, key) => {
+          if (i.children) {
+            _.forEach(i.children, (i1, key1) => {
+              result["c" + key1] = i1;
+            });
+          } else result[key] = i;
+        });
+        return result;
+      },
+
+      // ---------- 打开科目余额明细 uiAction >>>>>>>>>> --------
+      openSubjectDetail(funObj){
+        const periodIdList = this.serverSearchInput.period?.periodId;
+        window.open(`/${appInfo.appId}/page/account-subjectDetail?subjectId=${funObj.subjectId}&periodIdList=${periodIdList}`)
+      },
+      // ---------- <<<<<<<<<< 打开科目余额明细 uiAction --------
+
+      // ---------- 打开科目余额核算余额页面 uiAction >>>>>>>>>> --------
+      openSubjectAdjust(funObj){
+        const periodIdList = this.serverSearchInput.period?.periodId;
+        window.open(`/${appInfo.appId}/page/account-auxiliaryBalanceSheet?subjectId=${funObj.subjectId}&periodIdList=${periodIdList}`);
+      },
+      // ---------- <<<<<<<<<< 打开科目余额核算余额页面 uiAction --------
+      toggleTablePanel() {
+        this.tableDataFromBackend.forEach(item=> {
+          this.showChildren(item)
+        })
+      }
+,
+      jumpToUrl() {
+        window.open('https://cn.jianghujs.org/doc/page/article/11603', '_blank');
+      }
+    }   
+  })
+</script>
+
+{% endblock %}

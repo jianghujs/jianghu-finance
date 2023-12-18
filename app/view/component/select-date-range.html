@@ -1,0 +1,79 @@
+<template id="select-date-range">
+  <v-menu class="jh-v-input" transition="scale-transition" offset-y min-width="auto">
+    <template v-slot:activator="{on, attrs}">
+      <v-text-field 
+        v-bind="attrs" 
+        v-on="on" 
+        :value="dateRangeText" 
+        class="jh-v-input bg-white date-input" 
+        dense single-line filled readonly clearable
+        label="时间范围"  
+        @click:clear="selectDates=[]" 
+        prepend-inner-icon="mdi-calendar-check-outline">
+      </v-text-field>
+    </template>
+    <v-date-picker 
+      color="success" 
+      elevation="20" 
+      v-model="selectDates"
+      range>
+    </v-date-picker>
+  </v-menu>
+</template>
+
+<script>
+  Vue.component('select-date-range', {
+    template: '#select-date-range',
+    props: {
+      value: {
+        type: Array,
+        default: [],
+      },
+      sortField: {
+        type: String,
+        required: true,
+        default: 'operationAt',
+      }
+    },
+    vuetify: new Vuetify(),
+    data: () => ({
+      selectDates: [],
+    }),
+    computed: {
+      dateRangeText () {
+        const [from, to] = _.orderBy(this.selectDates, [], ['asc']);
+        if (from && to) {
+          return `${from} ~ ${to}`;
+        } else if (from){
+          return `${from} ~ 至今`;
+        }
+      },
+    },
+    watch: {
+      value(val) {
+        this.selectDates = val;
+      },
+      selectDates(val, oldVal) {
+        const datesRangeList = [];
+        const cloneDates = _.orderBy(this.selectDates, [], ['asc']);
+        if (cloneDates[0]) datesRangeList.push([`${this.sortField}`, '>=', cloneDates[0]]);
+        if (cloneDates[1]) datesRangeList.push([`${this.sortField}`, '<=', cloneDates[1]]);
+        this.$emit('set-date-range', datesRangeList);
+      },
+    },
+    async created() {},
+    methods: {
+      
+    }
+  })
+</script>
+
+
+<style scoped>
+.v-input__prepend-inner {
+  margin-top: 3px !important;
+}
+.date-input .v-icon {
+  font-size: 18px;
+}
+</style>

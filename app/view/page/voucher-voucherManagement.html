@@ -1,0 +1,1583 @@
+{% extends 'template/jhTemplateV4.html'%}
+
+{% block vueTemplate %}
+
+<!-- 3 table 下  的单表 crud 页面 -->
+
+<!-- SQL START
+-- 以下为 jianghu init 工具生成的参考 SQL，使用后删除
+-- 创建 page
+INSERT INTO `_page` (`pageId`,`pageName`,`pageType`,`sort`,`operation`,`operationByUserId`,`operationByUser`,`operationAt`) SELECT 'voucher-voucherManagement','页面','showInMenu','5','jhInsert',NULL,NULL,NULL FROM DUAL WHERE NOT EXISTS (SELECT `pageId` FROM `_page` WHERE `pageId`='voucher-voucherManagement');
+
+-- 创建 resource
+INSERT INTO `_resource` (`accessControlTable`,`resourceHook`,`pageId`,`actionId`,`desc`,`resourceType`,`appDataSchema`,`resourceData`,`requestDemo`,`responseDemo`,`operation`,`operationByUserId`,`operationByUser`,`operationAt`) SELECT NULL,NULL,'voucher-voucherManagement','selectItemList','✅查询-查询列表','sql','{}','{ \"table\": \"voucher\", \"operation\": \"select\" }','','','insert',NULL,NULL,NULL FROM DUAL WHERE NOT EXISTS (SELECT `pageId` FROM `_resource` WHERE `pageId`='voucher-voucherManagement' AND `actionId`='selectItemList');
+INSERT INTO `_resource` (`accessControlTable`,`resourceHook`,`pageId`,`actionId`,`desc`,`resourceType`,`appDataSchema`,`resourceData`,`requestDemo`,`responseDemo`,`operation`,`operationByUserId`,`operationByUser`,`operationAt`) SELECT NULL,NULL,'voucher-voucherManagement','insertItem','✅查询-添加成员','sql','{}','{ \"table\": \"voucher\", \"operation\": \"insert\" }','','','insert',NULL,NULL,NULL FROM DUAL WHERE NOT EXISTS (SELECT `pageId` FROM `_resource` WHERE `pageId`='voucher-voucherManagement' AND `actionId`='insertItem');
+INSERT INTO `_resource` (`accessControlTable`,`resourceHook`,`pageId`,`actionId`,`desc`,`resourceType`,`appDataSchema`,`resourceData`,`requestDemo`,`responseDemo`,`operation`,`operationByUserId`,`operationByUser`,`operationAt`) SELECT NULL,NULL,'voucher-voucherManagement','updateItem','✅查询-更新成员','sql','{}','{ \"table\": \"voucher\", \"operation\": \"update\" }','','','insert',NULL,NULL,NULL FROM DUAL WHERE NOT EXISTS (SELECT `pageId` FROM `_resource` WHERE `pageId`='voucher-voucherManagement' AND `actionId`='updateItem');
+INSERT INTO `_resource` (`accessControlTable`,`resourceHook`,`pageId`,`actionId`,`desc`,`resourceType`,`appDataSchema`,`resourceData`,`requestDemo`,`responseDemo`,`operation`,`operationByUserId`,`operationByUser`,`operationAt`) SELECT NULL,NULL,'voucher-voucherManagement','doDeleteItem','✅查询-删除信息','sql','{}','{ \"table\": \"voucher\", \"operation\": \"delete\" }','','','insert',NULL,NULL,NULL FROM DUAL WHERE NOT EXISTS (SELECT `pageId` FROM `_resource` WHERE `pageId`='voucher-voucherManagement' AND `actionId`='doDeleteItem');
+SQL END! -->
+<script type="text/html" id="app-template">
+  <div>
+    <v-app mobile-breakpoint="sm">
+      <jh-menu />
+      <v-main class="mt-15">
+      <!-- 头部内容 >>>>>>>>>>>>> -->
+      <div class="jh-page-second-bar px-8">
+        <v-row no-gutters align="center">
+          <v-col cols="12" xs="12" sm="12" md="4" xl="3">
+            <div class="py-4 text-body-1 font-weight-bold d-flex align-center">凭证
+             
+              <span role="button" class="success--text font-weight-regular jh-font-size-13 mx-2" @click="jumpToUrl">
+                  <v-icon size="13" class="success--text">mdi-help-circle-outline</v-icon>帮助
+                </span>
+              <select-appaId/>
+            </div>
+          </v-col>
+          <!-- pc端的搜索条件表单 >>>>>>>> -->
+          <v-col cols="12" xs="12" sm="12" md="8" xl="9" class="pt-3 pt-md-0">
+            <v-row class="jh-backend-form-container justify-end align-center ma-0 ">
+              <v-col cols="12" xs="6" sm="6" md="4" xl="4" class="px-0 pr-md-2">
+                <select-period-range v-model="serverSearchInput.period" @change="doUiAction('refreshTableData')" clearable />
+              </v-col>
+              <v-btn class="elevation-0 d-sm-block w-sm-full" color="primary" small @click="doUiAction('refreshTableData')">
+                查询
+              </v-btn>
+            </v-row>
+          </v-col>
+          <!-- <<<<<<<< pc端的搜索条件表单 -->
+        </v-row>
+      </div>
+      <!-- <<<<<<<<<<<<< 头部内容 -->
+
+      <div class="jh-page-body-container px-8">
+
+      <!-- 页面主要内容 -->
+      <v-container class="fullScreen d-flex flex-column pa-xs-0 pa-0">
+        <v-card class="rounded-lg">
+          <v-row class="ma-0 pa-4">
+            <v-col cols="12" sm="4" md="6" xl="6" class="pa-0">
+              <v-btn color="success" dark class="elevation-0 mr-2 d-none d-md-inline-block" small @click="doUiAction('startCreateItem')">
+                <!-- 录入凭证icon -->
+                <v-icon size="14">mdi-plus</v-icon>
+                录入凭证</v-btn>
+              <v-btn color="success" class="elevation-0 mr-2 d-none d-md-inline-block" small @click="doUiAction('doPrint')" :disabled="!tableSelected.length">
+                <!-- 打印icon -->
+                <v-icon size="14">mdi-printer</v-icon>
+                批量打印凭证</v-btn>
+              <v-btn class="elevation-0 mr-2" color="primary" small outlined @click="doUiAction('exportExcel')">
+                <!-- 导出excel icon -->
+                <v-icon size="14">mdi-export-variant</v-icon>
+                导出excel</v-btn>
+              <v-btn class="elevation-0 mr-2 d-none d-md-inline-block" color="primary" small @click="doUiAction('toggleTablePanel')">
+                <!-- 展开/收缩icon -->
+                <v-icon size="14">{{showTableItemIds.length ? 'mdi-chevron-double-down' : 'mdi-chevron-double-up'}}</v-icon>
+                一键展开/收缩</v-btn>
+            </v-col>
+            <v-spacer></v-spacer>
+            <v-col cols="12" sm="4" md="3" xl="2" class="pa-0">
+              <v-text-field color="success" v-model="searchInput" prefix="搜索：" class="jh-v-input" dense filled single-line></v-text-field>
+            </v-col>
+          </v-row>
+          <v-data-table 
+            fixed-header
+            :headers="headers"
+            :items="tableData"
+            :search="searchInput"
+            :footer-props="{ itemsPerPageOptions: [50, 100, 200, 500, -1], itemsPerPageText: '每页行数', itemsPerPageAllText: '所有'}"
+            :items-per-page="200"
+            mobile-breakpoint="0"
+            :loading="isTableLoading"
+            checkbox-color="success"
+            :class="{'zebraLine': isTableZebraLineShown }"
+            fixed-header
+            show-select item-key="voucherId" @item-selected="tableItemSelected" v-model="tableSelected" @toggle-select-all="tableToggleSelectAll"
+            class="jh-fixed-table-height elevation-0 mt-0 mb-xs-4">
+            <!-- 处理显示列 -->
+            <template v-slot:item.voucherNameNumber="{item}">
+              <voucher-paper :voucher-id="item.voucherId" readonly>
+                <span role="button" class="success--text">
+                  {{item.voucherName}}-{{item.voucherNumber}}
+                  <v-chip v-if="item.voucherTemplateName" x-small color="#fb8c00" text-color="white"> {{item.voucherTemplateName}}</v-chip>
+                  
+                </span>
+              </voucher-paper>
+            </template>
+            <template v-slot:item.voucherAt="{item}">
+              <div class="d-flex align-center mr-1">{{item.voucherAt}}
+
+               <div v-if="item.entryList.length>1">
+                 <!-- 展开的icon -->
+                 <v-icon @click="toggleTableItemShow(item.voucherId)" v-if="showTableItemIds.includes(item.voucherId)" size="14" class="success--text">mdi-chevron-down</v-icon>
+                 <!-- 折叠的icon -->
+                 <v-icon @click="toggleTableItemShow(item.voucherId)" v-else size="14" class="success--text">mdi-chevron-up</v-icon>
+               </div>
+              </div>
+            </template>
+
+            <template v-slot:item.entryAbstract="{item}">
+              <div :title="entryItem.entryAbstract" v-for="(entryItem, entryIndex) in item.entryList" :key="entryIndex" v-if="showTableItem(entryItem, entryIndex)">{{entryItem.entryAbstract}}</div>
+            </template>
+            <template v-slot:item.subjectName="{item}">
+              <div :title="`${entryItem.subjectId} ${entryItem.subjectLabel}`" v-for="(entryItem, entryIndex) in item.entryList" :key="entryIndex" v-if="showTableItem(entryItem, entryIndex)">{{entryItem.subjectId}} {{entryItem.subjectLabel}}</div>
+            </template>
+            <template v-slot:item.assistInfo="{item}">
+              <div v-for="(entryItem, entryIndex) in item.entryList" :key="entryIndex" v-if="showTableItem(entryItem, entryIndex)">
+                <span :title="entryItem[`assistNameOf${_.capitalize(assist.value)}`]" v-if="entryItem[`assistIdOf${_.capitalize(assist.value)}`]" v-for="assist in constantObj.assistList">{{assist.text}}: {{entryItem[`assistNameOf${_.capitalize(assist.value)}`]}}; </span>
+              </div>
+            </template>
+            <template v-slot:item.debit="{item}">
+              <div v-if="showTableItem(entryItem, entryIndex)" v-for="(entryItem, entryIndex) in item.entryList" :key="entryIndex">{{entryItem.subjectId}} {{entryItem.subjectLabel}}</div>
+            </template>
+            <template v-slot:item.debit="{item}">
+              <div v-if="showTableItem(entryItem, entryIndex)" v-for="(entryItem, entryIndex) in item.entryList" :key="entryIndex">{{entryItem.debit | formatMoney}}</div>
+            </template>
+            <template v-slot:item.credit="{item}">
+              <div v-if="showTableItem(entryItem, entryIndex)" v-for="(entryItem, entryIndex) in item.entryList" :key="entryIndex">{{entryItem.credit | formatMoney}}</div>
+            </template>
+            <template v-slot:item.voucherFileCount="{item}">
+              <v-badge 
+                :content="item.voucherFileCount || '0'"
+                :color="item.voucherFileCount > 0 ? 'green' : 'grey'"
+                x-small
+                >
+                <v-btn x-small
+                  :disabled="item.periodId !== serverSearchInput.period[0].currentPeriodId"
+                  @click="doUiAction('startUploadFileItem', {item: item})">
+                  上传单据
+                </v-btn> 
+              </v-badge>
+            </template>
+
+            <template v-slot:item.subjectTag="{ item }"></template>
+            <!-- 表格操作按钮 -->
+            <template v-slot:item.action="{ item }">
+              <!-- <span role="button" class="jh-font-size-3 pr-2"
+                    :class="{ 'success--text': serverSearchInput.period.isCheckeout === '待结账', 'grey--text': serverSearchInput.period.isCheckeout !== '待结账'}"
+                    @click="doUiAction('startEditItem', {item: item})">
+                <v-icon size="14" class="success--text">mdi-note-edit-outline</v-icon>编辑
+              </span> -->
+              <template v-if="!isMobile">
+                <span v-if="item.periodId >= serverSearchInput.period[0].currentPeriodId">
+                  <span role="button" class="success--text jh-font-size-3 pr-2" @click="doUiAction('startEditItem', {item: item})">
+                    <v-icon size="14" class="success--text">mdi-note-edit-outline</v-icon>编辑
+                  </span>
+                </span>
+  
+                <span v-if="serverSearchInput.period[0].currentPeriodId > item.periodId">
+                  <span role="button" class="success--text jh-font-size-3 pr-2" style="display: inline-block;">
+                    <voucher-paper style="height: 23px;" :voucher-id="item.voucherId" readonly>
+                      <v-icon size="14" class="success--text">mdi-note-edit-outline</v-icon>查看
+                    </voucher-paper>
+                  </span>
+                </span>
+  
+                <v-menu offset-y>
+                  <template v-slot:activator="{ on, attrs }">
+                    <span role="button" class="success--text font-weight-medium font-size-2"
+                      v-bind="attrs" v-on="on">
+                      操作<v-icon size="14" class="success--text">mdi-chevron-down</v-icon>
+                    </span>
+                  </template>
+                  <v-list dense>
+                    <v-list-item @click="doUiAction('copyItem', {item: item})">
+                      <v-list-item-title>复制</v-list-item-title>
+                    </v-list-item>
+                    <v-list-item @click="doUiAction('reverseTransactionItem', {item: item})">
+                      <v-list-item-title>红冲</v-list-item-title>
+                    </v-list-item>
+                    <v-list-item @click="doUiAction('doPrint', item)">
+                      <v-list-item-title>打印</v-list-item-title>
+                    </v-list-item>
+                  </v-list>
+                </v-menu>
+                
+                <span role="button" class="error--text jh-font-size-3 pr-2" @click="doUiAction('doDeleteItem', {item: item})">
+                  <v-icon size="14" class="error--text">mdi-trash-can-outline</v-icon>删除
+                </span>
+              </template>
+              <v-menu offset-y v-if="isMobile">
+                <template v-slot:activator="{ on, attrs }">
+                  <span role="button" class="success--text font-weight-medium font-size-2"
+                    v-bind="attrs" v-on="on">
+                    操作<v-icon size="14" class="success--text">mdi-chevron-down</v-icon>
+                  </span>
+                </template>
+                <v-list dense>
+                  <v-list-item v-if="item.periodId >= serverSearchInput.period[0].currentPeriodId" @click="doUiAction('startEditItem', {item: item})">
+                    <v-list-item-title>编辑</v-list-item-title>
+                  </v-list-item>
+                  <v-list-item v-if="serverSearchInput.period[0].currentPeriodId > item.periodId">
+                    <v-list-item-title>
+                      <voucher-paper :voucher-id="item.voucherId" readonly>
+                        查看
+                      </voucher-paper>
+                    </v-list-item-title>
+                  </v-list-item>
+                  <v-list-item @click="doUiAction('copyItem', {item: item})">
+                    <v-list-item-title>复制</v-list-item-title>
+                  </v-list-item>
+                  <v-list-item @click="doUiAction('reverseTransactionItem', {item: item})">
+                    <v-list-item-title>红冲</v-list-item-title>
+                  </v-list-item>
+                  <v-list-item @click="doUiAction('doPrint', item)">
+                    <v-list-item-title>打印</v-list-item-title>
+                  </v-list-item>
+                  <v-list-item @click="doUiAction('doDeleteItem', {item: item})">
+                    <v-list-item-title><v-icon size="14">mdi-trash-can-outline</v-icon>删除</v-list-item-title>
+                  </v-list-item>
+                </v-list>
+              </v-menu>
+            </template>
+            <template v-slot:item.subjectIdNameListStr="{ item }"><!-- 支持过滤, 但不显示  --></template>
+            <template v-slot:item.entryAbstractListStr="{ item }"><!-- 支持过滤, 但不显示 --></template>
+            <template v-slot:item.assistNameListStr="{ item }"><!-- 支持过滤, 但不显示  --></template>
+
+            <!-- 表格底部右侧功能按钮 -->
+            <template v-slot:footer.prepend>
+            <div class="d-none d-md-flex" style="flex: auto;">{{searchSummary}}</div>
+              <v-menu top offset-y :close-on-content-click="false" v-model="isTableZebraLineMenuShown" :position-x="tableZebraLineMenuPosition.x" :position-y="tableZebraLineMenuPosition.y">
+                <v-list>
+                  <v-list-item>
+                    <v-switch v-model="isTableZebraLineShown" hide-details class="ma-0" label="显示斑马纹" dense flat></v-switch>
+                  </v-list-item>
+                </v-list>
+              </v-menu>
+            </template>
+        
+
+            <!-- 没有数据 -->
+            <template v-slot:loading>
+              <div class="jh-no-data">数据加载中</div>
+            </template>
+            <template v-slot:no-data>
+              <div class="jh-no-data">暂无数据</div>
+            </template>
+            <template v-slot:no-results>
+              <div class="jh-no-data">暂无数据</div>
+            </template>
+            <!-- 表格分页 -->
+            <template v-slot:footer.page-text="pagination">
+              <span>{{pagination.pageStart}}-{{pagination.pageStop}}</span>
+              <span class="ml-1">共{{pagination.itemsLength}}条</span>
+            </template>
+          </v-data-table>
+        </v-card>
+      </v-container>
+
+      <!-- 录入凭证 -->
+      <v-navigation-drawer v-model="isAddDrawerShow" :permanent="isAddDrawerShow" fixed temporary right :width="addDrawerWidth" class="elevation-24">
+        <v-row no-gutters>
+          <span class="text-h7 font-weight-bold pa-4">录入凭证</span>
+        </v-row>
+        <v-divider class="jh-divider"></v-divider>
+      
+        <v-form class="mt-4" v-model="isFormValid" v-if="isAddDrawerShow" ref="form" lazy-validation>
+          <!-- 抽屉标题 -->
+         
+          <!-- 抽屉主体 -->
+         
+          <v-card class="ml-5 mr-5 py-5" style="background: #ebecf0;">
+            <v-skeleton-loader v-if="isAddDrawerLoading" type="table-heading, list-item-two-line, image" ></v-skeleton-loader>
+            <template v-else>
+              <div class="text-center">
+                <span class="text-h7 font-weight-bold">记账凭证</span>
+              </div>
+              <v-row class="mt-0 px-6">
+                <div class="enhancer-voucher-header d-flex align-center justify-space-between">
+                  <div>
+                    <span class="enhancer-voucher-char-wrap">
+                      凭证字
+                      <v-select :rules=validationRules.requireRules 
+                        class="enhancer-voucher-char white"
+                        :items="constantObj.voucherName" 
+                        :menu-props="{ button: true, offsetY: true }"
+                        single-line v-model="addItem['voucherName']"></v-select>
+                      <input v-model="addItem.voucherNumber" class="quick-focus enhancer-voucher-no ui-widget-content white" type="number" min="0" value="1">
+                      号
+                    </span>
+                    <span class="enhancer-voucher-date-wrap">
+                      <v-menu
+                        v-model="isVoucherAtMenuShow"
+                        :close-on-content-click="false"
+                        :nudge-right="40"
+                        transition="scale-transition"
+                        offset-y
+                        min-width="auto"
+                      >
+                        <template v-slot:activator="{ on, attrs }">
+                          <v-text-field
+                            :rules=validationRules.requireRules
+                            class="enhancer-voucher-date pl-1 white"
+                            single-line
+                            v-model="addItem['voucherAt']"
+                            label=""
+                            readonly
+                            v-bind="attrs"
+                            v-on="on"
+                          ></v-text-field>
+                        </template>
+                        <v-date-picker
+                          v-model="addItem['voucherAt']"
+                          @input="isVoucherAtMenuShow = false"
+                          @change="() => { doUiAction('addItemReCompute') }"
+                          locale="zh"
+                        ></v-date-picker>
+                      </v-menu>
+                      
+                    </span>
+                    <span class="d-none d-md-inline-block orange--text">
+                      按 回车键/shift+回车键，快速切换单元格！
+                    </span>
+                  </div>
+
+                  <span class="text-xs-left w-sm-full hidden-xs-only">
+                    <v-btn x-small text class="enhancer-voucher-period-wrap black--text">
+                      <span class="d-flex align-center" v-if="addDrawerWidth=='60%'" @click="addDrawerWidth='90%'"><v-icon size="18">mdi-fullscreen </v-icon>放大</span>
+                      <span class="d-flex align-center" v-else @click="addDrawerWidth='60%'"><v-icon size="18">mdi-fullscreen-exit </v-icon>缩小</span>
+                    </v-btn>
+                    
+                    <v-menu :close-on-content-click="false" offset-y>
+                      <template v-slot:activator="{ on, attrs }">
+                        <v-btn x-small text v-bind="attrs" v-on="on" class="enhancer-voucher-period-wrap black--text">
+                          <span class="d-flex align-center"><v-icon size="16">mdi-keyboard </v-icon>快捷键</span>
+                        </v-btn>
+                      </template>
+                
+                      <div>
+                        <v-img :src="`/${appInfo.appId}/public/img/keyboard.png`" style="width:100%;height:auto; max-width:300px" />
+                        <v-simple-table class="shortcutKey-table" dense light>
+                          <template v-slot:default>
+                            <thead>
+                              <tr>
+                                <th class="text-left font-weight-bold" v-for="item in shortcutKeyHeader">
+                                  {{item.text}}
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              <tr
+                                v-for="item in shortcutKeyList"
+                                :key="item.name"
+                              >
+                                <td>{{ item.title }}</td>
+                                <td>{{ item.key }}</td>
+                              </tr>
+                            </tbody>
+                          </template>
+                        </v-simple-table>
+                      </div>
+                    </v-menu>
+
+                  </span>
+                  
+                  <!-- <span class="enhancer-voucher-period-wrap  text-xs-left w-sm-full">
+                    会计期间: {{ addItem.periodId }}
+                  </span> -->
+                </div>
+                <voucher-entry @refresh="getSubjectList" ref="createEntryRef" v-model="voucherEntryList" :subject-list="subjectList" :rules="validationRules.voucherEntryRules"/>
+                <v-row no-gutters class="pt-3 d-flex justify-space-between align-center">
+                  <v-col>制单人: {{ username }}
+                    <!-- 编辑icon -->
+                    <v-icon size="16" @click="isSingleDialog = true">mdi-clipboard-edit-outline</v-icon>
+                  </v-col>
+  
+                  <v-btn
+                    small
+                    color="primary"
+                    dark
+                    @click="doUiAction('voucherEntryAutoCompute', {ref: 'createEntryRef'})"
+                  >
+                    填充金额
+                  </v-btn>
+                </v-row>
+              </v-row>      
+            </template>
+          </v-card>
+          <!-- 抽屉操作按钮 -->
+          <v-row v-if="!isAddDrawerLoading" class="justify-end mx-0 mt-8 px-6">
+            <v-btn class="elevation-0 ml-2" @click="isAddDrawerShow = false" small><v-icon size="14">mdi-close</v-icon>取消</v-btn>
+            <v-btn color="success ml-2" @click="doUiAction('doCreateItem')" small><v-icon size="14">mdi-content-save-check-outline</v-icon>保存</v-btn>
+            <v-btn color="success ml-2" @click="doUiAction('saveAndAddNew')" small><v-icon size="14">mdi-content-save-check-outline</v-icon>保存并新增</v-btn>
+            <v-menu offset-y>
+              <template v-slot:activator="{ on, attrs }">
+                <v-btn outlined small class="ml-2" v-bind="attrs" v-on="on" color="success">
+                  <v-icon size="14">mdi-chevron-down</v-icon>更多
+                </v-btn>
+              </template>
+              <v-list dense class="pb-0">
+                <v-list-item @click="isSaveVoucherDialog=true">
+                  <v-list-item-title>
+                    <span>保存成模板</span>
+                  </v-list-item-title>
+                </v-list-item>
+                <v-list-item @click="doUiAction('startSelectVoucherTemplate')">
+                  <v-list-item-title>
+                    <span>从模板中加载</span>
+                  </v-list-item-title>
+                </v-list-item>
+              </v-list>
+            </v-menu>
+            
+          </v-row>
+        </v-form>
+        <!-- 抽屉关闭按钮 -->
+        <v-btn elevation="0" color="success" fab absolute top left small tile class="drawer-close-float-btn" @click="isAddDrawerShow = false">
+          <v-icon>mdi-close</v-icon>
+        </v-btn>
+      </v-navigation-drawer>
+
+      <!-- 编辑凭证 -->
+      <v-navigation-drawer v-model="isEditDrawerShow" :permanent="isEditDrawerShow" fixed temporary right width="80%" class="elevation-24">
+        <v-row no-gutters>
+          <span class="text-h7 font-weight-bold pa-4">编辑凭证 {{editItem.voucherId}}</span>
+        </v-row>
+        <v-divider class="jh-divider"></v-divider>
+
+        <v-form class="mt-4" v-model="isFormValid" v-if="isEditDrawerShow" ref="form" lazy-validation>
+        
+          <v-card class="ml-5 mr-5 py-5" style="background: #ebecf0;">
+            <v-skeleton-loader v-if="isEditDrawerLoading" type="table-heading, list-item-two-line, image" ></v-skeleton-loader>
+            <template v-else>
+              <div class="text-center">
+                <span class="title">记账凭证</span>
+              </div>
+              <v-row class="mt-0 px-6">
+                <div class="enhancer-voucher-header">
+                  <span class="enhancer-voucher-char-wrap">
+                    凭证字
+                    <v-select :rules=validationRules.requireRules 
+                      class="enhancer-voucher-char white"
+                      :items="constantObj.voucherName" 
+                      :menu-props="{ button: true, offsetY: true }"
+                      single-line v-model="editItem['voucherName']"></v-select>
+                    <input v-model="editItem.voucherNumber" class="enhancer-voucher-no ui-widget-content white" type="number" min="0" value="1">
+                    号
+                  </span>
+                  <span class="enhancer-voucher-date-wrap">
+                    <v-menu
+                      v-model="isVoucherAtMenuShow"
+                      :close-on-content-click="false"
+                      :nudge-right="40"
+                      transition="scale-transition"
+                      offset-y
+                      min-width="auto"
+                    >
+                      <template v-slot:activator="{ on, attrs }">
+                        <v-text-field
+                          :rules=validationRules.requireRules
+                          class="enhancer-voucher-date pl-1 white"
+                          single-line
+                          v-model="editItem['voucherAt']"
+                          label=""
+                          readonly
+                          v-bind="attrs"
+                          v-on="on"
+                        ></v-text-field>
+                      </template>
+                      <v-date-picker
+                        v-model="editItem['voucherAt']"
+                        @input="isVoucherAtMenuShow = false"
+                        @change="() => { doUiAction('editItemReCompute') }"
+                        locale="zh"
+                      ></v-date-picker>
+                    </v-menu>
+                    
+                  </span>
+                  <div class="enhancer-voucher-period-wrap text-xs-left w-sm-full">
+                    会计期间: {{ editItem.periodId }}
+                  </div>
+                </div>
+                <voucher-entry ref="editEntryRef" v-model="voucherEntryList" :subject-list="subjectList" :rules="validationRules.voucherEntryRules"/>
+                <v-row no-gutters class="pt-3 d-flex justify-space-between align-center">
+                  <v-col>制单人: {{ username }}</v-col>
+  
+                  <v-btn
+                    small
+                    color="primary"
+                    dark
+                    @click="doUiAction('voucherEntryAutoCompute', {ref: 'editEntryRef'})"
+                  >
+                    填充金额
+                  </v-btn>
+                </v-col>
+              </v-row>      
+            </template>
+          </v-card>
+          <!-- 抽屉操作按钮 -->
+          <v-row v-if="!isEditDrawerLoading" class="justify-end mx-0 mt-8 px-6">
+            <v-btn class="ml-2" small  @click="isEditDrawerShow = false"><v-icon size="14">mdi-close</v-icon>取消</v-btn>
+            <v-btn class="ml-2" color="success" small @click="doUiAction('doEditItem')"><v-icon size="14">mdi-content-save-check-outline</v-icon>提交</v-btn>
+            <v-menu offset-y>
+              <template v-slot:activator="{ on, attrs }">
+                <v-btn outlined small class="ml-2" v-bind="attrs" v-on="on" color="success">
+                  <v-icon size="14">mdi-chevron-down</v-icon>更多
+                </v-btn>
+              </template>
+              <v-list dense class="pb-0">
+                <v-list-item @click="isSaveVoucherDialog=true">
+                  <v-list-item-title>
+                    <span>保存成模板</span>
+                  </v-list-item-title>
+                </v-list-item>
+                <v-list-item @click="doUiAction('startSelectVoucherTemplate')">
+                  <v-list-item-title>
+                    <span>从模板中加载</span>
+                  </v-list-item-title>
+                </v-list-item>
+              </v-list>
+            </v-menu>
+            
+          </v-row>
+        </v-form>
+        <!-- 抽屉关闭按钮 -->
+        <v-btn elevation="0" color="success" fab absolute top left small tile class="drawer-close-float-btn" @click="isEditDrawerShow = false">
+          <v-icon>mdi-close</v-icon>
+        </v-btn>
+      </v-navigation-drawer>
+
+      <!-- 单据管理 -->
+      <v-navigation-drawer v-model="isUploadFileDrawerShow" :permanent="isUploadFileDrawerShow" fixed temporary right width="80%" class="elevation-24">
+        <!-- 抽屉标题 -->
+        <v-row>
+          <span class="title pa-6 pl-8">{{ uploadFileItem.voucherId }}  单据管理</span>
+        </v-row>
+        <voucher-file :voucherId="uploadFileItem.voucherId" v-if="isUploadFileDrawerShow"/>
+        
+        <!-- 抽屉关闭按钮 -->
+        <v-btn elevation="0" color="success" fab absolute top left small tile class="drawer-close-float-btn" @click="isUploadFileDrawerShow = false">
+          <v-icon>mdi-close</v-icon>
+        </v-btn>
+      </v-navigation-drawer>
+      <!-- 制单人修改 -->
+      <v-dialog max-width="20%" v-model="isSingleDialog" persistent>  
+        <v-card>  
+          <v-card-text>
+            <p class="ma-0 pt-4 text-caption">亲，可以修改制单人姓名：</p>
+            <!-- 输入框绑定到 inputValue -->  
+            <v-textarea class="jh-v-input" dense filled single-line v-model="username"></v-textarea>  
+          </v-card-text>  
+          <v-card-actions class="d-flex justify-end">  
+            <v-btn small @click="isSingleDialog=false">取消</v-btn>  
+            <v-btn small color="success" @click="doUiAction('saveSingleName')">确认</v-btn>  
+          </v-card-actions>  
+        </v-card>  
+      </v-dialog>  
+      <!-- 保存凭证模板 -->
+      <v-dialog max-width="20%" v-model="isSaveVoucherDialog" persistent>  
+        <v-card> 
+          <v-row no-gutters>
+            <span class="text-h7 font-weight-bold pa-4">保存为模板</span>
+          </v-row>
+          <v-divider class="jh-divider"></v-divider>
+
+          <v-card-text class="py-4">
+            <!-- 模板类型select -->
+            <!-- <v-select
+              :items="constantObj.voucherTemplateType"
+              v-model="voucherTemplateItem.voucherType"
+              label="模板类型"
+              return-object
+              dense filled single-line
+            ></v-select> -->
+            <!-- 模板名称 -->
+            <v-text-field
+              v-model="voucherTemplateItem.voucherTemplateName"
+              label="模板名称"
+              dense filled single-line
+            ></v-text-field>
+          </v-card-text>  
+          <v-card-actions class="d-flex justify-end">  
+            <v-btn small @click="isSaveVoucherDialog=false">取消</v-btn>  
+            <v-btn small color="success" @click="doUiAction('saveVoucherTemplate')">确认</v-btn>  
+          </v-card-actions>  
+        </v-card>  
+      </v-dialog>
+
+      <!-- 选择凭证模板 -->
+      <v-dialog max-width="20%" v-model="isSelectVoucherDialog" persistent>  
+        <v-card> 
+          <v-row no-gutters>
+            <span class="text-h7 font-weight-bold pa-4">选择模板</span>
+          </v-row>
+          <v-divider class="jh-divider"></v-divider>
+          <v-simple-table class="voucher-template-table" height="150px">
+            <template v-slot:default>
+              <!-- <thead>
+                <tr>
+                  <th class="text-left font-weight-bold">
+                    模板名称
+                  </th>
+                </tr>
+              </thead> -->
+              <tbody>
+                <tr
+                  v-for="item in voucherTemplateList"
+                  :key="item.name"
+                  @click="doUiAction('selectVoucherTemplate', {item})"
+                  :class=""
+                >
+                  <td>{{ item.voucherTemplateName }}</td>
+                </tr>
+              </tbody>
+            </template>
+          </v-simple-table>
+          
+          <v-card-actions class="d-flex justify-end">  
+            <v-btn small @click="isSelectVoucherDialog=false">取消</v-btn>  
+          </v-card-actions>  
+        </v-card>  
+      </v-dialog>
+    </div>
+
+    <!-- 帮助页抽屉 >>>>>>>>>>>>> -->
+
+    <!-- <<<<<<<<<<<<< 帮助页抽屉 -->
+
+   </v-main>
+  </v-app>
+  <jh-toast />
+  <jh-mask />
+  <jh-confirm-dialog />
+  </div>
+</script>
+<div id="app">
+</div>
+
+{% endblock %}
+
+{% block vueScript %}
+{% include 'component/jianghuJs/select-appaId.html' %}
+{% include 'common/jianghuJs/fixedTableHeightV4.html' %}
+{% include 'common/jianghuJs/fixedTableColV4.html' %}
+{% include 'component/select-period.html' %}
+{% include 'component/select-period-range.html' %}
+{% include 'component/voucher/voucherEntry.html' %}
+{% include 'component/voucher/voucherFile.html' %}
+{% include 'component/voucher/voucherPaper.html' %}
+{% include 'component/voucher/calculator.html' %}
+
+{% include 'common/excelUtil.html' %}
+{% include 'common/vueFilters.html' %}
+{% include 'common/constantUtil.html' %}
+
+<script type="module">
+  new Vue({
+    el: '#app',
+    template: '#app-template',
+    vuetify: new Vuetify(),
+    data: () => ({
+      isMobile: window.innerWidth < 500,
+      // 面包屑
+      breadcrumbs: [
+        {
+          text: '首页',
+          disabled: true,
+        },
+        {
+          text: '凭证',
+          disabled: true,
+        }
+      ],
+
+      // 表格相关数据
+      isTableZebraLineMenuShown: false,
+      tableZebraLineMenuPosition: { x: null, y: null },
+      isTableZebraLineShown: true,
+
+
+      // 表格相关数据
+      isFormValid: true,
+      validationRules: {
+        requireRules: [
+          v => !!v || '必填',
+        ],
+        voucherEntryRules: [
+          v => v.length > 0 || '姓名必须少于10个字符',
+        ],
+      },
+      constantObj: {
+        assistList: constantObj.assistList,
+        voucherTemplateType: constantObj.voucherTemplateType,
+        voucherName: [
+          { text: '记', value: '记' },
+          { text: '收', value: '收' },
+          { text: '借', value: '借' },
+          { text: '付', value: '付' },
+          { text: '转', value: '转' },
+          { text: '结计', value: '结计' },
+          { text: '结转', value: '结转' },
+          { text: '去年', value: '去年' },
+        ]
+      },
+      username: window.localStorage.getItem(`${window.appInfo.appId}_singleName`) || userInfo.username,
+
+      serverSearchInput: {
+        period: [],
+      },
+      searchInput: null,
+      isTableLoading: true,
+      tableDataFromBackend: [],
+      headers: [
+        { text: "凭证字号", value: "voucherNameNumber", sortable: true, width: 100 },
+        { text: "日期", value: "voucherAt", sortable: true, width: window.innerWidth > 500 ? 100 : 60 },
+        { text: "摘要", value: "entryAbstract", sortable: false, width: window.innerWidth > 500 ? 100 : 60 },
+        { text: "科目", value: "subjectName", sortable: false, width: window.innerWidth > 500 ? 100 : 60 },
+        { text: "辅助信息", value: "assistInfo", sortable: false, width: 100 },
+        { text: "借方金额", value: "debit", align: 'end', sortable: false, width: 100 },
+        { text: "贷方金额", value: "credit", align: 'end', sortable: false, width: 100 },
+        { text: "附单据张数", value: "voucherFileCount", sortable: false, width: 0 },
+        { text: "制单人", value: "voucherAccountant", sortable: false, width: 0 },
+        // Tip: 支持过滤
+        { text: "", value: "subjectIdNameListStr", sortable: false, width: 5 },
+        { text: "", value: "entryAbstractListStr", sortable: false, width: 5 },
+        { text: "", value: "assistNameListStr", sortable: false, width: 5 },
+        {text: "", value: "subjectTag", width: 0, hide: true}, 
+        { text: "操作", value: "action", align: "center", sortable: false, width: window.innerWidth < 500 ? 50 : 180, class: 'fixed', cellClass: 'fixed' },
+        
+      ],
+      tableSelected: [],
+      isAddDrawerLoading: false,
+      isAddDrawerShow: false,
+      addItem: {},
+      isEditDrawerLoading: false,
+      isEditDrawerShow: false,
+      editItem: {},
+      isVoucherAtMenuShow: false,
+      periodList: [],
+      subjectList: [],
+      voucherEntryList: [],
+
+      uploadFileItem: {},
+      isUploadFileDrawerShow: false,
+
+      // table内折叠的凭证
+      showTableItemIds: [],
+
+      // 制单人修改
+      isSingleDialog: false,
+
+      addDrawerWidth: '90%',
+      // 快捷键
+      shortcutKeyList: [
+        {
+          title: '录入第二条分录',
+          key: 'Enter',
+        },
+      ],
+      shortcutKeyHeader: [
+        { text: '凭证' },
+        { text: '快捷键' },
+      ],
+
+      // 凭证模板
+      isSaveVoucherDialog: false,
+      voucherTemplateItem: {
+        voucherType: '普通凭证',
+        voucherTemplateName: ''
+      },
+      isSelectVoucherDialog: false,
+      voucherTemplateList: []
+    }),
+    computed: {
+      tableData() {
+        return this.getGroupedTableData(this.tableDataFromBackend);
+      },
+      searchSummary() {
+        const conditions = [];
+        if (this.serverSearchInput.period) {
+          const periodIdList = this.serverSearchInput.period.map(e => e.periodId);
+          conditions.push(`会计期间: ${periodIdList}`);
+        }
+        return conditions.length > 0 ? `${conditions.join('，')}，共${this.tableData.length}条记录` : `共${this.tableData.length}条记录`;
+      }
+    },
+    watch: {
+    },
+    async created() {
+      // Tip: 调试代码
+      // await this.doUiAction("startCreateItem");
+    },
+    mounted() {
+    },
+    methods: {
+      async doUiAction(uiActionId, uiActionData) {
+        switch (uiActionId) {
+          case 'refreshTableData':
+            await this.refreshTableData();
+            await this.getSubjectList();
+            // Tip: 测试代码
+            // await this.doUiAction('startEditItem', { item: this.tableData.find(v => v.voucherId === '2022-03-结转-55') })
+            // await this.doUiAction('startCreateItem', {})
+            break;
+          case 'openTableZebraLineMenu':
+            await this.openTableZebraLineMenu(uiActionData);
+            break;
+          case 'startCreateItem':
+            await this.openCreateItemDialog();
+            await this.prepareCreateItemData();
+            await this.updateAddItemVoucherNumber()
+            break;
+          case 'startUploadFileItem':
+            await this.clearUploadFileItem(uiActionData);
+            await this.openUploadFileItemDialog();
+            break;
+          case 'doCreateItem':
+            await this.prepareAddItemValidate();
+            await this.confirmCreateItemDialog();
+            await this.doCreateItem();
+            await this.closeCreateItem();
+            await this.refreshTableData();
+            break;
+          case 'saveAndAddNew':
+            await this.prepareAddItemValidate();
+            await this.confirmCreateItemDialog();
+            await this.doCreateItem();
+            await this.refreshTableData();
+            await this.doUiAction('startCreateItem')
+            break;
+          case 'copyItem':
+            await this.doUiAction('startCreateItem');
+            await this.copyVoucherEntryList(uiActionData);
+            break;
+          case 'reverseTransactionItem':
+            await this.doUiAction('startCreateItem');
+            await this.reverseVoucherEntryList(uiActionData);
+            break;
+          case 'startEditItem':
+            await this.openEditItemDialog();
+            await this.prepareEditItemData(uiActionData);
+            break;
+          case 'addItemReCompute':
+            await this.addItemReCompute();
+            break;
+          case 'voucherEntryAutoCompute':
+            await this.voucherEntryAutoCompute(uiActionData);
+            break;
+          case 'editItemReCompute':
+            await this.editItemReCompute();
+            break;
+          case 'doEditItem':
+            await this.prepareEditItemValidate();
+            await this.confirmEditItemDialog();
+            await this.doEditItem();
+            await this.closeEditItem();
+            await this.refreshTableData();
+            break;
+          case 'doDeleteItem':
+            await this.confirmDeleteItemDialog(uiActionData);
+            await this.doDeleteItem(uiActionData);
+            await this.refreshTableData();
+            break;
+          case 'closeUploadFileItem':
+            await this.closeUploadFileItemDialog();
+            await this.refreshTableData();
+            break;
+          case 'exportExcel':
+            await this.exportExcel();
+            break;
+          case 'doPrint':
+            await this.doPrint(uiActionData);
+            break;
+          case 'toggleTablePanel':
+            await this.toggleTablePanel();
+            break;
+          case 'saveSingleName':
+            await this.saveSingleName();
+            break;
+          case 'saveVoucherTemplate':
+            await this.saveVoucherTemplate();
+            await this.closeVoucherTemplateDialog();
+            break;
+          case 'startSelectVoucherTemplate':
+            await this.openSelectVourcherDialog();
+            await this.getVoucherTemplateList();
+          case 'selectVoucherTemplate':
+            await this.selectVoucherTemplate(uiActionData);
+            break;
+          default:
+            console.error("[doUiAction] uiActionId not find", { uiActionId });
+            break;
+        }
+      },
+      // =================================uiAction 公共方法 start ======================================
+      /**
+       * uiActionId:  prepareValidate
+       * description: ✅表单校验
+      */
+      async prepareAddItemValidate() {
+        if (this.$refs.form.validate() === false) {
+          window.vtoast.fail({ message: "输入有误, 请检查! 辅助信息必填!" });
+          throw new Error("[prepareValidate] false");
+        }
+
+        // TODO: datapicker 组件 设置max 和 min
+        const currentPeriodId = this.serverSearchInput.period[0].currentPeriodId;
+        if (dayjs(this.addItem.voucherAt).format("YYYY-MM") < currentPeriodId) {
+          window.vtoast.fail({ message: `凭证日期不能在 ${currentPeriodId}-01 之前, 请重新选择凭证日期!` });
+          throw new Error("[prepareValidate] false, 凭证日期Error");
+        }
+      },
+      async prepareEditItemValidate() {
+        if (this.$refs.form.validate() === false) {
+          window.vtoast.fail({ message: "输入有误, 请检查! 辅助信息必填!" });
+          throw new Error("[prepareValidate] false");
+        }
+
+        // TODO: datapicker 组件 设置max 和 min
+        const currentPeriodId = this.serverSearchInput.period[0].currentPeriodId;
+        if (dayjs(this.editItem.voucherAt).format("YYYY-MM") < currentPeriodId) {
+          window.vtoast.fail({ message: `凭证日期不能在 ${currentPeriodId}-01 之前, 请重新选择凭证日期!` });
+          throw new Error("[prepareValidate] false, 凭证日期Error");
+        }
+      },
+      async refreshTableData() {
+        this.isTableLoading = true;
+        const periodIdList = this.serverSearchInput.period.map(e => e.periodId);
+        const result = await window.jianghuAxios({
+          data: {
+            appData: {
+              pageId: 'voucher-voucherManagement',
+              actionId: 'selectItemList',
+              actionData: {},
+              whereIn: {
+                periodId: periodIdList,
+              },
+              orderBy: [{ column: 'periodId', order: 'desc' }, { column: 'voucherNumber', order: 'desc' }],
+            }
+          }
+        });
+
+        const { rows } = result.data.appData.resultData;
+        rows.forEach(row => {
+          row.voucherNameNumber = `${row.voucherName}-${row.voucherNumber}`
+        })
+        // TODO: 如果 voucherNumber 不存在====》提示 有异常数据，请管理员清除
+        this.tableDataFromBackend = rows;
+        this.isTableLoading = false;
+      },
+      // ---------- 斑马纹开关 uiAction >>>>>>>>>> --------
+      async openTableZebraLineMenu(funObj) {
+        this.tableZebraLineMenuPosition.x = funObj.x - funObj.offsetX + 10;
+        this.tableZebraLineMenuPosition.y = window.innerHeight - 50;
+        this.isTableZebraLineMenuShown = !this.isTableZebraLineMenuShown;
+      },
+      // ---------- <<<<<<<<<< 斑马纹开关 uiAction --------
+      // =================================uiAction 公共方法 end ======================================
+
+      async getSubjectList() {
+        const result = await window.jianghuAxios({
+          data: {
+            appData: {
+              pageId: 'voucher-voucherManagement',
+              actionId: 'selectSubjectList',
+              actionData: {},
+              where: { subjectHasChildren: '无下级科目' },
+              orderBy: [{ column: 'subjectCategory', order: 'desc' }, { column: 'subjectId', order: 'asc' }]
+            }
+          }
+        });
+        const { rows } = result.data.appData.resultData;
+        rows.forEach(row => {
+          row.assistList = row.assistList ? row.assistList.split(',') : [];
+        })
+        this.subjectList = rows;
+      },
+
+
+      // =================================uiAction 创建凭证 start ======================================
+      async prepareCreateItemData() {
+        this.addItem = {
+          voucherName: this.constantObj.voucherName[0].value,
+        };
+        const nowDay = dayjs().format("YYYY-MM-DD");
+        const currentPeriodId = this.serverSearchInput.period[0].currentPeriodId;
+        this.addItem.currentPeriodId = currentPeriodId;
+        this.addItem.periodId = currentPeriodId;
+        const isInCurrentPeriod = nowDay.indexOf(currentPeriodId) > -1;
+        if (isInCurrentPeriod) {
+          this.addItem.voucherAt = dayjs().format("YYYY-MM-DD");
+        }
+        if (!isInCurrentPeriod) {
+          this.addItem.voucherAt = `${currentPeriodId}-01`;
+        }
+        this.voucherEntryList = []
+      },
+
+      async updateAddItemVoucherNumber() {
+        this.isAddDrawerLoading = true;
+        if (!this.addItem.voucherName) {
+          this.addItem.voucherNumber = null;
+          return;
+        }
+        const result = await window.jianghuAxios({
+          data: {
+            appData: {
+              pageId: 'voucher-voucherManagement',
+              actionId: 'selectNextVoucherNumber',
+              actionData: { periodId: this.serverSearchInput.period[0].currentPeriodId },
+            }
+          }
+        });
+        const { voucherNumber } = result.data.appData.resultData;
+        this.addItem = {
+          ...this.addItem,
+          voucherNumber: voucherNumber
+        };
+        this.isAddDrawerLoading = false;
+      },
+
+      async copyVoucherEntryList({ item }) {
+        const voucherEntryList = _.map(item.entryList || [], entry => {
+          const pickKey = [
+            'entryAbstract', 'subjectId', 'debit', 'credit','currencyId','currencyRate','currencyAmonut',
+            'assistIdOfCustomer', 'assistIdOfSupplier', 'assistIdOfStaff', 'assistIdOfProject', 'assistIdOfDepart', 'assistIdOfExtend1', 'assistIdOfExtend2', 'assistIdOfCashflow'
+          ];
+          return _.pick(entry, pickKey)
+        })
+        this.voucherEntryList = voucherEntryList;
+      },
+
+      async reverseVoucherEntryList({ item }) {
+        const voucherEntryList = _.map(item.entryList || [], entry => {
+          const pickKey = [
+            'entryAbstract', 'subjectId', 'debit', 'credit','currencyId','currencyRate','currencyAmonut',
+            'assistIdOfCustomer', 'assistIdOfSupplier', 'assistIdOfStaff', 'assistIdOfProject', 'assistIdOfDepart', 'assistIdOfExtend1', 'assistIdOfExtend2', 'assistIdOfCashflow'
+          ];
+          const record = _.pick(entry, pickKey);
+          return {
+            ...record,
+            entryAbstract: `冲销${entry.voucherId}${record.entryAbstract ? '_' + record.entryAbstract : ''}`,
+            credit: record.credit * -1,
+            debit: record.debit * -1
+          }
+        })
+        this.voucherEntryList = voucherEntryList;
+      },
+
+      async openCreateItemDialog() {
+        this.isAddDrawerShow = true;
+      },
+
+      async clearUploadFileItem({ item }) {
+        this.uploadFileItem = item
+      },
+      async openUploadFileItemDialog() {
+        this.isUploadFileDrawerShow = true;
+      },
+      async closeUploadFileItemDialog() {
+        this.isUploadFileDrawerShow = false;
+      },
+
+      async confirmCreateItemDialog() {
+        if (await window.confirmDialog({ title: "新增", content: "确定新增吗？" }) === false) {
+          throw new Error("取消");
+        }
+      },
+      async doCreateItem() {
+        const { id, ...data } = this.addItem;
+        const voucherEntryList = this.voucherEntryList
+          .filter(v => v.subjectId)
+          .map(voucherEntry => {
+            // 判断voucherEntry是否有assistIdOf开头的
+            const assistIdOfList = Object.keys(voucherEntry).filter(v => v.indexOf('assistIdOf') > -1);
+            const pickKey = [
+              'entryAbstract', 'subjectId', 'debit', 'credit','currencyId','currencyRate','currencyAmonut',
+              ...assistIdOfList
+            ];
+            return _.pick(voucherEntry, pickKey)
+          })
+
+        if (voucherEntryList.length === 0) {
+          window.vtoast.fail("请填写凭证信息!");
+          throw new Error("[doCreateItem] false 请填写凭证信息");
+        }
+        voucherEntryList.forEach(v => {
+          v.debit = v.debit || 0;
+          v.credit = v.credit || 0;
+        })
+        //判断借贷是否平衡
+        const debitPrice = voucherEntryList.reduce((prev, next) => Math.round((next.debit || 0) * 100) + prev, 0)
+        const creditPrice = voucherEntryList.reduce((prev, next) => Math.round((next.credit || 0) * 100) + prev, 0)
+
+        if (debitPrice != creditPrice) {
+          window.vtoast.fail({ message: "借贷不平衡!" });
+          throw new Error("[doCreateItem] false");
+        }
+
+        await window.vtoast.loading("录入凭证");
+        await window.jianghuAxios({
+          data: {
+            appData: {
+              pageId: 'voucher-voucherManagement',
+              actionId: 'createVoucherAndVoucherEntry',
+              actionData: {
+                ...data,
+                voucherEntryList
+              }
+            }
+          }
+        })
+        await window.vtoast.success("录入凭证成功");
+      },
+      async closeCreateItem() {
+        this.isAddDrawerShow = false;
+      },
+      // =================================uiAction 创建凭证 end ======================================
+
+      // =================================uiAction 修改凭证 start ======================================
+      async prepareEditItemData({ item }) {
+        this.isEditDrawerLoading = true;
+        const result = await window.jianghuAxios({
+          data: {
+            appData: {
+              pageId: 'voucher-voucherManagement',
+              actionId: 'selectItemList',
+              where: { voucherId: item.voucherId }
+            }
+          }
+        });
+        const { rows } = result.data.appData.resultData;
+        this.editItem = {
+          periodId: item.periodId,
+          voucherId: item.voucherId,
+          voucherName: item.voucherName,
+          voucherNumber: item.voucherNumber,
+          voucherAt: item.voucherAt,
+          currentPeriodId: item.periodId
+        }
+
+        this.voucherEntryList = rows;
+        this.isEditDrawerLoading = false;
+      },
+      async openEditItemDialog() {
+        this.isEditDrawerShow = true;
+      },
+      async addItemReCompute() {
+        const periodId = dayjs(this.addItem.voucherAt).format("YYYY-MM");
+        // Tip: 当会计期间 没有改变时 ===> 不触发更新
+        if (this.addItem.periodId === periodId) {
+          return
+        }
+        const result = await window.jianghuAxios({
+          data: {
+            appData: {
+              pageId: 'voucher-voucherManagement',
+              actionId: 'selectNextVoucherNumber',
+              actionData: { periodId },
+            }
+          }
+        });
+        const { voucherNumber } = result.data.appData.resultData;
+        this.addItem.periodId = periodId;
+        this.addItem.voucherNumber = voucherNumber;
+      },
+      async voucherEntryAutoCompute({ ref }) {
+        // console.log(this.voucherEntryList);
+        // 计算借贷差额 debit - credit
+        const debitPrice = this.voucherEntryList.reduce((prev, next) => Math.round((next.debit || 0) * 100) + prev, 0)
+        const creditPrice = this.voucherEntryList.reduce((prev, next) => Math.round((next.credit || 0) * 100) + prev, 0)
+        if (!debitPrice && !creditPrice) {
+          return
+        }
+        if (debitPrice === creditPrice) {
+          return
+        }
+        const lastLineKey = debitPrice > creditPrice ? 'credit' : 'debit';
+        const lastLineValue = Math.abs(debitPrice - creditPrice) / 100;
+        // 获取最后包含 subjectId 的行的索引
+        // const lastLineIndex = this.voucherEntryList
+        //   .map((v, i) => ({ ...v, index: i }))
+        //   .filter(v => v.subjectId)
+        //   .pop().index;
+        // if (this.voucherEntryList[lastLineIndex].debit || this.voucherEntryList[lastLineIndex].credit) {
+        //   window.vtoast.fail({ message: "请手动清空最后科目金额 或 新增空科目 后重试" });
+        //   return
+        // }
+        const linesWithSubjectWoAmount = this.voucherEntryList
+          .map((v, i) => ({ ...v, index: i }))
+          .filter(v => v.subjectId && !v.debit && !v.credit);
+        if (linesWithSubjectWoAmount.length == 0) {
+          window.vtoast.fail({ message: "请手动清空要填充的科目金额 或 新增空科目 后重试" });
+          return
+        }
+        if (linesWithSubjectWoAmount.length > 1) {
+          window.vtoast.fail({ message: "当前空科目过多！请手动填充金额至仅有一个空科目 后重试" });
+          return
+        }
+        const lastLineIndex = linesWithSubjectWoAmount[0].index;
+        // console.log(lastLineIndex + '<>' + lastLineKey + '<>' + lastLineValue);
+        this.voucherEntryList[lastLineIndex][lastLineKey] = `${lastLineValue}`;
+        this.$refs[ref].calcValueText(this.voucherEntryList[lastLineIndex], lastLineKey);
+      },
+      async editItemReCompute() {
+        const periodId = dayjs(this.editItem.voucherAt).format("YYYY-MM");
+        // Tip: 当会计期间 没有改变时 ===> 不触发更新
+        if (this.editItem.periodId === periodId) {
+          return
+        }
+        const result = await window.jianghuAxios({
+          data: {
+            appData: {
+              pageId: 'voucher-voucherManagement',
+              actionId: 'selectNextVoucherNumber',
+              actionData: { periodId },
+            }
+          }
+        });
+        const { voucherNumber } = result.data.appData.resultData;
+        this.editItem.periodId = periodId;
+        this.editItem.voucherNumber = voucherNumber;
+      },
+      async confirmEditItemDialog() {
+        if (await window.confirmDialog({ title: "修改", content: "确定修改吗？" }) === false) {
+          throw new Error("取消");
+        }
+      },
+      async doEditItem() {
+        const voucherEntryList = this.voucherEntryList
+          .filter(v => v.subjectId)
+          .map(voucherEntry => {
+            const assistIdOfList = Object.keys(voucherEntry).filter(v => v.indexOf('assistIdOf') > -1);
+            const pickKey = [
+              'entryAbstract', 'subjectId', 'debit', 'credit','currencyId','currencyRate','currencyAmonut',
+              ...assistIdOfList
+            ];
+            return _.pick(voucherEntry, pickKey)
+          })
+
+        if (voucherEntryList.length === 0) {
+          window.vtoast.fail("请填写凭证信息!");
+          throw new Error("[doEditItem] false 请填写凭证信息");
+        }
+        voucherEntryList.forEach(v => {
+          v.debit = v.debit || 0;
+          v.credit = v.credit || 0;
+        })
+        //判断借贷是否平衡
+        const debitPrice = voucherEntryList.reduce((prev, next) => Math.round((next.debit || 0) * 100) + prev, 0)
+        const creditPrice = voucherEntryList.reduce((prev, next) => Math.round((next.credit || 0) * 100) + prev, 0)
+
+        if (debitPrice != creditPrice) {
+          window.vtoast.fail({ message: "借贷不平衡!" });
+          throw new Error("[doEditItem] false");
+        }
+
+        await window.vtoast.loading("修改凭证");
+        await window.jianghuAxios({
+          data: {
+            appData: {
+              pageId: 'voucher-voucherManagement',
+              actionId: 'updateVoucherAndVoucherEntry',
+              actionData: {
+                ...this.editItem,
+                voucherEntryList
+              }
+            }
+          }
+        })
+        await window.vtoast.success("修改凭证成功");
+      },
+      async closeEditItem() {
+        this.isEditDrawerShow = false;
+      },
+
+
+
+      async confirmDeleteItemDialog({ item }) {
+        if (await window.confirmDialog({ title: "删除凭证", content: `确定删除"${item.voucherId}"吗？` }) === false) {
+          throw new Error("取消");
+        }
+      },
+      async doDeleteItem({ item }) {
+        await window.vtoast.loading("删除凭证");
+        await window.jianghuAxios({
+          data: {
+            appData: {
+              pageId: 'voucher-voucherManagement',
+              actionId: 'removeVoucher',
+              actionData: { voucherId: item.voucherId },
+            }
+          }
+        });
+        await window.vtoast.success("删除凭证");
+      },
+
+      getGroupedTableData(tableDataFromBackend) {
+        let grouptedTableData = []
+        let tempMap = {}
+        tableDataFromBackend.forEach(item => {
+          if (tempMap[item.voucherId]) {
+            tempMap[item.voucherId].entryList.push(item)
+          } else {
+            tempMap[item.voucherId] = { ...item, entryList: [item] }
+          }
+        })
+        for (let key in tempMap) {
+          tempMap[key].entryList.sort((a, b) => a.debit ? -1 : 1)
+          tempMap[key].subjectIdNameListStr = tempMap[key].entryList.map(t => `${t.subjectId} ${t.subjectName}`).join(";");
+          tempMap[key].entryAbstractListStr = tempMap[key].entryList.map(t => t.entryAbstract).join(";");
+          tempMap[key].assistNameListStr = tempMap[key].entryList
+            .map(t => `${t.assistNameOfCustomer} ${t.assistNameOfSupplier} ${t.assistNameOfProject} ${t.assistNameOfDepart} ${t.assistNameOfStaff}`)
+            .join(";");
+          grouptedTableData.push(tempMap[key]);
+        }
+        return grouptedTableData;
+      },
+
+      async exportExcel() {
+        const params = {
+          header: this.headers.filter(header => header.text != '操作').map(header => header.text),
+          key: this.headers.filter(header => header.text != '操作').map(header => header.value),
+          data: this.tableDataFromBackend,
+          filename: dayjs().format('YYYYMMDDHHmmss') + '_' + '凭证列表'
+        };
+        excelUtil.exportData(params);
+      },
+
+      // ---------- 打印凭证 uiAction >>>>>>>>>>>> --------
+      async doPrint(funObj) {
+        const voucherIdIds = funObj ? funObj.voucherId : _.map(this.tableSelected, 'voucherId');
+        if (voucherIdIds.length === 0) {
+          window.vtoast.fail(`没有需要打印的凭证`);
+          throw new Error("没有需要打印的凭证");
+        }
+        window.open(`/${window.appInfo.appId}/page/voucher-printVoucher?voucherId=${voucherIdIds}&appaId=${localStorage.getItem(`${window.appInfo.appId}_appaId`)}`)
+      },
+      // ---------- <<<<<<<<<<< 打印凭证 uiAction ---------
+
+      // ---------- table selected >>>>>>>>>>>> --------
+      tableItemSelected({ item, value }) {
+        if (value) {
+          this.tableSelected.push(item);
+        } else {
+          this.tableSelected = _.reject(this.tableSelected, ['voucherId', item.voucherId]);
+        }
+      },
+      tableToggleSelectAll({ items, value }) {
+        if (value) {
+          this.tableSelected = items;
+        } else {
+          this.tableSelected = [];
+        }
+      },
+      // ---------- <<<<<<<<<<< table selected  --------
+
+      // ---------- table数据折叠展开 >>>>>>>>>>>>> ----------
+      toggleTableItemShow(val, item) {
+        const showTableItemIds = [...this.showTableItemIds]
+        // 是否包含voucherId
+        if (showTableItemIds.includes(val)) {
+          this.showTableItemIds = _.pull(showTableItemIds, val)
+        } else {
+          this.showTableItemIds.push(val)
+        }
+        console.log('this.showTableItemIds', this.showTableItemIds, item);
+      },
+      // 是否显示数据
+      showTableItem(entryItem, entryIndex) {
+        return !this.showTableItemIds.includes(entryItem.voucherId) || !entryIndex
+      },
+      toggleTablePanel() {
+        if (this.showTableItemIds.length === 0) {
+          this.showTableItemIds = this.tableData.map(v => v.entryList.map(v => v.voucherId)).flat()
+        } else {
+          this.showTableItemIds = []
+        }
+      },
+      // ---------- <<<<<<<<<<<<< table数据折叠展开 ----------
+
+      // ---------- 制单人保存 >>>>>>>>>>>>> ----------
+      async saveSingleName() {
+        window.localStorage.setItem(`${window.appInfo.appId}_singleName`, this.username);
+        this.isSingleDialog = false;
+      },
+      // ---------- <<<<<<<<<<<<< 制单人保存 ----------
+
+      // ---------- 保存凭证模板 >>>>>>>>>>>>> ----------
+      async saveVoucherTemplate() {
+        await window.vtoast.loading("保存凭证模板");
+
+        // 排除掉空对象
+        const voucherEntryList = this.voucherEntryList.filter(v => v.subjectId)
+        await window.jianghuAxios({
+          data: {
+            appData: {
+              pageId: 'checkout-periodCheckout',
+              actionId: 'voucherTemplate-insertItem',
+              actionData: {
+                ...this.voucherTemplateItem,
+                voucherTemplateConfig: JSON.stringify({
+                  voucherName: this.voucherTemplateItem.voucherTemplateName,
+                  voucherEntryList,
+                })
+              },
+              bizIdGenerate: {
+                type: "idSequence",
+                prefix: "V",
+                bizId: "voucherTemplateId",
+                tableName: "voucher_template",
+              },
+            }
+          }
+        })
+        await window.vtoast.success("保存凭证模板成功");
+      },
+      async closeVoucherTemplateDialog() {
+        this.isSaveVoucherDialog = false;
+      },
+      // 获取凭证模板列表
+      async getVoucherTemplateList() {
+        const result = await window.jianghuAxios({
+          data: {
+            appData: {
+              pageId: 'setting-voucherTemplateManagement',
+              actionId: 'selectVoucherTemplateList',
+              where: { voucherType: '普通凭证' }
+            }
+          }
+        })
+        const { rows } = result.data.appData.resultData;
+
+        this.voucherTemplateList = rows;
+      },
+      async openSelectVourcherDialog() {
+        this.isSelectVoucherDialog = true;
+      },
+      async selectVoucherTemplate({ item }) {
+        const { voucherEntryList = [] } = JSON.parse(item.voucherTemplateConfig)
+        this.voucherEntryList = voucherEntryList
+        this.isSelectVoucherDialog = false
+      },
+      // ---------- <<<<<<<<<<<<< 保存凭证模板 ----------
+      jumpToUrl() {
+        window.open('https://cn.jianghujs.org/doc/page/article/11603', '_blank');
+      }
+    }
+    
+  })
+</script>
+
+<style scoped>
+  .enhancer-voucher-header {
+    position: relative;
+    font-size: 12px;
+    box-sizing: border-box;
+    width: 100%;
+    margin: 10px 0;
+  }
+
+  .enhancer-voucher-char-wrap .v-text-field,
+  .enhancer-voucher-char-wrap input,
+  .enhancer-voucher-char-wrap .v-input {
+    border-radius: 5px;
+  }
+
+  .enhancer-voucher-header .enhancer-voucher-char-wrap {
+    position: relative;
+    display: inline-block;
+    overflow: visible;
+  }
+
+  .enhancer-voucher-header .enhancer-voucher-char-wrap .enhancer-voucher-char {
+    border: 1px solid #eee;
+    height: 32px;
+    display: inline-block;
+    width: 88px;
+    margin: 0px;
+    padding: 0;
+  }
+
+  .enhancer-voucher-header .enhancer-voucher-char-wrap .enhancer-voucher-char .v-select__selection {
+    font-size: 12px;
+  }
+
+  .enhancer-voucher-header .enhancer-voucher-char-wrap .enhancer-voucher-no {
+    border: 1px solid #eee;
+    line-height: 30px;
+    width: 80px;
+    padding-left: 4px;
+    position: relative;
+    text-align: left;
+  }
+
+  .enhancer-voucher-header .enhancer-voucher-date-wrap {
+    width: 90px;
+    margin-left: 12px;
+    position: relative;
+    display: inline-block;
+  }
+
+  .enhancer-voucher-header .enhancer-voucher-date-wrap .enhancer-voucher-date {
+    border: 1px solid #eee;
+    height: 32px;
+    margin-left: 2px;
+    display: inline-block;
+    margin: 0;
+    padding: 0;
+    border-radius: 5px;
+  }
+
+  .enhancer-voucher-header .enhancer-voucher-period-wrap {
+    float: right;
+    padding: 0 5px;
+    line-height: 30px;
+  }
+
+  .custom-td {
+    vertical-align: top;
+    padding: 0px !important;
+  }
+
+  .custom-td .custom-td-row {
+    height: 40px;
+    line-height: 40px;
+    border-bottom: thin solid rgb(221, 221, 221) !important;
+    padding: 0 16px;
+  }
+
+  .v-data-table__wrapper .v-row-group__header:nth-child(odd) {
+    background: #f4f5f7;
+  }
+
+  .v-data-table__wrapper .v-row-group__header:nth-child(1) {
+    background: #fff !important;
+  }
+
+  .v-data-table__wrapper .v-row-group__header:nth-child(even) {
+    background: #fff !important;
+  }
+
+  .v-data-table__wrapper tbody td>div {
+    width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    height: 35px;
+    line-height: 35px;
+    border-bottom: 1px solid #f8f8f8;
+  }
+
+  .v-data-table__wrapper tbody td div:last-child {
+    border-bottom: 0;
+  }
+
+  .v-input--selection-controls__ripple {
+    position: static;
+  }
+
+  .v-badge__wrapper {
+    left: -6px;
+    top: 6px;
+  }
+
+  
+
+  .shortcutKey-table .v-simple-table {
+    border: 1px solid #bbb;
+    /* 设置边框宽度、样式和颜色 */
+  }
+
+  .voucher-template-table.theme--light.v-data-table>.v-data-table__wrapper>table>tbody>tr:hover:not(.v-data-table__expanded__content):not(.v-data-table__empty-wrapper) {
+    background: #eee!important
+  }
+</style>
+{% endblock %}

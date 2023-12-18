@@ -1,0 +1,343 @@
+{% extends 'template/jhTemplateV4.html'%}
+
+{% block vueTemplate %}
+
+<script type="text/html" id="app-template">
+  <div>
+    <v-app mobile-breakpoint="sm">
+      <jh-menu />
+      <v-main class="mt-15">
+        <!-- 头部内容 >>>>>>>>>>>>> -->
+        <div class="jh-page-second-bar px-8">
+          <v-row>
+            <v-col cols="12" xs="12" sm="12" md="4" xl="3">
+              <div class="py-4 text-body-1 font-weight-bold d-flex align-center">总账
+                <!-- 帮助页按钮 -->
+                <span role="button" class="success--text font-weight-regular jh-font-size-13 mx-2" @click="jumpToUrl">
+                  <v-icon size="13" class="success--text">mdi-help-circle-outline</v-icon>帮助
+                </span>
+                <select-appaId/>
+              </div>
+            </v-col>
+            <!-- pc端的搜索条件表单 >>>>>>>> -->
+            <v-col cols="12" xs="12" sm="12" md="8" xl="9">
+              <v-row class="jh-backend-form-container justify-end ma-0 py-1 pb-xs-2">
+                <v-col cols="12" xs="6" sm="6" md="5" xl="4" class="pa-xs-0 pb-2 pl-1">
+                  <select-period-range v-model="serverSearchInput.period" @change="doUiAction('refreshTableData')"/>
+                </v-col>
+                <v-btn class="jh-backend-search-btn elevation-0 ml-0 mt-3" color="success" small @click="doUiAction('refreshTableData')">
+                  <v-icon size="14">mdi-magnify</v-icon>查询
+                </v-btn>
+              </v-row>
+            </v-col>
+            <!-- <<<<<<<< pc端的搜索条件表单 -->
+          </v-row>
+        </div>
+        <!-- <<<<<<<<<<<<< 头部内容 -->
+
+        <div class="jh-page-body-container px-8">
+
+
+          <!-- 页面主要内容 -->
+          <v-container class="fullScreen d-flex flex-column pa-xs-0 pa-0">
+            <v-card class="rounded-lg">
+            <v-row class="ma-0 pa-4">
+
+                <v-col cols="12" xs="6" sm="4" md="3" xl="2" class="pa-0">
+                  <v-btn class="elevation-0 mr-2 " color="primary" small outlined @click="exportExcel">
+                    <v-icon size="14">mdi-export-variant</v-icon>
+                    导出excel</v-btn>
+                </v-col>
+
+                <v-spacer></v-spacer>
+
+                <v-col cols="12" xs="8" sm="4" md="3" xl="2" class="pa-0">
+                  <v-text-field v-model="searchInput" prefix="搜索：" class="jh-v-input" dense filled single-line></v-text-field>
+                </v-col>
+              </v-row>
+              <v-data-table 
+                fixed-header
+                :headers="headers"
+                :items="tableData"
+                :search="searchInput"
+                :footer-props="{ itemsPerPageOptions: [20, 50, -1], itemsPerPageText: '每页行数', itemsPerPageAllText: '所有'}"
+                :items-per-page="-1"
+                mobile-breakpoint="0"
+                :loading="isTableLoading"
+                checkbox-color="success"
+                :class="{'zebraLine': isTableZebraLineShown }"
+                class="jh-fixed-table-height elevation-0 mt-0 mb-xs-4">
+                <template v-slot:item.subjectTag="{ item }"></template>
+                <!-- 处理显示列 -->
+                <template v-slot:item.subjectName="{ item }">
+                  <span @click="doUiAction('toSubjectDetailAccount', item)" role="button" class="success--text jh-font-size-3 pr-2" :style="{'margin-left': (item.subjectLevel - 1) * 20 + 'px'}">{{item.subjectName}}</span>
+                </template>  
+                <template v-slot:item.periodId="{item}">
+                  <div v-for="(subItem, subIndex) in item.items" :key="subIndex">{{subItem.periodId}}</div>
+                </template> 
+                <template v-slot:item.entryAbstract="{item}">
+                  <div v-for="(subItem, subIndex) in item.items" :key="subIndex">{{subItem.entryAbstract}}</div>
+                </template>
+                  
+                <template v-slot:item.debit="{item}">
+                  <div v-for="(subItem, subIndex) in item.items" :key="subIndex">{{subItem.debit | formatMoney}}</div>
+                </template>
+                <template v-slot:item.credit="{item}">
+                  <div v-for="(subItem, subIndex) in item.items" :key="subIndex">{{subItem.credit | formatMoney}}</div>
+                </template>
+                <template v-slot:item.subjectBalanceDirection="{item}">
+                  <div class="d-flex align-center" v-for="(subItem, subIndex) in item.items" :key="subIndex">
+                    <v-chip x-small :color="subItem.subjectBalanceDirection | directionBgColor">{{subItem.subjectBalanceDirection}}</v-chip>
+                  </div>
+                </template>
+                <template v-slot:item.balance="{item}">
+                  <div v-for="(subItem, subIndex) in item.items" :key="subIndex">{{subItem.balance | formatMoney}}</div>
+                </template>
+                
+                <!-- 表格底部右侧功能按钮 -->
+                <template v-slot:footer.prepend>
+                  <div class="d-none d-md-flex" style="flex: auto;">{{searchSummary}}</div>
+
+
+                  <v-menu top offset-y :close-on-content-click="false" v-model="isTableZebraLineMenuShown" :position-x="tableZebraLineMenuPosition.x" :position-y="tableZebraLineMenuPosition.y">
+                    <v-list>
+                      <v-list-item>
+                        <v-switch v-model="isTableZebraLineShown" hide-details class="ma-0" label="显示斑马纹" dense flat></v-switch>
+                      </v-list-item>
+                    </v-list>
+                  </v-menu>
+                </template>
+               
+                <!-- 没有数据 -->
+                <template v-slot:loading>
+                  <div class="jh-no-data">数据加载中</div>
+                </template>
+                <template v-slot:no-data>
+                  <div class="jh-no-data">暂无数据</div>
+                </template>
+                <template v-slot:no-results>
+                  <div class="jh-no-data">暂无数据</div>
+                </template>
+                <!-- 表格分页 -->
+                <template v-slot:footer.page-text="pagination">
+                  <span>{{pagination.pageStart}}-{{pagination.pageStop}}</span>
+                  <span class="ml-1">共{{pagination.itemsLength}}条</span>
+                </template>
+              </v-data-table>
+            </v-card>
+          </v-container>
+        </div>
+
+        <!-- 帮助页抽屉 >>>>>>>>>>>>> -->
+        <!-- <<<<<<<<<<<<< 帮助页抽屉 -->
+
+      </v-main>
+          
+    </v-app>
+    <jh-toast />
+    <jh-mask />
+    <jh-confirm-dialog />
+  </div>
+</script>
+<div id="app">
+</div>
+
+{% endblock %}
+
+{% block vueScript %}
+{% include 'component/jianghuJs/select-appaId.html' %}
+{% include 'component/select-period.html' %}
+{% include 'component/select-period-range.html' %}
+{% include 'common/jianghuJs/fixedTableHeightV4.html' %}
+<!-- {% include 'common/tableHeaderAndBorder.html' %} -->
+{% include 'common/vueFilters.html' %}
+{% include 'common/excelUtil.html' %}
+
+<script type="module">
+new Vue({
+  el: '#app',
+  template: '#app-template',
+  vuetify: new Vuetify(),
+  data: () => ({
+    // 面包屑
+    breadcrumbs: [
+      {
+        text: '首页',
+        disabled: true,
+      },
+      {
+        text: '总账',
+        disabled: true,
+      }
+    ],
+
+    // 表格相关数据
+    isTableZebraLineMenuShown: false,
+    tableZebraLineMenuPosition: {x: null, y: null},
+    isTableZebraLineShown: true,
+    
+    // 下拉选项
+    constantObj: {
+    },
+    // 表格相关数据
+    isFormValid: true,
+    validationRules: {
+      requireRules: [
+        v => !!v || '必填',
+      ],
+    },
+    constantObj: {
+    },
+    serverSearchInput: {
+      period: [],
+    },
+    searchInput: null,
+    isTableLoading: true,
+    tableDataFromBackend: [],
+    tableData: [],
+    headers: [
+      {text: "科目编码", value: "subjectId", width: window.innerWidth > 500 ? 50 : 50, class: window.innerWidth > 500 && 'fixed', cellClass: window.innerWidth > 500 && 'fixed'}, 
+      {text: "科目名称", value: "subjectName", width: window.innerWidth > 500 ? 150 : 50, class: 'fixed', cellClass: 'fixed'}, 
+      {text: "期间", value: "periodId"}, 
+      {text: "摘要", value: "entryAbstract"}, 
+      {text: "借方", value: "debit", align: 'left'}, 
+      {text: "贷方", value: "credit", align: 'left'}, 
+      {text: "方向", value: "subjectBalanceDirection", align: 'left', width: 50}, 
+      {text: "余额", value: "balance", align: 'left'}, 
+      {text: "", value: "subjectTag", width: 0, hide: true}, 
+    ],
+    periodList: [],
+  }),
+  computed: {
+    searchSummary() {
+      const conditions = [];
+      if (this.serverSearchInput.period) {
+        const periodIdList = this.serverSearchInput.period.map(e => e.periodId);
+        conditions.push(`会计期间: ${periodIdList}`);
+      }
+      return conditions.length > 0 ? `${conditions.join('，')}，共${this.tableData.length}条记录` : `共${this.tableData.length}条记录`;
+    }
+    
+    // tableData() {
+    //   return this.tableDataFromBackend
+    //     .filter(row => {
+    //       return row.startDebit > 0 || row.startCredit > 0 || row.occurDebit > 0 || row.occurCredit > 0
+    //     });
+    // }
+  },
+  watch: {},
+  async created() {
+    // await this.doUiAction('refreshTableData')
+  },
+  mounted() {},
+  methods: {
+    async doUiAction(uiActionId, uiActionData) {
+      switch (uiActionId) {
+        case 'refreshTableData':
+          await this.refreshTableData();
+          break;
+        case 'openTableZebraLineMenu':
+          await this.openTableZebraLineMenu(uiActionData);
+          break;
+        case 'exportExcel':
+          await this.exportExcel();
+          break;    
+        case 'toSubjectDetailAccount':
+          await this.toSubjectDetailAccount(uiActionData);
+          break;
+        default:
+          console.error("[doUiAction] uiActionId not find", { uiActionId });
+          break;
+      }
+    },
+   
+
+    /**
+     * uiActionId:  refreshTableData
+     * description: ✅获取表格数据
+    */
+    async refreshTableData() {
+      this.isTableLoading = true;
+      const periodIdList = this.serverSearchInput.period.map(e => e.periodId);
+      const result = await window.jianghuAxios({
+        data: {
+          appData: {
+            pageId: 'account-generalLedger',
+            actionId: 'selectItemList',
+            actionData: {
+              periodIdList
+            }
+          }
+        }
+      });
+      const { rows } = result.data.appData.resultData;
+      this.tableDataFromBackend = rows;
+      let grouptedTableData = this.groupBySubjectId(rows);
+      this.tableData = grouptedTableData;
+      this.isTableLoading = false;
+    },
+    
+    groupBySubjectId(tableDataFromBackend) {
+      let grouptedTableData = []
+      let tempMap = {}
+      tableDataFromBackend.forEach(item => {
+        if (tempMap[item.subjectId]) {
+          tempMap[item.subjectId].items.push(item)
+        } else {
+          tempMap[item.subjectId] = { ...item, items: [item] }
+        }
+      })
+      for (let key in tempMap) {
+        tempMap[key].subjectIdNameListStr = tempMap[key].items.map(t => `${t.subjectId} ${t.subjectName}`).join(";");
+        tempMap[key].entryAbstractListStr = tempMap[key].items.map(t => t.entryAbstract).join(";");
+        tempMap[key].assistNameListStr = tempMap[key].items
+          .map(t => `${t.assistNameOfCustomer} ${t.assistNameOfSupplier} ${t.assistNameOfProject} ${t.assistNameOfDepart} ${t.assistNameOfStaff}`)
+          .join(";");
+        grouptedTableData.push(tempMap[key]);
+      }
+      return grouptedTableData;
+    },
+
+    // ---------- 斑马纹开关 uiAction >>>>>>>>>> --------
+    async openTableZebraLineMenu(funObj) {
+      this.tableZebraLineMenuPosition.x = funObj.x - funObj.offsetX + 10;
+      this.tableZebraLineMenuPosition.y = window.innerHeight - 50;
+      this.isTableZebraLineMenuShown = !this.isTableZebraLineMenuShown;
+    },
+    // ---------- <<<<<<<<<< 斑马纹开关 uiAction --------
+    async exportExcel() {
+      const params = {
+        header: this.headers.filter(header => header.text != '操作').map(header => header.text),
+        key: this.headers.filter(header => header.text != '操作').map(header => header.value),
+        data: this.tableData,
+        filename: dayjs().format('YYYYMMDDHHmmss') + '_' + '总账'
+      };
+      excelUtil.exportData(params);
+    },
+
+    async toSubjectDetailAccount(item) {
+      window.location.href = `/${window.appInfo.appId}/page/account-subjectDetail?subjectId=${item.subjectId}`
+    },
+    jumpToUrl() {
+        window.open('https://cn.jianghujs.org/doc/page/article/11603', '_blank');
+      }
+  }
+})
+</script>
+
+<style scoped>
+  .v-data-table__wrapper tbody td div {
+    width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    height: 35px;
+    line-height: 35px;
+    border-bottom: 1px solid #f8f8f8;
+  }
+
+  .v-data-table__wrapper table tbody tr td:first-child {
+    width: 10px; /* 设置你需要的宽度 */
+  }
+</style>
+{% endblock %}

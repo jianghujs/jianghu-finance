@@ -1,0 +1,362 @@
+<template id="voucher-voucher-management-entry">
+  <v-container class="enhancer-voucher pa-0">
+    <v-card elevation="0" outlined>
+      <table cellspacing="0" class="enhancer-voucher-table">
+        <thead>
+          <tr>
+            <td rowspan="2"> 摘要 </td>
+            <td rowspan="2"> 会计科目 </td>
+            <td rowspan="2" style="min-width: 80px;"> 辅助信息 </td>
+            <td>借方金额</td>
+            <td>贷方金额</td>
+          </tr>
+          <tr>
+            <td class="enhancer-voucher-digit">
+              <div class="enhancer-voucher-digit-wrap" style="position: inherit;">
+                <div v-for="(digitUnitItem, digitUnitIndex) in constantObj.digitUnit">{{digitUnitItem}}</div>
+              </div>
+            </td>
+            <td class="enhancer-voucher-digit">
+              <div class="enhancer-voucher-digit-wrap" style="position: inherit;">
+                <div v-for="(digitUnitItem, digitUnitIndex) in constantObj.digitUnit">{{digitUnitItem}}</div>
+              </div>
+            </td>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="enhancer-voucher-item-row" v-for="(item, index) in value" :key="index">
+            <td style="min-width: 280px;" class="text-left">
+              <div class="operate-btn" v-if="!readonly">
+                <div @click="doUiAction('addItem', { item, index })"> <v-icon>mdi-plus</v-icon> </div>
+                <div @click="doUiAction('deleteItem', { item, index })"> <v-icon>mdi-minus</v-icon> </div>
+              </div>
+              <textarea style="width: 100%" rows="2" :title="item.entryAbstract" type="text" v-model="item.entryAbstract" :disabled="readonly"></textarea>
+            </td>
+            <td>
+              <v-autocomplete :items="subjectList.filter(row => row.isShown == '显示')" item-text="subjectIdLabel"
+                item-value="subjectId" single-line
+                :readonly="readonly" v-model="item.subjectId">
+              </v-autocomplete>
+            </td>
+            <td>
+              <span v-if="item.subjectId">
+                <div v-html="calcAssistText(item)" readonly class="jh-v-input bg-white search-group-input" dense filled single-line>
+                </div>
+              </span>
+            </td>
+            <td class="enhancer-voucher-digit enhancer-voucher-digit-value">
+              <div class="enhancer-voucher-digit-wrap">
+                <div v-for="(digitValueItem, digitValueIndex) in item.debitText || '           '">{{digitValueItem}}
+                </div>
+              </div>
+              <input type="number" v-model="item.debit" :disabled="readonly" @input="calcValueText(item, 'debit')" />
+            </td>
+            <td class="enhancer-voucher-digit enhancer-voucher-digit-value">
+              <div class="enhancer-voucher-digit-wrap">
+                <div v-for="(digitValueItem, digitValueIndex) in item.creditText || '           '">{{digitValueItem}}
+                </div>
+              </div>
+              <input type="number" v-model="item.credit" :disabled="readonly" @input="calcValueText(item, 'credit')" />
+            </td>
+          </tr>
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="3" class="total-title">合计:</td>
+            <td class="enhancer-voucher-digit enhancer-voucher-digit-value">
+              <div class="enhancer-voucher-digit-wrap">
+                <div v-for="(digitValueItem, digitValueIndex) in debitTotalText || '           '">{{digitValueItem}}
+                </div>
+              </div>
+            </td>
+            <td class="enhancer-voucher-digit enhancer-voucher-digit-value">
+              <div class="enhancer-voucher-digit-wrap">
+                <div v-for="(digitValueItem, digitValueIndex) in creditTotalText || '           '">{{digitValueItem}}
+                </div>
+              </div>
+            </td>
+          </tr>
+        </tfoot>
+      </table>
+    </v-card>
+  </v-container>
+</template>
+
+<script type="module">
+  Vue.component("voucher-voucher-management-entry", {
+    template: '#voucher-voucher-management-entry',
+    props: {
+      value: {
+        type: Array,
+        default: () => [{}],
+      },
+      subjectList: {
+        type: Array,
+        default: () => [],
+      },
+      readonly: {
+        type: Boolean,
+        default: false,
+      },
+    },
+    data: () => ({
+      validationRules: {
+        requireRules: [
+          v => !!v || '必填',
+        ],
+      },
+      constantObj: {
+        digitUnit: ['亿', '千', '百', '十', '万', '千', '百', '十', '元', '角', '分'],
+        assistType: constantObj.assistList.map(row => row.text),
+      },
+      assistConfigObj: {},
+      debitTotalText: 0,
+      creditTotalText: 0,
+    }),
+    computed: {
+      subjectMap() {
+        return _.keyBy(this.subjectList, 'subjectId');
+      },
+    },
+    watch: {},
+    async created() {
+      this.initAssistConfigObj();
+      await this.doUiAction('getAssistData');
+      // await this.ensureMinRows();
+      await this.calcValueTextAll();
+    },
+    async mounted() {
+    },
+    methods: {
+      async doUiAction(uiActionId, uiActionData) {
+        switch (uiActionId) {
+          case 'getAssistData':
+            await this.getAssistData(uiActionData);
+            break;
+          case 'addItem':
+            await this.doAddItem(uiActionData);
+            break;
+          case 'deleteItem':
+            await this.doDeleteItem(uiActionData);
+            break;
+          default:
+            console.error("[doUiAction] uiActionId not find", { uiActionId });
+            break;
+        }
+      },
+      async getAssistData() {
+        const result = await window.jianghuAxios({
+          data: {
+            appData: {
+              pageId: 'voucher-voucherManagement',
+              actionId: 'entry-selectAssistList',
+              where: {},
+              orderBy: [{ column: 'assistId', order: 'desc' }]
+            }
+          }
+        });
+        const resultData = result.data.appData.resultData;
+        for (let key in resultData) {
+          this.assistConfigObj[key].dataList = [{ assistId: '', assistName: '' }].concat(resultData[key]);
+        }
+      },
+      async doAddItem({ index }) {
+        let list = _.cloneDeep(this.value);
+        list.splice(index + 1, 0, {});
+        this.$emit("input", list);
+        this.$emit("change", list);
+      },
+      async doDeleteItem({ index }) {
+        let list = _.cloneDeep(this.value);
+        list.splice(index, 1);
+        this.$emit("input", list);
+        this.$emit("change", list);
+      },
+      async ensureMinRows() {
+        if (this.value.length < 4) {
+          let list = _.cloneDeep(this.value);
+          while (list.length < 4) {
+            list.push({});
+          }
+          this.$emit("input", list);
+          this.$emit("change", list);
+        }
+      },
+      getPriceText(price) {
+        if (price == 0) {
+          return '           '
+        }
+        let priceText = Math.round(price * 100).toString();
+        let priceTextLen = priceText.length;
+        if (priceTextLen > 11) {
+          // priceText = priceText.substr(priceTextLen - 11, 11);
+          window.vtoast.fail("金额错误，请重新输入");
+          return
+        }
+        while (priceTextLen < 11) {
+          priceText = " " + priceText;
+          priceTextLen++;
+        }
+        return priceText;
+      },
+      async calcValueText(item, key) {
+        item[key + 'Text'] = this.getPriceText(item[key]);
+        this.debitTotalText = this.getPriceText(this.value.reduce((total, item) => total + Math.round((item.debit || 0) * 100) / 100, 0));
+        this.creditTotalText = this.getPriceText(this.value.reduce((total, item) => total + Math.round((item.credit || 0) * 100) / 100, 0));
+      },
+      async calcValueTextAll() {
+        this.value.forEach(item => {
+          item.debit && this.calcValueText(item, 'debit');
+          item.credit && this.calcValueText(item, 'credit');
+        });
+      },
+      calcAssistText(item) {
+        const {assistConfigObj, subjectMap} = this;
+        let assistText = '';
+        this.constantObj.assistType.forEach(assistKey => {
+          if(item[assistConfigObj[assistKey].bizId]) {
+            let currentAssist = assistConfigObj[assistKey].dataList.find(row => row.assistId == item[assistConfigObj[assistKey].bizId]);
+            if (currentAssist) {
+              assistText += `${assistConfigObj[assistKey].text}:${currentAssist.assistName}<br/>`;
+            }
+          }
+        });
+        return assistText;
+      },
+
+      initAssistConfigObj() {
+        this.assistConfigObj = _.transform(constantObj.assistList, (accumulator, currentValue) => {
+          // currentValue.value首字母大写
+          currentValue.value = currentValue.value.replace(/(\w)/, function (v) { return v.toUpperCase() });
+          const bizId = `assistIdOf${currentValue.value}`
+          accumulator[currentValue.text] = {
+            text: currentValue.text,
+            bizId,
+            assistType: currentValue.value,
+            dataList: []
+          };
+        })
+      }
+    }
+  })
+</script>
+<style>
+  .enhancer-voucher { overflow-x: auto;}
+  .enhancer-voucher .v-card { min-width: 900px; }  
+  .enhancer-voucher-table {
+    width: 100%;
+    background: #fff;
+    color: #333;
+    text-align: center;
+  }
+
+  .enhancer-voucher-table td {
+    position: relative;
+    border: 1px solid #eee;
+  }
+
+  .enhancer-voucher-table thead td:nth-child(1),
+  .enhancer-voucher-table thead td:nth-child(2) {
+    width: 200px;
+  }
+
+  .enhancer-voucher-digit .enhancer-voucher-digit-wrap {
+    display: flex;
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+  }
+
+  .enhancer-voucher-digit .enhancer-voucher-digit-wrap div {
+    position: relative;
+    padding: 2px 4px;
+    flex: 1;
+    border-right: 1px solid #eee;
+  }
+
+  .enhancer-voucher-digit .enhancer-voucher-digit-wrap div:nth-child(3)::after,
+  .enhancer-voucher-digit .enhancer-voucher-digit-wrap div:nth-child(6)::after,
+  .enhancer-voucher-digit .enhancer-voucher-digit-wrap div:nth-child(9)::after {
+    content: '';
+    background-color: #0070ee;
+    height: 31px;
+    width: 1px;
+    position: absolute;
+    right: -1px;
+  }
+
+  .enhancer-voucher-digit .enhancer-voucher-digit-wrap div:nth-child(9)::after {
+    background-color: #ff107e;
+  }
+
+  .enhancer-voucher-digit .enhancer-voucher-digit-wrap div:last-child {
+    border-right: none;
+  }
+
+  .enhancer-voucher-digit.enhancer-voucher-digit-value .enhancer-voucher-digit-wrap div {
+    font-weight: 900;
+    font-family: 'Helvetica Neue', Helvetica, 'Microsoft Yahei', sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .enhancer-voucher-digit.enhancer-voucher-digit-value .enhancer-voucher-digit-wrap div::after {
+    height: 104%;
+  }
+
+  .enhancer-voucher-table .enhancer-voucher-item-row .enhancer-voucher-digit.enhancer-voucher-digit-value input {
+    display: none;
+  }
+
+  .enhancer-voucher-table .enhancer-voucher-item-row .enhancer-voucher-digit.enhancer-voucher-digit-value:hover .enhancer-voucher-digit-wrap {
+    display: none;
+  }
+
+  .enhancer-voucher-table .enhancer-voucher-item-row .enhancer-voucher-digit.enhancer-voucher-digit-value:hover input {
+    display: block;
+  }
+
+  .enhancer-voucher-table .enhancer-voucher-item-row .v-input {
+    padding: 0;
+    margin: 0;
+    height: 32px;
+  }
+
+  .enhancer-voucher-table .enhancer-voucher-item-row input {
+    padding: 6px;
+    border: none;
+    outline: none;
+    width: 100%;
+    text-align: left;
+  }
+
+  .enhancer-voucher-table .enhancer-voucher-item-row .operate-btn {
+    opacity: 0;
+    pointer-events: revert;
+    position: absolute;
+    left: -20px;
+    top: 50%;
+    transform: translateY(-50%);
+    flex-direction: column;
+  }
+
+  .enhancer-voucher-table .enhancer-voucher-item-row .operate-btn i {
+    color: black;
+    font-size: 17px;
+    cursor: pointer;
+    padding-right: 10px;
+    text-align: center;
+  }
+
+  .enhancer-voucher-table .enhancer-voucher-item-row:hover .operate-btn {
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  .total-title {
+    padding-right: 6px !important;
+    text-align: right;
+  }
+</style>

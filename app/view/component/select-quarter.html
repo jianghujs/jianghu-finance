@@ -1,0 +1,112 @@
+<template id="select-quarter">
+  <v-select
+    class="jh-v-input bg-white"
+    :value="value"
+    :items="items"
+    prefix="季度"
+    dense filled single-line
+    :clearable="clearable"
+    item-text="quarter" 
+    item-value="quarter" 
+    :menu-props="{ button: true, offsetY: true }"
+    :multiple="multiple"
+    :disabled="disabled"
+    :loading="isPeriodListLoading"
+    @change="onChange">
+  </v-select>
+</template>
+
+<script>
+  Vue.component('select-quarter', {
+    template: '#select-quarter',
+    props: {
+      value: {
+        type: Object,
+        default: () => {
+          return {}
+        }
+      },
+      disabled: {
+        type: Boolean,
+        default: false,
+      },
+      clearable: {
+        type: Boolean,
+        default: false,
+      },
+      multiple: {
+        type: Boolean,
+        default: false,
+      },
+    },
+    vuetify: new Vuetify(),
+    data: () => ({
+      items: [ ],
+      currentPeriod: {},
+      isPeriodListLoading: true
+    }),
+    computed: {
+    },
+    watch: {},
+    async created() {
+      await this.getItems()
+      await this.selectDefaultQuarter()
+    },
+    methods: {
+      async getItems() {
+        const result = await window.jianghuAxios({
+          data: {
+            appData: {
+              pageId: 'allPage',
+              actionId: 'selectPeriodList',
+              actionData: {},
+              where: {},
+              orderBy: [{column: 'periodId', order: 'desc'}]
+            }
+          }
+        });
+        const { rows } = result.data.appData.resultData;
+        this.items = this.convertMonthsToQuarters(rows.map(row => row.periodId));
+        this.isPeriodListLoading = false;
+      },
+      selectDefaultQuarter() {
+        if(this.items.length == 0) return;
+        let currentQuarter = (this.items[0]);
+        this.currentQuarter = currentQuarter;
+        this.onChange(currentQuarter.quarter);
+      },
+
+      convertMonthsToQuarters(months) {
+        let quarters = {};
+        months.forEach(month => {
+          let [year, monthNum] = month.split('-');
+          monthNum = parseInt(monthNum, 10);
+          let quarterNum = Math.ceil(monthNum / 3);
+          let quarterKey = `${year}-第${quarterNum}季度`;
+
+          if (!quarters[quarterKey]) {
+            quarters[quarterKey] = {
+              quarter: quarterKey,
+              months: []
+            };
+          }
+          quarters[quarterKey].months.push(month);
+        });
+
+        return Object.values(quarters);
+      },
+
+      onChange(val) {
+        if (this.multiple) {
+          const periods = this.items.filter(item => val.includes(item.quarter))
+          this.$emit('input', periods)
+          this.$emit('change')
+          return
+        }
+        const period = this.items.find(item => item.quarter === val) || { }
+        this.$emit('input', period)
+        this.$emit('change')
+      }
+    }
+  })
+</script>

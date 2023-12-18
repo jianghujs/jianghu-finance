@@ -1,0 +1,318 @@
+<template id="voucher-paper">
+  <div class="voucher-paper">
+    <!-- 触发loading 容器 -->
+    <div @click.stop="doUiAction('showPaperDialog')">
+      <!-- 默认插槽 -->
+      <slot>
+        <span role="button" class="success--text jh-font-size-3 pr-2"
+          >
+          {{voucherId | empty}}
+        </span>
+      </slot>
+    </div>
+    <v-dialog
+      v-model="isVoucherDialogShown"
+      max-width="80%"
+    >
+      <v-card>
+        <v-card-title class="text-h5 justify-center">
+          记账凭证
+          <v-img class="jh-paid-img" max-width="80" height="50" :src="`/<$ ctx.app.config.appId $>/public/icon/paid.png`" class="d-inline-block" >
+          </v-img>
+        </v-card-title>
+        <v-card-text>
+          <v-skeleton-loader
+            v-if="isLoading"
+            type="table-heading, list-item-two-line, image"
+          ></v-skeleton-loader>
+          <v-row class="px-md-5 pb-3" v-else>
+            <!-- 凭证号行信息 -->
+            <div class="enhancer-voucher-header d-flex">
+              <span class="enhancer-voucher-char-wrap">
+                凭证字
+                <v-select :rules=validationRules.requireRules 
+                  class="enhancer-voucher-char white"
+                  :items="constantObj.voucherName" 
+                  :menu-props="{ button: true, offsetY: true }"
+                  :readonly="readonly"
+                  single-line v-model="editItem['voucherName']"></v-select>
+                <input v-model="editItem.voucherNumber" :disabled="readonly" class="enhancer-voucher-no ui-widget-content white" type="number" min="0" value="1">
+                号
+                <v-divider></v-divider>
+              </span>
+              <span class="enhancer-voucher-date-wrap">
+                <v-menu
+                  v-model="isVoucherAtMenuShow"
+                  :close-on-content-click="false"
+                  :nudge-right="40"
+                  transition="scale-transition"
+                  offset-y
+                  min-width="auto"
+                  :disabled="readonly"
+                >
+                  <template v-slot:activator="{ on, attrs }">
+                    <v-text-field
+                      :rules=validationRules.requireRules
+                      class="enhancer-voucher-date pl-1 white"
+                      single-line
+                      v-model="editItem['voucherAt']"
+                      label=""
+                      readonly
+                      v-bind="attrs"
+                      v-on="on"
+                    ></v-text-field>
+                  </template>
+                  <v-date-picker
+                    v-model="editItem['voucherAt']"
+                    @input="isVoucherAtMenuShow = false"
+                    @change="() => { doUiAction('editItemReCompute') }"
+                  ></v-date-picker>
+                </v-menu>
+                
+                <v-divider></v-divider>
+              </span>
+              <span class="enhancer-voucher-period-wrap">
+                会计期间: {{ editItem.periodId }}
+              </span>
+            </div>
+            <!-- 凭证明细 -->
+            <voucher-voucher-management-entry :readonly="readonly" ref="editEntryRef" v-model="voucherEntryList" :subject-list="subjectList" :rules="validationRules.voucherEntryRules"></voucher-voucher-management-entry>
+            <div class="pt-3">
+              <span>制单人: {{ editItem.voucherAccountant }}</span>
+            </div>
+          </v-row>
+        </v-card-text> 
+      </v-card>
+    </v-dialog>
+  </div>
+</template>
+{% include 'component/voucher/voucherEntry2.html' %}
+<script type="module">
+  Vue.component("voucher-paper", {
+    template: '#voucher-paper',
+    props: {  
+      voucherId: {
+        type: String,
+        default: '',
+      },
+      readonly: {
+        type: Boolean,
+        default: false,
+      },
+    },
+    data: () => ({
+      validationRules: {
+        requireRules: [
+          v => !!v || '必填',
+        ],
+        voucherEntryRules: [
+          v => v.length > 0 || '姓名必须少于10个字符',
+        ],
+      },
+      constantObj: {
+        voucherName: [
+          { text: '记', value: '记' },
+          { text: '收', value: '收' },
+          { text: '借', value: '借' },
+          { text: '付', value: '付' },
+          { text: '结计', value: '结计' },
+          { text: '结转', value: '结转' },
+          { text: '去年', value: '去年' },
+        ]
+      },
+      isVoucherAtMenuShow: false,
+      username: localStorage.getItem(`${window.appInfo.appId}_username`),
+      voucherEntryList: [],
+      subjectList: [],
+      editItem: {},
+      isLoading: false,
+      isVoucherDialogShown: false,
+    }),
+    watch: {
+    },
+    async created() {
+    },
+    async mounted() {
+    },
+    methods: {
+      async doUiAction(uiActionId, uiActionData) {
+        switch (uiActionId) {
+          case 'refreshView':
+            await this.clearItemData();
+            await this.getSubjectList();
+            await this.getVoucherEntryList();
+            break;
+          case 'showPaperDialog':
+            this.showPaperDialog();
+            break;
+          default:
+            console.error("[doUiAction] uiActionId not find", { uiActionId });
+            break;
+        }
+      },
+      async getVoucherEntryList() {
+        const result = await window.jianghuAxios({
+          data: {
+            appData: {
+              pageId: 'allPage',
+              actionId: 'selectVoucherList',
+              where: { voucherId: this.voucherId }
+            }
+          }
+        });
+        const { rows } = result.data.appData.resultData;
+        this.editItem = this.getGroupedItemData(rows);
+        this.voucherEntryList = rows;
+        this.isLoading = false;
+      },
+      getGroupedItemData(tableDataFromBackend) {
+        const {
+          periodId,
+          voucherId,
+          voucherName,
+          voucherNumber,
+          voucherAt,
+          voucherAccountant,
+        } = tableDataFromBackend[0];
+        return {
+          periodId,
+          voucherId,
+          voucherName,
+          voucherNumber,
+          voucherAt,
+          voucherAccountant,
+        }
+      },
+      async getSubjectList() {
+        const result = await window.jianghuAxios({
+          data: {
+            appData: {
+              pageId: 'allPage',
+              actionId: 'selectSubjectList',
+              actionData: {},
+              where: { subjectHasChildren: '无下级科目' },
+              orderBy: [{ column: 'subjectCategory', order: 'desc' }, { column: 'subjectId', order: 'asc' }]
+            }
+          }
+        });
+        const { rows } = result.data.appData.resultData;
+        rows.forEach(row => {
+          row.assistList = row.assistList ? row.assistList.split(',') : [];
+        })
+        this.subjectList = rows;
+      },
+      // show loading
+      clearItemData() {
+        this.editItem = {};
+        this.voucherEntryList = [];
+      },
+      async showPaperDialog() {
+        if (!this.voucherId) return;
+        this.isVoucherDialogShown = true;
+        this.isLoading = true;
+        this.doUiAction('refreshView');
+      },
+    }
+  })
+</script>
+<style scoped>
+  .enhancer-voucher-header {
+    position: relative;
+    font-size: 12px;
+    box-sizing: border-box;
+    width: 100%;
+    margin: 10px 0;
+  }
+
+  .enhancer-voucher-header .enhancer-voucher-char-wrap {
+    position: relative;
+    display: inline-block;
+    overflow: visible;
+  }
+
+  .enhancer-voucher-header .enhancer-voucher-char-wrap .enhancer-voucher-char {
+    border: 1px solid #eee;
+    height: 32px;
+    display: inline-block;
+    width: 88px;
+    margin: 0px;
+    padding: 0;
+  }
+
+  .enhancer-voucher-header .enhancer-voucher-char-wrap .enhancer-voucher-char .v-select__selection {
+    font-size: 12px;
+  }
+
+  .enhancer-voucher-header .enhancer-voucher-char-wrap .enhancer-voucher-no {
+    border: 1px solid #eee;
+    line-height: 30px;
+    width: 80px;
+    padding-left: 4px;
+    position: relative;
+    text-align: left;
+  }
+
+  .enhancer-voucher-header .enhancer-voucher-date-wrap {
+    width: 90px;
+    margin-left: 12px;
+    position: relative;
+    display: inline-block;
+  }
+
+  .enhancer-voucher-header .enhancer-voucher-date-wrap .enhancer-voucher-date {
+    border: 1px solid #eee;
+    height: 32px;
+    margin-left: 2px;
+    display: inline-block;
+    margin: 0;
+    padding: 0;
+  }
+
+  .enhancer-voucher-header .enhancer-voucher-period-wrap {
+    float: right;
+    padding: 0 5px;
+    line-height: 30px;
+  }
+
+  .custom-td {
+    vertical-align: top;
+    padding: 0px !important;
+  }
+
+  .custom-td .custom-td-row {
+    height: 40px;
+    line-height: 40px;
+    border-bottom: thin solid rgb(221, 221, 221) !important;
+    padding: 0 16px;
+  }
+
+  .v-data-table__wrapper .v-row-group__header:nth-child(odd) {
+    background: #f4f5f7;
+  }
+
+  .v-data-table__wrapper .v-row-group__header:nth-child(1) {
+    background: #fff !important;
+  }
+
+  .v-data-table__wrapper .v-row-group__header:nth-child(even) {
+    background: #fff !important;
+  }
+
+  .voucher-paper .v-data-table__wrapper tbody td div {
+    width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    height: 35px;
+    line-height: 35px;
+    border-bottom: 1px solid #f8f8f8;
+  }
+  .v-data-table__wrapper tbody td div:last-child {
+    border-bottom: 0;
+  }
+  .jh-paid-img{
+    position: absolute;
+    right: 250px;
+    top: 20px;
+  }
+</style>

@@ -1,0 +1,1448 @@
+{% extends 'template/jhTemplateV4.html'%}
+
+{% block vueTemplate %}
+
+<script type="text/html" id="app-template">
+<div>
+<v-app mobile-breakpoint="sm">
+  <jh-menu />
+  <v-main class="mt-15">
+    <!-- 头部内容 >>>>>>>>>>>>> -->
+    <div class="jh-page-second-bar px-8">
+      <v-row>
+        <v-col cols="12" xs="12" sm="12" md="4" xl="3">
+          <div class="py-4 text-body-1 font-weight-bold d-flex align-center">账套管理
+            <!-- 帮助页按钮 -->
+            <span role="button" class="success--text font-weight-regular jh-font-size-13 mx-2" @click="jumpToUrl">
+                  <v-icon size="13" class="success--text">mdi-help-circle-outline</v-icon>帮助
+                </span>
+          </div>
+        </v-col>
+        <!-- 搜索条件表单 >>>>>>>> -->
+        <v-col cols="12" xs="12" sm="12" md="8" xl="9">
+          <v-row class="jh-backend-form-container justify-end ma-0 py-1 pb-xs-2">
+            <v-col cols="12" xs="6" sm="6" md="4" xl="3" class="pa-xs-0 pb-2 pl-1">
+              <v-select v-model="serverSearchInput.appaStatus" color="success" prefix="账套状态：" class="jh-v-input bg-white" :items="constantObj.appaStatus" dense filled single-line></v-select>
+            </v-col>
+            <v-btn class="jh-backend-search-btn elevation-0 ml-0 mt-3" color="success" small @click="doUiAction('getTableData')">
+              查询
+            </v-btn>
+          </v-row>
+        </v-col>
+        <!-- <<<<<<<< 搜索条件表单 -->
+      </v-row>
+    </div>
+    <!-- <<<<<<<<<<<<< 头部内容 -->
+
+    <div class="jh-page-body-container px-8">
+      <!-- 页面内容 >>>>>>>>>>>>> -->
+      <v-card class="rounded-lg">
+        <v-row class="ma-0 pa-4">
+          <!-- 新增按钮 -->
+          <v-btn color="success" class="elevation-0 mr-2" @click="doUiAction('startCreateItem')" small>新增账套</v-btn>
+          <v-btn v-if="isAdmin" color="success" class="elevation-0 mr-2" @click="doUiAction('updateAppAccountData')" small>账套数据更新</v-btn>
+          <v-spacer></v-spacer>
+          <!-- 搜索过滤 -->
+          <v-col cols="12" xs="8" sm="4" md="3" xl="2" class="pa-0">
+            <v-text-field color="success" v-model="searchInput" prefix="搜索：" class="jh-v-input" dense filled single-line></v-text-field>
+          </v-col>
+        </v-row>
+        <!-- 表格 -->
+        <v-data-table
+          :headers="dynamicHeaders"
+          :items="tableData"
+          :search="searchInput"
+          :footer-props="{ itemsPerPageOptions: [20, 50, -1], itemsPerPageText: '每页', itemsPerPageAllText: '所有'}"
+          :items-per-page="-1"
+          mobile-breakpoint="0"
+          :loading="isTableLoading"
+          checkbox-color="success"
+          :class="{'zebraLine': isTableZebraLineShown }"
+          fixed-header
+          class="jh-fixed-table-height elevation-0 mt-0 mb-xs-4">
+          <template v-slot:item.appaName="{ item }">
+            {{ item.appaName }}
+          </template>
+          <template v-slot:item.appaStatus="{ item }">
+              <v-chip x-small :color="item.appaStatus === '账套启用' ? 'green' : 'red'" text-color="white"> {{item.appaStatus}} </v-chip>
+          </template>
+          <template v-slot:item.appaMemberList="{ item }">
+            <span>{{ item.appaMemberList.map(appaMember => appaMember.appaMemberName).join(', ') }}</span>
+          </template>  
+          <!-- 表格操作按钮 -->
+          <template v-slot:item.action="{ item }">
+            <template v-if="item.isManagerOrAdmin">
+              <span role="button" class="success--text font-weight-medium font-size-2 mr-2" @click="doUiAction('startUpdateItem', item)">
+                <v-icon size="16" class="success--text">mdi-note-edit-outline</v-icon>修改
+              </span>
+              <!-- <span role="button" class="success--text font-weight-medium font-size-2 mr-2" @click="doUiAction('initAppAccountConfigTable', item)">
+                <v-icon size="16" class="success--text">mdi-note-edit-outline</v-icon>初始化
+              </span> -->
+              <span role="button" class="success--text font-weight-medium font-size-2 mr-2" @click="doUiAction('startImportAppAccountData', item)">
+                <v-icon size="16" class="success--text">mdi-note-edit-outline</v-icon>数据导入
+              </span>
+              <span role="button" class="red--text font-weight-medium font-size-2 mr-2" @click="doUiAction('deleteAppAccountData', item)">
+                <v-icon size="16" class="red--text">mdi-delete-empty-outline</v-icon>删除
+              </span>
+            </template>
+            <template v-else>
+              <span class="gery--text font-weight-medium font-size-2 mr-2">-</span>
+            </template>
+            
+          </template>
+          <!-- 没有数据 -->
+          <template v-slot:loading>
+            <div class="jh-no-data">数据加载中</div>
+          </template>
+          <template v-slot:no-data>
+            <div class="jh-no-data">暂无数据</div>
+          </template>
+          <template v-slot:no-results>
+            <div class="jh-no-data">暂无数据</div>
+          </template>
+          <!-- 表格分页 -->
+          <template v-slot:footer.page-text="pagination">
+            <span>{{pagination.pageStart}}-{{pagination.pageStop}}</span>
+            <span class="ml-1">共{{pagination.itemsLength}}条</span>
+          </template>
+        </v-data-table>
+      </v-card>
+
+      <!-- 新增抽屉 -->
+      <v-navigation-drawer v-if="isCreateDrawerShown" v-model="isCreateDrawerShown" :permanent="isCreateDrawerShown" fixed temporary right width="80%" class="elevation-24">
+        <v-row no-gutters>
+          <span class="text-h7 font-weight-bold pa-4">新增信息</span>
+        </v-row>
+        <v-divider class="jh-divider"></v-divider>
+
+        <v-form ref="createForm" lazy-validation>
+          <!-- 抽屉表单 -->
+          <!-- <v-text-field class="jh-v-input" dense single-line filled v-model="createItem.xxxId" :rules="validationRules.requireRules"></v-text-field> -->
+          <v-row class="mt-0 px-4">
+             
+            <v-col cols="12" sm="12" md="4">
+              <span class="jh-input-label">账套ID(设置后不可修改)</span>
+              <v-text-field :rules="validationRules.requireRules" class="jh-v-input" placeholder="公司名缩写" dense single-line filled v-model="createItem.appaId"></v-text-field>
+            </v-col>
+             
+            <v-col cols="12" sm="12" md="4">
+              <span class="jh-input-label">账套名称</span>
+              <v-text-field :rules="validationRules.requireRules" class="jh-v-input" dense single-line filled v-model="createItem.appaName"></v-text-field>
+            </v-col>
+             
+            <v-col cols="12" class="pa-0"></v-col>
+
+            <v-col cols="12" sm="12" md="4">
+              <span class="jh-input-label">账套启用年月
+                
+
+              </span>
+              <v-menu transition="scale-transition" offset-y min-width="auto">
+                <template v-slot:activator="{ on, attrs }">
+                  <v-text-field :rules="validationRules.requireRules" dense single-line filled v-model="createItem.periodIdStart" readonly v-bind="attrs" v-on="on"></v-text-field>
+                </template>
+                <v-date-picker locale="zh" v-model="createItem.periodIdStart" type="month"></v-date-picker>
+              </v-menu>
+            </v-col>
+
+         
+
+            <v-col cols="12" class="pa-0"></v-col>
+
+            <v-col cols="12" sm="12" md="4">
+              <span class="jh-input-label">账套管理人</span>
+              <v-select v-model="createItem.appaManagerId" disabled color="success" class="jh-v-input" :items="constantObj.user" dense filled single-line></v-select>
+            </v-col>
+
+            <v-col cols="12" sm="12" md="4">
+              <span class="jh-input-label">账套成员</span>
+              <v-select v-model="createItem.appaMemberIdList" color="success" class="jh-v-input" :items="constantObj.user" dense filled single-line clearable multiple></v-select>
+            </v-col>
+
+
+            <v-col cols="12" class="pa-0"></v-col>
+             
+            <v-col cols="12" sm="12" md="4">
+              <span class="jh-input-label">会计准则</span>
+              <v-select :rules="validationRules.requireRules" v-model="createItem.appaStandard" class="jh-v-input" :items="constantObj.appaStandard" dense filled single-line></v-select>
+            </v-col>
+             
+            <v-col cols="12" sm="12" md="4">
+              <span class="jh-input-label">所属行业</span>
+              <v-text-field class="jh-v-input" dense single-line filled v-model="createItem.appaIndustry"></v-text-field>
+            </v-col>
+             
+            <v-col cols="12" sm="12" md="4">
+              <span class="jh-input-label">增值税种类</span>
+              <v-text-field class="jh-v-input" dense single-line filled v-model="createItem.appaVATType"></v-text-field>
+            </v-col>
+
+            <v-col cols="12" sm="12" md="4">
+              <span class="jh-input-label">账套状态</span>
+              <v-select v-model="createItem.appaStatus" disabled color="success" class="jh-v-input" :items="constantObj.appaStatus" dense filled single-line :rules="validationRules.requireRules"></v-select>
+            </v-col>
+             
+          </v-row>
+
+          <!-- 抽屉操作按钮 -->
+          <v-row class="justify-end mx-0 mt-8 px-6">
+            <v-btn color="success" @click="doUiAction('createItem')" small><v-icon size="14">mdi-content-save-check-outline</v-icon>保存</v-btn>
+            <v-btn class="elevation-0 ml-2" @click="isCreateDrawerShown = false" small><v-icon size="14">mdi-close</v-icon>取消</v-btn>
+          </v-row>
+        </v-form>
+        <!-- 抽屉关闭按钮 -->
+        <v-btn elevation="0" color="success" fab absolute top left small tile class="drawer-close-float-btn" @click="isCreateDrawerShown = false">
+          <v-icon>mdi-close</v-icon>
+        </v-btn>
+      </v-navigation-drawer>
+      
+      <!-- 编辑抽屉 -->
+      <v-navigation-drawer v-if="isUpdateDrawerShown" v-model="isUpdateDrawerShown" :permanent="isUpdateDrawerShown" fixed temporary right width="80%" class="elevation-24">
+        <v-form ref="updateForm" lazy-validation>
+          <!-- 抽屉标题 -->
+          <v-row>
+            <span class="text-subtitle-1 font-weight-medium pa-6 pl-7">修改信息</span>
+          </v-row>
+          <!-- 抽屉表单 -->
+          <v-row class="mt-0 px-4">
+            <!-- <v-text-field class="jh-v-input" dense single-line filled v-model="updateItem.xxxId" :rules="validationRules.requireRules"></v-text-field> -->
+             
+            <v-col cols="12" sm="12" md="4">
+              <span class="jh-input-label">账套ID</span>
+              <v-text-field :rules="validationRules.requireRules" class="jh-v-input" dense single-line filled v-model="updateItem.appaId" disabled></v-text-field>
+            </v-col>
+             
+            <v-col cols="12" sm="12" md="4">
+              <span class="jh-input-label">账套名称</span>
+              <v-text-field :rules="validationRules.requireRules" class="jh-v-input" dense single-line filled v-model="updateItem.appaName"></v-text-field>
+            </v-col>
+             
+            <v-col cols="12" class="pa-0"></v-col>
+
+            <v-col cols="12" sm="12" md="4">
+              <span class="jh-input-label">账套启用年月
+                <v-tooltip bottom>
+                  <template v-slot:activator="{ on, attrs }">
+                    <v-icon color="primary" v-bind="attrs" v-on="on" size="14">mdi-help-circle-outline</v-icon>
+                  </template>
+                  <span>有凭证数据，则无法再修改账套启用年月。</span>
+                </v-tooltip>
+
+              </span>
+              <v-menu transition="scale-transition" offset-y min-width="auto">
+                <template v-slot:activator="{ on, attrs }">
+                  <v-text-field :loading="isExistVoucherLoading" :disabled="isExistVoucher" :rules="validationRules.requireRules" dense single-line filled v-model="updateItem.periodIdStart" readonly v-bind="attrs" v-on="on"></v-text-field>
+                </template>
+                <v-date-picker locale="zh" v-model="updateItem.periodIdStart" type="month"></v-date-picker>
+              </v-menu>
+            </v-col>
+
+
+            <v-col cols="12" class="pa-0"></v-col>
+
+            <v-col cols="12" sm="12" md="4">
+              <span class="jh-input-label">账套管理人</span>
+              <v-select v-model="updateItem.appaManagerId" color="success" class="jh-v-input" :items="constantObj.user" dense filled single-line></v-select>
+            </v-col>
+
+            <v-col cols="12" sm="12" md="4">
+              <span class="jh-input-label">账套成员</span>
+              <v-select v-model="updateItem.appaMemberIdList" color="success" class="jh-v-input" :items="constantObj.user" dense filled single-line clearable multiple></v-select>
+            </v-col>
+
+            <v-col cols="12" class="pa-0"></v-col>
+             
+            <v-col cols="12" sm="12" md="4">
+              <span class="jh-input-label">会计准则</span>
+              <v-select :rules="validationRules.requireRules" v-model="updateItem.appaStandard" class="jh-v-input" :items="constantObj.appaStandard" dense filled single-line></v-select>
+            </v-col>
+             
+            <v-col cols="12" sm="12" md="4">
+              <span class="jh-input-label">所属行业</span>
+              <v-text-field class="jh-v-input" dense single-line filled v-model="updateItem.appaIndustry"></v-text-field>
+            </v-col>
+             
+            <v-col cols="12" sm="12" md="4">
+              <span class="jh-input-label">增值税种类</span>
+              <v-text-field class="jh-v-input" dense single-line filled v-model="updateItem.appaVATType"></v-text-field>
+            </v-col>
+                       
+            <v-col cols="12" sm="12" md="4">
+              <span class="jh-input-label">账套状态</span>
+              <v-select v-model="updateItem.appaStatus" color="success" class="jh-v-input" :items="constantObj.appaStatus" dense filled single-line :rules="validationRules.requireRules"></v-select>
+            </v-col>
+          </v-row>
+          <!-- 抽屉操作按钮 -->
+          <v-row class="justify-end mx-0 mt-8 px-6">
+            <v-btn color="success" @click="doUiAction('updateItem')" small><v-icon size="14">mdi-content-save-check-outline</v-icon>保存</v-btn>
+            <v-btn class="elevation-0 ml-2" @click="isUpdateDrawerShown = false" small><v-icon size="14">mdi-close</v-icon>取消</v-btn>
+          </v-row>
+        </v-form>
+        <!-- 抽屉关闭按钮 -->
+        <v-btn elevation="0" color="success" fab absolute top left small tile class="drawer-close-float-btn" @click="isUpdateDrawerShown = false">
+          <v-icon>mdi-close</v-icon>
+        </v-btn>
+      </v-navigation-drawer>
+
+      <!-- 数据导入 -->
+      <v-navigation-drawer v-if="isImporteDrawerShow" v-model="isImporteDrawerShow" :permanent="isImporteDrawerShow"  fixed temporary right width="80%" class="elevation-24">
+
+        <!-- 抽屉标题 -->
+        <v-row>
+          <span class="text-subtitle-1 font-weight-medium pa-6 pl-7">账套数据导入【{{ importItem.appaName }}】</span>
+        </v-row>
+
+        <v-row class="ma-0 mb-2" :class="{'px-6': !isMobile, 'px-4': isMobile}">
+          <v-tabs dense v-model="importTabIndex" class="custom-tabs">
+            <v-tab v-for="(tab, index) in importTabList" :key="tab" style="font-weight: 400;">{{tab}}</v-tab>
+          </v-tabs>
+        </v-row>
+
+        <v-card v-show="importTabIndex===0">
+          <v-row class="ma-0 pa-4">
+            <v-col cols="3" class="pa-0" style="margin-bottom: -22px;">
+              <v-file-input accept=".xlsx" 
+                v-model="importSubjectFile" label="科目文件" class="elevation-0 mr-2" 
+                :clearable="true"
+                @change="importSubjectFileChange"
+                dense filled single-line chips></v-file-input>
+            </v-col>
+
+            <v-btn small color="success" class="elevation-0 mr-2" @click="doUiAction('doImporteSubjectList')">确定导入 科目数据</v-btn>
+            <template v-if="importItem.subjectBalanceCalcStatus === '完成'">
+              <v-btn small color="success" class="elevation-0 mr-2" @click="doUiAction('reCheckoutAllPeriod')">计算科目余额</v-btn>
+            </template>
+            <template v-else>
+              <v-btn small disabled color="warning" class="elevation-0 mr-2">科目余额计算中…</v-btn>
+            </template>
+
+            <v-btn small color="warning" class="elevation-0 mr-2" 
+              @click="doUiAction('templateFileDownload', { 
+                headers: 'importSubjectHeaders', 
+                filename: '科目数据模版',
+                excelData: [
+                  { 'subjectId': '1001', 'subjectName': '库存现金', 'subjectBalanceDirection': '借', 'subjectCategory': '资产', 'startAmount': 1000 },
+                  { 'subjectId': '1002', 'subjectName': '银行存款', 'subjectBalanceDirection': '借', 'subjectCategory': '资产', 'startAmount': null },
+                  { 'subjectId': '1006', 'subjectName': 'xxxx', 'subjectBalanceDirection': '借', 'subjectCategory': '资产', 'startAmount': 10.02 },
+                ],
+              })">下载模版excel</v-btn>
+            
+            <v-spacer></v-spacer>
+      
+            <v-col cols="12" xs="5" sm="5" md="3" xl="2" class="pa-0">
+              <v-text-field v-model="inputImporteSubjectSearch" prefix="搜索：" class="jh-v-input" dense filled single-line></v-text-field>
+            </v-col>
+
+            <v-col cols="12" class="px-0">
+              <v-data-table fixed-header
+                :headers="importSubjectHeaders"
+                :items="importSubjectTableData"
+                :search="inputImporteSubjectSearch"
+                :footer-props="{ itemsPerPageOptions: [20, 50, -1], itemsPerPageText: '每页', itemsPerPageAllText: '所有'}"
+                :items-per-page="-1"
+                mobile-breakpoint="0"
+                checkbox-color="success"
+                :class="{'zebraLine': isTableZebraLineShown }"
+                fixed-header
+                class="jh-fixed-table-height elevation-0 mt-0 mb-xs-4">
+                <template v-slot:item.subjectName="{ item }">
+                  <div :class="`${item.isErrorSubject && 'red--text'}`">{{item.subjectName}} <v-chip v-if="item.isNewSubject" color="primary" x-small>新科目</v-chip></div>
+                </template>
+
+                <!-- 没有数据 -->
+                <template v-slot:loading>
+                  <div class="jh-no-data">数据加载中</div>
+                </template>
+                <template v-slot:no-data>
+                  <div class="jh-no-data">暂无数据</div>
+                </template>
+                <template v-slot:no-results>
+                  <div class="jh-no-data">暂无数据</div>
+                </template>
+                <!-- 表格分页 -->
+                <template v-slot:footer.page-text="pagination">
+                  <span>{{pagination.pageStart}}-{{pagination.pageStop}}</span>
+                  <span class="ml-1">共{{pagination.itemsLength}}条</span>
+                </template>
+              </v-data-table>
+  
+            </v-col>
+          </v-row>
+  
+        </v-card>
+  
+        <v-card v-show="importTabIndex===1">
+          <v-row class="ma-0 pa-4">
+            <v-col cols="3" class="pa-0" style="margin-bottom: -22px;">
+              <v-file-input accept=".xlsx" 
+                v-model="importVoucherFile" label="凭证文件" class="elevation-0 mr-2" 
+                :clearable="true"
+                @change="importVoucherFileChange"
+                dense filled single-line chips></v-file-input>
+            </v-col>
+
+            <v-btn small color="success" class="elevation-0 mr-2" @click="doUiAction('doImporteVoucherList')">确定导入 凭证数据</v-btn>
+            <v-btn small color="success" class="elevation-0 mr-2" @click="doUiAction('reCheckoutAllPeriod')">计算科目余额</v-btn>
+
+            <!-- 多个模板btn下拉 -->
+            <v-menu offset-y>
+              <template v-slot:activator="{ on, attrs }">
+                <v-btn small color="warning" class="elevation-0 mr-2" v-bind="attrs" v-on="on">下载模版excel</v-btn>
+              </template>
+              <v-list>
+                <v-list-item v-for="(template, index) in importVoucherTemplateList" :key="index">
+                  <v-list-item-title @click="doUiAction('templateFileDownload', { 
+                    headers: template.headers, 
+                    filename: template.filename,
+                    excelData: template.excelData,
+                  })">{{ template.filename }}</v-list-item-title>
+                </v-list-item>
+              </v-list>
+              </v-menu>
+            <v-spacer></v-spacer>
+      
+            <v-col cols="12" xs="5" sm="5" md="3" xl="2" class="pa-0">
+              <v-text-field v-model="inputImporteVoucherSearch" prefix="搜索：" class="jh-v-input" dense filled single-line></v-text-field>
+            </v-col>
+  
+            <v-col cols="12" class="px-0">
+              <v-data-table fixed-header
+                :headers="importVoucherHeaders"
+                :items="importVoucherTableData"
+                :search="inputImporteVoucherSearch"
+                :footer-props="{ itemsPerPageOptions: [20, 50, -1], itemsPerPageText: '每页', itemsPerPageAllText: '所有'}"
+                :items-per-page="-1"
+                mobile-breakpoint="0"
+                checkbox-color="success"
+                :class="{'zebraLine': isTableZebraLineShown }"
+                fixed-header
+                class="jh-fixed-table-height elevation-0 mt-0 mb-xs-4">
+                <template v-slot:item.subjectId="{ item }">
+                  <span>{{item.subjectId}} <v-chip v-if="item.isNewSubject" type="primary" small>新科目</v-chip></span>
+                </template>
+                <template v-slot:item.subject-lable="{ item }">
+                  <span v-if="item.subjectId && importItemSubjectMap[item.subjectId]">{{ importItemSubjectMap[item.subjectId].subjectLabel }}</span>
+                </template>
+                <!-- 没有数据 -->
+                <template v-slot:loading>
+                  <div class="jh-no-data">数据加载中</div>
+                </template>
+                <template v-slot:no-data>
+                  <div class="jh-no-data">暂无数据</div>
+                </template>
+                <template v-slot:no-results>
+                  <div class="jh-no-data">暂无数据</div>
+                </template>
+                <!-- 表格分页 -->
+                <template v-slot:footer.page-text="pagination">
+                  <span>{{pagination.pageStart}}-{{pagination.pageStop}}</span>
+                  <span class="ml-1">共{{pagination.itemsLength}}条</span>
+                </template>
+              </v-data-table>
+  
+            </v-col>
+          </v-row>
+        </v-card>
+
+        <v-overlay :value="isImportTableLoading" color="white" dark absolute :opacity="0.7">
+          <v-progress-circular indeterminate size="32" color="grey"></v-progress-circular>
+        </v-overlay>
+
+        <v-btn elevation="0" color="success" fab absolute top left small tile class="drawer-close-float-btn"
+          @click="isImporteDrawerShow = false">
+          <v-icon>mdi-close</v-icon>
+        </v-btn>
+      </v-navigation-drawer>
+      <!-- <<<<<<<<<<<<< 页面内容 -->
+
+      <jh-confirm-input-dialog />
+    </div>
+
+    <!-- 帮助页抽屉 >>>>>>>>>>>>> -->
+    <!-- <<<<<<<<<<<<< 帮助页抽屉 -->
+
+  </v-main>
+</v-app>
+
+<jh-toast />
+<jh-mask />
+<jh-confirm-dialog />
+</div>
+</script>
+
+<div id="app">
+</div>
+
+{% endblock %}
+
+{% block vueScript %}
+{% include 'common/jianghuJs/fixedTableHeightV4.html' %}
+{% include 'component/jianghuJs/select-appaId.html' %}
+{% include 'component/jianghuJs/jhConfirmInputDialog.html' %}
+{% include 'common/excelUtil.html' %}
+{% include 'common/voucherTemplateMixin.html' %}
+
+<script type="module">
+  new Vue({
+    el: '#app',
+    template: '#app-template',
+    vuetify: new Vuetify(),
+    mixins: [voucherTemplateMixin],
+    data: () => ({
+      isAudit: JSON.parse('<$ ctx.app.config.isAudit | dump | safe $>'),
+      isAdmin: false,
+      // 面包屑
+      breadcrumbs: [
+        {
+          text: '首页',
+          disabled: true,
+        },
+        {
+          text: "<$ ctx.packagePage.pageName $>".replace(/\[.*\]/g, ""),
+          disabled: true,
+        }
+      ],
+      currentUserId: window.userInfo.userId,
+      isHelpPageDrawerLoaded: false,
+      isMobile: window.innerWidth < 500,
+
+      // 表格相关数据
+      isImportTableLoading: false,
+      isTableZebraLineShown: true,
+      validationRules: {
+        requireRules: [
+          v => !!v || 'This is required',
+        ],
+      },
+      // 下拉选项
+      constantObj: {
+        user: [],
+        appaStatus: ['账套启用', '账套停用'],
+        appaStandard: ['小企业会计准则'],
+      },
+      serverSearchInput: {
+        appaStatus: '账套启用'
+      },
+      searchInput: null,
+      isTableLoading: true,
+      tableData: [],
+      headers: [
+
+        { text: "账套ID", value: "appaId", width: 200 },
+        { text: "账套名称", value: "appaName", width: 200 },
+        { text: "账套状态", value: "appaStatus", width: 200 },
+        { text: "账套管理人", value: "appaManagerName", width: 100 },
+        { text: "账套成员", value: "appaMemberList", width: 200 },
+        { text: "会计准则", value: "appaStandard", width: 160 },
+        { text: "账套启用年月", value: "periodIdStart", width: 120 },
+        { text: "所属行业", value: "appaIndustry", width: 120 },
+        { text: "增值税种类", value: "appaVATType", width: 120 },
+        { text: '操作', value: 'action', align: 'left', sortable: false, width: window.innerWidth > 220 ? 200 : 50, class: 'fixed', cellClass: 'fixed' },
+
+      ],
+
+      isCreateDrawerShown: false,
+      createItem: {},
+      createActionData: {},
+      isUpdateDrawerShown: false,
+      updateItem: {},
+      updateItemId: null,
+      updateActionData: {},
+
+
+      importTabIndex: 0,
+      importTabList: ['科目导入', '凭证导入'],
+      isImporteDrawerShow: false,
+      importItem: {},
+      importItemSubjectMap: {},
+      userData: [],
+
+      importSubjectFile: null,
+      inputImporteSubjectSearch: null,
+      importSubjectHeaders: [
+        { text: "行号", value: "rowNumber", width: window.innerWidth > 500 ? 50 : 50, class: 'fixed', cellClass: 'fixed', exportDisabled: true },
+        { text: "科目编码", value: "subjectId", width: 80, importRequire: true },
+        { text: "科目名称", value: "subjectName", width: 220, importRequire: true },
+        { text: "科目余额方向", value: "subjectBalanceDirection", width: 50, importRequire: true },
+        { text: "科目分类", value: "subjectCategory", width: 80, importRequire: true },
+        { text: "初始余额", value: "startAmount", width: 80 },
+      ],
+      importSubjectTableData: [],
+
+      importVoucherFile: null,
+      inputImporteVoucherSearch: null,
+      importVoucherHeaders: [
+        { text: "行号", value: "rowNumber", width: 50, class: 'fixed', cellClass: 'fixed', exportDisabled: true },
+        { text: "凭证-年", value: "year", width: 60, importRequire: true },
+        { text: "凭证-月", value: "month", width: 60, importRequire: true },
+        { text: "凭证-日", value: "day", width: 60, importRequire: true },
+        { text: "凭证-字", value: "voucherName", width: 60, importRequire: true },
+        { text: "凭证-号", value: "voucherNumber", width: 60, importRequire: true },
+
+        { text: "摘要", value: "entryAbstract", width: 180 },
+        { text: "科目编码", value: "subjectId", width: 80, importRequire: true },
+        { text: "科目名称", value: "subject-lable", width: 220, exportDisabled: true },
+
+        { text: "借方金额", value: "debit", width: 80 },
+        { text: "贷方金额", value: "credit", width: 80 },
+
+        { text: "客户", value: "assistNameOfCustomer", width: 150 },
+        { text: "供应商", value: "assistNameOfSupplier", width: 150 },
+        { text: "员工", value: "assistNameOfStaff", width: 100 },
+        { text: "项目", value: "assistNameOfProject", width: 100 },
+        { text: "部门", value: "assistNameOfDepart", width: 100 },
+      ],
+      importVoucherTableData: [],
+
+      // 是否有凭证
+      isExistVoucher: false,
+      isExistVoucherLoading: false,
+    }),
+    watch: {
+      isHelpPageDrawerShown(val) {
+        if (val && !this.isHelpPageDrawerLoaded) {
+          this.isHelpPageDrawerLoaded = true;
+        }
+      },
+    },
+    computed: {
+      dynamicHeaders() {
+        return this.headers.filter(header => { return this.isAudit ? true : !header.onlyAuditShow });
+      }
+    },
+    async created() {
+    },
+    async mounted() {
+      await this.doUiAction('getUserData');
+      await this.doUiAction('getTableData');
+
+      // Tip: 测试代码
+      // await this.doUiAction('startCreateItem');
+      // await this.doUiAction('startUpdateItem', this.tableData.find(row => row.appaId == 'GS01'));
+      // this.importTabIndex = 1;
+      // await this.doUiAction('startImportAppAccountData', this.tableData.find(row => row.appaId == 'testimport'));
+    },
+    methods: {
+      async doUiAction(uiActionId, uiActionData) {
+        switch (uiActionId) {
+          case 'getTableData':
+            await this.getTableData();
+            break;
+          case 'getUserData':
+            await this.getUserData();
+            await this.setUserConstant();
+            break;
+          case 'startCreateItem':
+            await this.prepareCreateFormData();
+            await this.openCreateDrawer();
+            break;
+          case 'createItem':
+            await this.prepareCreateValidate();
+            await this.confirmCreateItemDialog();
+            await this.prepareDoCreateItem();
+            await this.doCreateItem();
+            await this.closeCreateDrawer();
+            await this.getTableData();
+            break;
+          case 'startUpdateItem':
+            await this.prepareUpdateFormData(uiActionData);
+            await this.openUpdateDrawer();
+            await this.checkAppAccountExistVoucher(uiActionData)
+            break;
+          case 'updateItem':
+            await this.prepareUpdateValidate();
+            await this.confirmUpdateItemDialog();
+            await this.prepareDoUpdateItem();
+            await this.doUpdateItem();
+            await this.closeUpdateDrawer();
+            await this.getTableData();
+            break;
+          case 'initAppAccountConfigTable':
+            await this.initAppAccountConfigTable(uiActionData);
+            break;
+          case 'startImportAppAccountData':
+            await this.startImportAppAccountData(uiActionData);
+            await this.getSubjectList(uiActionData);
+            break;
+          case 'templateFileDownload':
+            await this.templateFileDownload(uiActionData);
+            break;
+          case 'doImporteSubjectList':
+            await this.doImporteSubjectList(uiActionData);
+            await this.closeImportDrawer();
+            break;
+          case 'doImporteVoucherList':
+            await this.doImporteVoucherList(uiActionData);
+            await this.closeImportDrawer();
+            break;
+          case 'reCheckoutAllPeriod':
+            await this.doReCheckoutAllPeriod(uiActionData);
+            break;
+          case 'deleteAppAccountData':
+            await this.confirmDeleteItemDialog(uiActionData);
+            await this.deleteAppAccountData(uiActionData);
+            await this.getTableData();
+            break;
+          case 'getSubjectList':
+            await this.getSubjectList();
+            break;
+          case 'updateAppAccountData':
+            await this.confirmpdateAppAccountDialog();
+            await this.updateAppAccount();
+            break;
+          default:
+            console.error("[doUiAction] uiActionId not find", { uiActionId });
+            break;
+        }
+      },
+
+      // ---------- 获取用户数据 uiAction >>>>>>>>>> --------
+      async getUserData() {
+        const result = await window.jianghuAxios({
+          data: {
+            appData: {
+              pageId: 'appAccountManagement',
+              actionId: 'selectUserList',
+            }
+          }
+        });
+        const { rows } = result.data.appData.resultData;
+        this.userData = rows;
+      },
+      setUserConstant() {
+        this.constantObj.user = _.map(this.userData, user => {
+          const { userId, username } = user;
+          return {
+            text: username,
+            value: userId
+          };
+        })
+      },
+      // ---------- <<<<<<<<<<< 获取用户数据 uiAction  --------
+
+      /**
+       * 获取表格数据
+       */
+      async getTableData() {
+        this.isTableLoading = true;
+        const backendSearchData = _.pickBy(this.serverSearchInput, (fieldValue, fieldKey) => {
+          if (fieldValue !== null && fieldValue !== '') {
+            return true;
+          }
+        });
+
+        const { rows, isAdmin } = (await window.jianghuAxios({
+          data: {
+            appData: {
+              pageId: 'appAccountManagement',
+              actionId: 'selectItemList',
+              actionData: {},
+              where: backendSearchData,
+            }
+          }
+        })).data.appData.resultData;
+
+        rows.forEach(row => {
+          row.appaMemberIdList = (row.appaMemberIdList || '').split(',');
+          row.appaMemberList = JSON.parse(row.appaMemberList || '[]');
+        })
+        this.isAdmin = isAdmin;
+        this.tableData = rows;
+        this.isTableLoading = false;
+      },
+      // ---------- 新增数据 uiAction >>>>>>>>>> --------
+      async prepareCreateFormData() {
+        this.createItem = {
+          appaStatus: "账套启用",
+          appaStandard: "小企业会计准则",
+          appaManagerId: window.userInfo.userId
+        };
+      },
+
+      async openCreateDrawer() {
+        this.isCreateDrawerShown = true;
+      },
+
+      async prepareCreateValidate() {
+        if (await this.$refs.createForm.validate()) {
+          return true;
+        }
+        throw new Error("请完善表单信息")
+      },
+
+      async confirmCreateItemDialog() {
+        if (await window.confirmDialog({ title: "新增", content: "确定新增吗？" }) === false) {
+          throw new Error("[confirmCreateFormDialog] 否");
+        }
+      },
+
+      prepareDoCreateItem() {
+        const createItem = _.cloneDeep(this.createItem);
+        const { id, appaManagerId, isManagerOrAdmin, ...data } = this.createItem;
+
+        const userObj = _.keyBy(this.userData, 'userId');
+        let appaMemberList = [];
+
+        createItem.appaMemberIdList = createItem.appaMemberIdList ? createItem.appaMemberIdList : []
+        if (!createItem.appaMemberIdList.includes(appaManagerId)) {
+          createItem.appaMemberIdList.push(appaManagerId)
+        }
+        debugger
+        let appaMemberIdList = _.uniq(createItem.appaMemberIdList);
+
+        for (const appaMemberId of appaMemberIdList) {
+          const currentUserInfo = userObj[appaMemberId] || {};
+          if (!_.isEmpty(currentUserInfo)) appaMemberList.push({ appaMemberId: currentUserInfo.userId, appaMemberName: currentUserInfo.username });
+        }
+
+        appaMemberList = _.orderBy(appaMemberList, ['appaMemberName'], ['desc'])
+        appaMemberIdList = appaMemberList.map(member => member.appaMemberId);
+        this.createItem.appaMemberIdList = appaMemberIdList;
+
+        this.createActionData = {
+          ...data,
+          appaManagerId,
+          appaManagerName: appaManagerId ? userObj[appaManagerId].username : null,
+          appaMemberIdList: appaMemberIdList.length > 0 ? _.join(appaMemberIdList, ',') : null,
+          appaMemberList: appaMemberList.length > 0 ? JSON.stringify(appaMemberList) : null,
+        };
+      },
+
+      async doCreateItem() {
+
+        await window.vtoast.loading("新增账套");
+        await window.jianghuAxios({
+          data: {
+            appData: {
+              pageId: 'appAccountManagement',
+              actionId: 'createAppAcount',
+              actionData: this.createActionData,
+            },
+          }
+        })
+
+        await window.vtoast.success("新增账套成功");
+      },
+      async closeCreateDrawer() {
+        this.isCreateDrawerShown = false;
+        this.createItem = {};
+        this.createActionData = null;
+      },
+      // ---------- <<<<<<<<<<< 新增数据 uiAction ---------
+
+      // ---------- 修改数据 uiAction >>>>>>>>>>>> --------
+      async prepareUpdateFormData(funObj) {
+        this.updateItem = _.cloneDeep(funObj);
+      },
+
+      async checkAppAccountExistVoucher(uiAction) {
+        this.isExistVoucherLoading = true
+        const result = await window.jianghuAxios({
+          data: {
+            appData: {
+              pageId: 'appAccountManagement',
+              actionId: 'checkAppAccountExistVoucher',
+              actionData: { appaId: uiAction.appaId }
+            },
+          }
+        })
+        this.isExistVoucherLoading = false
+        this.isExistVoucher = result.data.appData.resultData
+      },
+
+      async openUpdateDrawer() {
+        this.isUpdateDrawerShown = true;
+      },
+
+      async prepareUpdateValidate() {
+        if (await this.$refs.updateForm.validate()) {
+          return true;
+        }
+        throw new Error("请完善表单信息")
+      },
+
+      async confirmUpdateItemDialog() {
+        if (await window.confirmDialog({ title: "修改", content: "确定修改吗？" }) === false) {
+          throw new Error("[confirmUpdateItemDialog] 否");
+        }
+      },
+
+      async prepareDoUpdateItem() {
+        const updateItem = _.cloneDeep(this.updateItem);
+        const { id, appaManagerId, isManagerOrAdmin, ...data } = this.updateItem;
+
+        const userObj = _.keyBy(this.userData, 'userId');
+        let appaMemberList = [];
+
+        updateItem.appaMemberIdList = updateItem.appaMemberIdList ? updateItem.appaMemberIdList : []
+        if (!updateItem.appaMemberIdList?.includes(appaManagerId)) {
+          updateItem.appaMemberIdList.push(appaManagerId)
+        }
+        let appaMemberIdList = _.uniq(updateItem.appaMemberIdList || []);
+
+        for (const appaMemberId of appaMemberIdList) {
+          const currentUserInfo = userObj[appaMemberId] || {};
+          if (!_.isEmpty(currentUserInfo)) appaMemberList.push({ appaMemberId: currentUserInfo.userId, appaMemberName: currentUserInfo.username });
+        }
+
+        appaMemberList = _.orderBy(appaMemberList, ['appaMemberName'], ['desc'])
+        appaMemberIdList = appaMemberList.map(member => member.appaMemberId);
+        this.updateItem.appaMemberIdList = appaMemberIdList;
+
+        this.updateItemId = id;
+        this.updateActionData = {
+          ...data,
+          appaManagerId,
+          appaManagerName: appaManagerId ? userObj[appaManagerId].username : null,
+          appaMemberIdList: appaMemberIdList.length > 0 ? _.join(appaMemberIdList, ',') : null,
+          appaMemberList: appaMemberList.length > 0 ? JSON.stringify(appaMemberList) : null,
+        };
+      },
+
+      async doUpdateItem() {
+
+        await window.vtoast.loading("修改数据");
+        await window.jianghuAxios({
+          data: {
+            appData: {
+              pageId: 'appAccountManagement',
+              actionId: 'updateAppAcount',
+              actionData: this.updateActionData,
+            }
+          }
+        })
+
+
+        await window.vtoast.success("修改数据成功");
+      },
+
+      async closeUpdateDrawer() {
+        this.isUpdateDrawerShown = false;
+        this.updateItem = {};
+        this.updateActionData = null;
+        this.updateItemId = null;
+      },
+      // ---------- <<<<<<<<<<< 修改数据 uiAction ---------
+
+
+      // ---------- 初始化账套数据 uiAction >>>>>>>>>>>> --------
+      async initAppAccountConfigTable(item) {
+        await window.vtoast.loading("初始化");
+        await window.jianghuAxios({
+          data: {
+            appData: {
+              pageId: 'appAccountManagement',
+              actionId: 'initAppAccountConfigTable',
+              actionData: {
+                appaId: item.appaId,
+              },
+            }
+          }
+        })
+        await window.vtoast.success("初始化");
+      },
+      // ---------- <<<<<<<<<<< 初始化账套数据 uiAction ---------
+
+      // ---------- 开始账套数据导入 uiAction >>>>>>>>>>>> --------
+      async startImportAppAccountData(item) {
+        this.isImporteDrawerShow = true;
+        this.isImportTableLoading = false;
+        this.importItem = item;
+        this.importSubjectFile = null;
+        this.importVoucherFile = null;
+        this.importSubjectTableData = [];
+        this.importVoucherTableData = [];
+        this.importItemSubjectList = [];
+      },
+      async closeImportDrawer() {
+        this.isImporteDrawerShow = false;
+      },
+      // ---------- 科目导入 >>>>>>>>>>>>> ----------
+      async importSubjectFileChange() {
+        if (!this.importSubjectFile) {
+          this.importSubjectTableData = [];
+          return;
+        }
+
+        this.isImportTableLoading = true;
+        const data = await this.process_RS(this.importSubjectFile.stream());
+        const workbook = XLSX.read(data, { type: 'array' });
+        const worksheet1 = workbook.Sheets[workbook.SheetNames[0]];
+        const rowsTemp = XLSX.utils.sheet_to_json(worksheet1);
+
+        const rowsNew = rowsTemp.map((rowTemp, index) => {
+          return this.processSubjectRow(rowTemp, index + 1);
+        });
+
+        // 过滤掉重复subject项
+        const importSubjectTableData = []
+        rowsNew.forEach(subject => {
+          if (importSubjectTableData.find(item => item.subjectId === subject.subjectId)) {
+            subject.isErrorSubject = true;
+          }
+          importSubjectTableData.push(subject)
+        });
+
+        this.importSubjectTableData = importSubjectTableData;
+        this.isImportTableLoading = false;
+        window.resetTableMaxHeight();
+      },
+
+      processSubjectRow(rowTemp, rowNumber) {
+        const rowNew = {};
+        for (const header of this.importSubjectHeaders) {
+          const { text, value } = header;
+          rowNew[value] = rowTemp[text] ? String(rowTemp[text]).trim() : null;
+
+          if (value === 'subjectId') {
+            this.setSubjectId(rowNew, rowTemp);
+          }
+
+          if (value === 'subjectCategory' && !rowNew.subjectCategory) {
+            this.setSubjectCategory(rowNew, rowTemp);
+          }
+
+          this.setOldSubjectInfo(rowNew, rowTemp);
+        }
+        rowNew.rowNumber = rowNumber;
+        rowNew.subjectBalanceDirection = '借';
+        return rowNew;
+      },
+
+      setSubjectId(rowNew, rowTemp) {
+        const subjectName = String(rowTemp['科目名称']).trim();
+        let subjectId = String(rowTemp['科目编码']).trim();
+        rowNew.subjectId = this.subjectList.find(subject => subject.subjectName === subjectName)?.subjectId;
+
+        if (!rowNew.subjectId) {
+          // 查看是否有父级科目，根据 subjectId 前4位
+          const parentSubjectId = subjectId.slice(0, 4);
+          const parentSubject = this.subjectList.find(subject => subject.subjectId === parentSubjectId);
+
+          if (subjectId.startsWith('6')) {
+            // 如果 subjectId 以 "6" 开头，将其变成 "5"
+            rowNew.subjectId = '5' + subjectId.slice(1);
+            subjectId = rowNew.subjectId;
+          }
+
+          if (subjectId.length === 7) {
+            // 如果 subjectId 为 4+3 的数量，截取前4位和后2位
+            rowNew.subjectId = subjectId.slice(0, 4) + subjectId.slice(-2);
+          }
+          if (parentSubject && subjectId.length > parentSubjectId.length + 2) {
+            // 如果有父级科目且子科目比父科目的 subjectId 多2位以上，截取前4位和后2位
+            rowNew.subjectId = subjectId.slice(0, 4) + subjectId.slice(-2);
+          }
+          if (!rowNew.subjectId) {
+            rowNew.subjectId = subjectId;
+          }
+
+          rowNew.isNewSubject = true;
+
+          // 如果仍然没有 subjectId，检查是否有相同的 subjectId
+          const existingSubject = this.subjectList.find(subject => subject.subjectId === rowNew.subjectId);
+          if (existingSubject) {
+            const parentSubjectId = rowNew.subjectId.slice(0, 4);
+            const childSubjects = this.subjectList
+              .filter(subject => subject.subjectId.startsWith(parentSubjectId))
+              .map(subject => Number(subject.subjectId.slice(-2)))
+              .filter(item => !String(item).includes(99));
+
+            const maxChildSubject = Math.max(...childSubjects);
+            rowNew.subjectId = parentSubjectId + (maxChildSubject + 1)
+          }
+          this.subjectList.push(rowNew)
+        }
+      },
+
+
+      setSubjectCategory(rowNew, rowTemp) {
+        const subjectId = String(rowTemp['科目编码']).trim();
+        rowNew.subjectCategory = this.getSubjectCategory(subjectId);
+      },
+
+      setOldSubjectInfo(rowNew, rowTemp) {
+        const subjectName = String(rowTemp['科目名称']).trim();
+        const subjectId = String(rowTemp['科目编码']).trim();
+        rowNew.oldSubjectName = subjectName;
+        rowNew.oldSubjectId = subjectId;
+      },
+      // 根据科目编码获取科目分类
+      getSubjectCategory(subjectId) {
+        let category = '';
+        try {
+          switch (subjectId[0]) {
+            case '1':
+              category += '资产';
+              break;
+            case '2':
+              category += '负债';
+              break;
+            case '3':
+              category += '权益';
+              break;
+            case '4':
+              category += '成本';
+              break;
+            case '5':
+            case '6':
+              category += '损益';
+              break;
+            default:
+              throw new Error('无效的科目编码');
+          }
+        } catch (error) {
+
+        }
+        return category;
+      },
+      // ---------- <<<<<<<<<<<<< 科目导入 ----------
+      // ---------- 凭证导入 >>>>>>>>>>>>> ----------
+      async importVoucherFileChange() {
+        if (!this.importVoucherFile) {
+          this.importVoucherTableData = [];
+          return;
+        }
+
+        this.isImportTableLoading = true;
+
+        try {
+          const data = await this.process_RS(this.importVoucherFile.stream());
+          const workbook = XLSX.read(data, { type: 'array' });
+          const worksheet1 = workbook.Sheets[workbook.SheetNames[0]];
+          const rowsTemp = XLSX.utils.sheet_to_json(worksheet1, { raw: false });
+          let rowNumber = 1;
+
+          const rowsNew = rowsTemp.map((rowTemp, rowIndex) => {
+            const rowNew = {};
+
+            // 处理辅助项
+            this.processAssistInfo(rowTemp);
+
+            // 处理凭证字号
+            this.processVoucherNameNumber(rowTemp);
+
+            // 处理日期
+            this.processDate(rowTemp, rowNew);
+
+            // 科目编码重新校正
+            this.correctSubjectCode(rowTemp, rowNew);
+
+            // 处理金额字段
+            this.processAmountFields(rowNew);
+
+            rowNumber++;
+            rowNew.rowNumber = rowNumber;
+
+            return rowNew;
+          });
+
+          this.importVoucherTableData = rowsNew;
+          window.resetTableMaxHeight();
+
+          this.importItemSubjectMap = _.keyBy(this.subjectList, 'subjectId');
+        } catch (error) {
+          // 导入失败
+          await window.vtoast.fail({ message: error || "导入失败，请检查导入模板格式数据是否正确~", timer: 5000 });
+        } finally {
+          this.isImportTableLoading = false;
+        }
+      },
+
+      processAssistInfo(rowTemp) {
+        const assistInfo = rowTemp['辅助项'];
+        if (assistInfo) {
+          const assistMatchList = assistInfo.match(/&#8203;``【oaicite:1】``&#8203;/g).map(val => val.replace(/&#8203;``【oaicite:0】``&#8203;/g, ''));
+          for (const assistMatch of assistMatchList) {
+            if (assistMatch.split("：").length >= 2) {
+              const key = assistMatch.split("：")[0];
+              const value = assistMatch.split("：")[1];
+              rowTemp[key] = value;
+            }
+          }
+        }
+      },
+
+      processVoucherNameNumber(rowTemp) {
+        const voucherNameNumber = rowTemp['凭证-字号'];
+        if (voucherNameNumber && voucherNameNumber.split("-").length >= 2) {
+          rowTemp['凭证-字'] = voucherNameNumber.split("-")[0];
+          rowTemp['凭证-号'] = voucherNameNumber.split("-")[1].replace(/0/g, '');
+        }
+      },
+
+      processDate(rowTemp, rowNew) {
+        if (!rowNew.month) {
+          const date = rowTemp['凭证-年月日'];
+          const dateArr = date.split(/-|\//);
+          rowNew.year = dateArr[0];
+          rowNew.month = dateArr[1];
+          rowNew.day = dateArr[2];
+        }
+      },
+
+      correctSubjectCode(rowTemp, rowNew) {
+        if (rowTemp["科目名称"]) {
+          const subjectNameArr = rowTemp["科目名称"].split('-');
+          const subjectName = subjectNameArr[subjectNameArr.length - 1];
+          rowNew.subjectId = this.subjectList.find(subject => subject.subjectName === subjectName)?.subjectId;
+          rowNew.subjectName = subjectName;
+        }
+      },
+
+      processAmountFields(rowNew) {
+        rowNew.debit = rowNew.debit ? parseFloat(rowNew.debit.replace(/,/g, '')) : null;
+        rowNew.credit = rowNew.credit ? parseFloat(rowNew.credit.replace(/,/g, '')) : null;
+      },
+
+      // ---------- <<<<<<<<<<<<< 凭证导入 ----------
+      async importVoucherFileChange() {
+        if (!this.importVoucherFile) {
+          this.importVoucherTableData = [];
+          return
+        }
+        this.isImportTableLoading = true;
+        const data = await this.process_RS(this.importVoucherFile.stream());
+        const workbook = XLSX.read(data, { type: 'array' });
+        const worksheet1 = workbook.Sheets[workbook.SheetNames[0]];
+        const rowsTemp = XLSX.utils.sheet_to_json(worksheet1, { raw: false });;
+        let rowNumber = 1;
+
+        try {
+          const rowsNew = rowsTemp.map((rowTemp, rowIndex) => {
+            const rowNew = {};
+
+            const assistInfo = rowTemp['辅助项'];
+            if (assistInfo) {
+              const assistMatchList = assistInfo
+                .match(/【(.*?)】/g)
+                .map((val) => val.replace(/【|】/g, ''))
+              for (const assistMatch of assistMatchList) {
+                if (assistMatch.split("：").length >= 2) {
+                  const key = assistMatch.split("：")[0];
+                  const value = assistMatch.split("：")[1];
+                  rowTemp[key] = value;
+                }
+              }
+            }
+            const voucherNameNumber = rowTemp['凭证-字号'];
+            if (voucherNameNumber && voucherNameNumber.split("-").length >= 2) {
+              rowTemp['凭证-字'] = voucherNameNumber.split("-")[0];
+              rowTemp['凭证-号'] = voucherNameNumber.split("-")[1].replace(/0/g, '');
+            }
+            for (const header of this.importVoucherHeaders) {
+              const { text, value } = header;
+              rowNew[value] = rowTemp[text];
+            }
+            // 适配模板1
+            if (!rowNew.month) {
+              const date = rowTemp['凭证-年月日'];
+
+              // 按-或/来分割
+              const dateArr = date.split(/-|\//);
+              rowNew.year = dateArr[0];
+              rowNew.month = dateArr[1];
+              rowNew.day = dateArr[2];
+            }
+            // 适配模板2
+            if (!rowNew.month) { }
+
+            rowNumber++;
+            rowNew.rowNumber = rowNumber;
+
+            // 对比一下期初时间和导入凭证时间，如果小于期初时间，就不导入，并提示
+            const periodIdStart = this.importItem.periodIdStart;
+            // rowNew.month小于10，前面加0
+            const periodId = `${rowNew.year}-${rowNew.month < 10 ? `0${rowNew.month}` : rowNew.month}`;
+            // 2022-10，2023-10-2时间对比，使用dayjs
+            // if (dayjs(periodId).isBefore(periodIdStart)) {
+            //   throw new Error(`第${rowNumber}行凭证时间小于期初时间，不允许导入`);
+            // }
+
+            // 科目编码重新校正下,查subjectList,根据subjectName,
+            if (rowTemp["科目名称"]) {
+              const subjectNameArr = rowTemp["科目名称"].split('-')
+              const subjectName = subjectNameArr[subjectNameArr.length - 1]
+              rowNew.subjectId = this.subjectList.find(subject => subject.subjectName === subjectName)?.subjectId;
+              rowNew.subjectName = subjectName
+            }
+
+            rowNew.debit = rowNew.debit ? String(rowNew.debit).replace(/[,]/g, '') : null;
+            rowNew.credit = rowNew.credit ? String(rowNew.credit).replace(/[,]/g, '') : null;
+            return rowNew;
+          })
+          this.importVoucherTableData = rowsNew;
+          window.resetTableMaxHeight();
+
+          this.importItemSubjectMap = _.keyBy(this.subjectList, function (obj) {
+            return obj.subjectId;
+          });
+        } catch (error) {
+          // 导入失败
+          await window.vtoast.fail({ message: error || "导入失败，请检查导入模板格式数据是否正确~", timer: 5000 });
+        }
+        this.isImportTableLoading = false;
+      },
+      // ---------- <<<<<<<<<<< 开始账套数据导入 uiAction ---------
+
+      // ---------- 账套数据导入 uiAction >>>>>>>>>>>> --------
+      async doImporteSubjectList() {
+        await window.vtoast.loading("科目数据导入");
+        this.isImportTableLoading = true;
+
+        const subjectList = [...this.importSubjectTableData.filter(item => !item.isErrorSubject)]
+        await window.jianghuAxios({
+          data: {
+            appData: {
+              pageId: 'appAccountManagement',
+              actionId: 'importAppAccountDataOfSubjectList',
+              actionData: {
+                appaId: this.importItem.appaId,
+                subjectList,
+              },
+            }
+          }
+        })
+        this.isImportTableLoading = false;
+        await window.vtoast.success("科目数据导入");
+      },
+
+      async doImporteVoucherList() {
+        await window.vtoast.loading("凭证数据导入");
+        this.isImportTableLoading = true;
+        await window.jianghuAxios({
+          data: {
+            appData: {
+              pageId: 'appAccountManagement',
+              actionId: 'importAppAccountDataOfVoucherList',
+              actionData: {
+                appaId: this.importItem.appaId,
+                voucherEntryList: this.importVoucherTableData,
+              },
+            }
+          }
+        })
+        this.isImportTableLoading = false;
+        await window.vtoast.success("凭证数据导入");
+      },
+
+      async doReCheckoutAllPeriod() {
+        await window.vtoast.loading("计算科目余额");
+        this.importItem.subjectBalanceCalcStatus = '计算中';
+        await window.jianghuAxios({
+          data: {
+            appData: {
+              pageId: 'appAccountManagement',
+              actionId: 'reCheckoutAllPeriod',
+              actionData: {
+                appaId: this.importItem.appaId,
+              },
+            }
+          }
+        })
+        await window.vtoast.success({ message: "计算科目余额中，请到【结账】页面查看对应账套结账进度~", timer: 5000 });
+      },
+      // ---------- <<<<<<<<<<< 账套数据导入 uiAction ---------
+
+      // ---------- 模版excel下载 uiAction >>>>>>>>>>>> --------
+      async templateFileDownload({ headers, filename, excelData = [] }) {
+        headers = this[headers]
+        const params = {
+          header: headers.filter(header => !header.exportDisabled).map(header => header.text),
+          key: headers.filter(header => !header.exportDisabled).map(header => header.value),
+          data: excelData,
+          filename: filename,
+        };
+        excelUtil.exportData(params);
+      },
+      // ---------- <<<<<<<<<<< 模版excel下载 uiAction ---------
+      async process_RS(stream) {
+        const buffers = [];
+        const reader = stream.getReader();
+        for (; ;) {
+          const res = await reader.read();
+          if (res.value) buffers.push(res.value);
+          if (res.done) break;
+        }
+
+        /* concat */
+        const out = new Uint8Array(buffers.reduce((acc, v) => acc + v.length, 0));
+
+        let off = 0;
+        for (const u8 of buffers) {
+          out.set(u8, off);
+          off += u8.length;
+        }
+        return out;
+      },
+
+      // ---------- 删除账套 >>>>>>>>>>>>> ----------
+      async confirmDeleteItemDialog(item) {
+        if (await window.confirmInputDialog({ title: "删除", content: `输入 <span class="red--text">${item.appaId}</span> 来删除，操作不可逆，请谨慎操作！！！`, verifyValue: item.appaId }) === false) {
+          throw new Error("[confirmCreateFormDialog] 否");
+        }
+      },
+      async deleteAppAccountData(item) {
+
+        await window.vtoast.loading("删除账套");
+        await window.jianghuAxios({
+          data: {
+            appData: {
+              pageId: 'appAccountManagement',
+              actionId: 'deleteAppAccount',
+              actionData: { appaId: item.appaId },
+            }
+          }
+        })
+
+        await window.vtoast.success("删除账套成功");
+      },
+      // ---------- <<<<<<<<<<<<< 删除账套 ----------
+
+      jumpToUrl() {
+        window.open('https://cn.jianghujs.org/doc/page/article/11603', '_blank');
+      },
+
+      // ---------- 科目列表 >>>>>>>>>>>>> ----------
+      async getSubjectList(item) {
+        const result = await window.jianghuAxios({
+          data: {
+            appData: {
+              pageId: 'allPage',
+              actionId: 'selectSubjectList',
+              actionData: {},
+              where: {},
+              appaId: item.appaId,
+            }
+          }
+        })
+        const { rows } = result.data.appData.resultData;
+        this.subjectList = rows;
+      },
+      // ---------- <<<<<<<<<<<<< 科目列表 ----------
+
+      async confirmpdateAppAccountDialog() {
+        if (await window.confirmDialog({ title: "【谨慎操作】数据更新！", content: "确定要更新吗？" }) === false) {
+          throw new Error("[confirmpdateAppAccountDialog] 否");
+        }
+      },
+      async updateAppAccount(){
+        await window.vtoast.loading("账套数据更新");
+        await window.jianghuAxios({
+          data: {
+            appData: {
+              pageId: 'appAccountManagement',
+              actionId: 'updateAppAccountData',
+              actionData: {},
+            }
+          }
+        })
+
+        await window.vtoast.success("账套数据更新成功");
+      }
+    }
+  })
+</script>
+
+<style scoped>
+</style>{% endblock %}

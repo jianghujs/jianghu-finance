@@ -1,0 +1,333 @@
+{% extends 'template/jhTemplateV4.html'%}
+
+{% block vueTemplate %}
+
+<script type="text/html" id="app-template">
+  <div>
+    <v-app mobile-breakpoint="sm">
+      <jh-menu />
+      <v-main class="mt-15">
+        <!-- 头部内容 >>>>>>>>>>>>> -->
+        <div class="jh-page-second-bar px-8">
+          <v-row  class="align-center" no-gutters>
+            <v-col class="d-flex align-center" cols="12" xs="6" md="6">
+              <div>
+                <div class="py-4 text-body-1 font-weight-bold d-flex align-center">附-去年凭证
+                  <!-- 帮助页按钮 -->
+                  <span role="button" class="success--text font-weight-regular jh-font-size-13 mx-2" @click="jumpToUrl">
+                  <v-icon size="13" class="success--text">mdi-help-circle-outline</v-icon>帮助
+                </span>
+                  <select-appaId/>
+                </div>
+              </div>
+            </v-col>
+            <!-- pc端的搜索条件表单 >>>>>>>> -->
+            <v-col class="d-none d-md-inline-block" cols="12" xs="12" md="6">
+              <v-row class="ma-0" justify="end" align="center">
+                <v-col cols="6" class="pr-0">
+                  <v-text-field 
+                  prefix="当前年: " 
+                  v-model="period.financeYear" 
+                  class="jh-v-input bg-white" dense filled single-line readonly></v-text-field>
+                </v-col>
+              </v-row>
+            </v-col>
+            <!-- <<<<<<<< pc端的搜索条件表单 -->
+          </v-row>
+        </div>
+        <!-- <<<<<<<<<<<<< 头部内容 -->
+
+        <div class="jh-page-body-container px-8">
+          <v-navigation-drawer fixed temporary right width="80%" hide-overlay class="elevation-24 d-block d-md-none" v-model="showMobileMenu">
+              <div class="pt-12">
+                <select-subject-adjust v-model="serverSearchInput.subjectId" :finance-year="period.financeYear" openAll @change="doUiAction('changeSubject')" level-filter="无下级科目"/>
+              </div>
+
+              <v-btn elevation="0" color="success" fab absolute top left small tile class="drawer-close-float-btn" @click="showMobileMenu = false">
+                <v-icon>mdi-close</v-icon>
+              </v-btn>
+          </v-navigation-drawer>
+          <v-row>
+            <v-col cols="2" xs="12" md="3" xl="2" class="py-0 py-md-3 d-none d-md-inline-block">
+              <v-card class="rounded-lg">
+                <div class="jh-fixed-table-height" style="overflow: hidden; " > 
+                  <select-subject-adjust v-model="serverSearchInput.subjectId" :finance-year="period.financeYear" openAll @change="doUiAction('changeSubject')" level-filter="无下级科目"/>
+                </div>
+              </v-card> 
+            </v-col>
+            <v-col cols="10" xs="12" md="9" xl="10" class="pl-0">
+              <v-card class="rounded-lg">
+                <v-row class="ma-0 pa-4 align-center">
+                  <v-btn class="ml-2 d-block d-md-none" color="primary" @click="showMobileMenu=true" small color="primary">选择科目</v-btn>
+                  <v-spacer></v-spacer>
+                  <v-col cols="12" xs="6" sm="4" md="3" xl="2" class="pa-0">
+                    <v-text-field v-model="searchInput" prefix="搜索：" class="jh-v-input" dense filled single-line></v-text-field>
+                  </v-col>
+                </v-row>
+                <p class="px-8 d-block d-md-none">选中的科目：{{serverSearchInput.subjectId}}</p>
+
+                <v-data-table 
+                  fixed-header
+                  :headers="headers"
+                  :items="tableDataFromBackend"
+                  :search="searchInput"
+                  :footer-props="{ itemsPerPageOptions: [20, 50, -1], itemsPerPageText: '每页行数', itemsPerPageAllText: '所有'}"
+                  :items-per-page="-1"
+                  mobile-breakpoint="0"
+                  :loading="isTableLoading"
+                  checkbox-color="success"
+                  :class="{'zebraLine': isTableZebraLineShown }"
+                  class="jh-fixed-table-height elevation-0 mt-0 mb-xs-4">
+                  <!-- 处理显示列 -->
+                  <template v-slot:item.voucherId="{item}">
+                    <voucher-paper :voucher-id="item.voucherId" readonly>
+                    </voucher-paper>
+                  </template>
+                  
+                  <template v-slot:item.entryAbstract="{item}">
+                    <span>{{item.entryAbstract | empty}}</span>
+                  </template>
+                  <template v-slot:item.debit="{item}">
+                    <span>{{item.debit | formatMoney}}</span>
+                  </template>
+                  <template v-slot:item.credit="{item}">
+                    <span>{{item.credit | formatMoney}}</span>
+                  </template>
+                  <template v-slot:item.balance="{item}">
+                    <span>{{item.balance | formatMoney}}</span>
+                  </template>
+                  <template v-slot:item.subjectBalanceDirection="{ item }">
+                    <v-chip x-small :color="item.subjectBalanceDirection | directionBgColor">{{item.subjectBalanceDirection}}</v-chip>
+                  </template> 
+
+                  <!-- 表格底部右侧功能按钮 -->
+                  <template v-slot:footer.prepend>
+                 
+                    <v-menu top offset-y :close-on-content-click="false" v-model="isTableZebraLineMenuShown" :position-x="tableZebraLineMenuPosition.x" :position-y="tableZebraLineMenuPosition.y">
+                      <v-list>
+                        <v-list-item>
+                          <v-switch v-model="isTableZebraLineShown" hide-details class="ma-0" label="显示斑马纹" dense flat></v-switch>
+                        </v-list-item>
+                      </v-list>
+                    </v-menu>
+                  </template>
+                  <!-- 没有数据 -->
+                  <template v-slot:loading>
+                    <div class="jh-no-data">数据加载中</div>
+                  </template>
+                  <template v-slot:no-data>
+                    <div class="jh-no-data">暂无数据</div>
+                  </template>
+                  <template v-slot:no-results>
+                    <div class="jh-no-data">暂无数据</div>
+                  </template>
+                  <!-- 表格分页 -->
+                  <template v-slot:footer.page-text="pagination">
+                    <span>{{pagination.pageStart}}-{{pagination.pageStop}}</span>
+                    <span class="ml-1">共{{pagination.itemsLength}}条</span>
+                  </template>
+                </v-data-table>
+              </v-card>
+            </v-col>
+          </v-row>
+        </div>
+        <!-- 帮助页抽屉 >>>>>>>>>>>>> -->
+        <!-- <<<<<<<<<<<<< 帮助页抽屉 -->
+
+      </v-main>
+          
+    </v-app>
+    <jh-toast />
+    <jh-mask />
+    <jh-confirm-dialog />
+  </div>
+</script>
+<div id="app">
+</div>
+
+{% endblock %}
+
+{% block vueScript %}
+{% include 'component/jianghuJs/select-appaId.html' %}
+{% include 'common/jianghuJs/fixedTableHeightV4.html' %}
+{% include 'common/excelUtil.html' %}
+{% include 'common/tableHeaderAndBorder.html' %}
+{% include 'component/voucher/voucherPaper.html' %}
+{% include 'common/vueFilters.html' %}
+{% include 'component/select-subject-adjust.html' %}
+
+<script type="module">
+new Vue({
+  el: '#app',
+  template: '#app-template',
+  vuetify: new Vuetify(),
+  data: () => ({
+    
+    // 面包屑
+    breadcrumbs: [
+      {
+        text: '首页',
+        disabled: true,
+      },
+      {
+        text: '科目初始余额',
+        disabled: true,
+      }
+    ],
+
+    isMobile: window.innerWidth < 500,
+    // 表格相关数据
+    isTableZebraLineMenuShown: false,
+    tableZebraLineMenuPosition: {x: null, y: null},
+    isTableZebraLineShown: true,
+
+    // 下拉选项
+    constantObj: {
+    },
+    isFormValid: true,
+    validationRules: {
+      requireRules: [
+        v => !!v || '必填',
+      ],
+    },
+    constantObj: {
+      subjectCategory: [
+        {text: '资产', value: '资产'},
+        {text: '负债', value: '负债'},
+        {text: '权益', value: '权益'},
+        {text: '成本', value: '成本'},
+        {text: '损益', value: '损益'},
+      ],
+    },
+    serverSearchInput: {
+      subjectId: ''
+    },
+    isOpenEdit: false,
+    period: {
+      periodId: null,
+      financeYear: null,
+    },
+
+    selectSubjectCategory: '资产',
+    searchInput: null,
+    isTableLoading: false,
+    tableDataFromBackend: [],
+    headers: [
+      {text: "凭证字号", value: "voucherId", width: window.innerWidth > 500 ? 120 : 100, class: 'fixed', cellClass: 'fixed'}, 
+      {text: "摘要", value: "entryAbstract", width: 220}, 
+      // {text: "方向", value: "subjectBalanceDirection", align: 'end', width: 50}, 
+      {text: "借方金额", value: "debit", align: 'end', width: 80}, 
+      {text: "贷方金额", value: "credit", align: 'end', width: 80}, 
+      // {text: "余额", value: "balance", align: 'end', width: 80},  
+    ],
+
+    debitSum: 0,
+    creditSum: 0,
+
+    showMobileMenu: false
+  }),
+  computed: {
+  },
+  async created() {
+    await this.doUiAction('selectPeriod');
+    // await this.doUiAction('refreshTableData');
+  },
+  mounted() {},
+  methods: {
+    async doUiAction(uiActionId, uiActionData) {
+      switch (uiActionId) {
+        case 'changeSubject':
+          this.showMobileMenu = false;
+          await this.doUiAction('refreshTableData');
+          break;
+        case 'selectPeriod':
+          await this.selectPeriod();
+          break;
+        case 'refreshTableData':
+          await this.refreshTableData();
+          break;
+        case 'openTableZebraLineMenu':
+          await this.openTableZebraLineMenu(uiActionData);
+          break;
+        case 'exportExcel':
+          await this.exportExcel();
+          break;
+        default:
+          console.error("[doUiAction] uiActionId not find", { uiActionId });
+          break;
+      }
+    },
+    // =================================uiAction 公共方法 start ======================================
+    async selectPeriod() {
+      const result = await window.jianghuAxios({
+        data: {
+          appData: {
+            pageId: 'report-subjectBalanceYearStartAdjust',
+            actionId: 'selectPeriodList',
+            actionData: {},
+            where: {},
+            orderBy: [{column: 'periodId', order: 'desc'}]
+          }
+        }
+      });
+      const { rows } = result.data.appData.resultData;
+      if (rows.length === 0) {
+        window.vtoast.fail({ message: "请创建第一个会计期间!" });
+        throw new Error("[selectPeriod] false; 请创建第一个会计期间");
+      }
+      this.period = rows[0];
+    },
+    /**
+     * uiActionId:  refreshTableData
+     * description: ✅获取表格数据
+    */
+    async refreshTableData() {
+      this.isTableLoading = true;
+      const result = await window.jianghuAxios({
+        data: {
+          appData: {
+            pageId: 'report-subjectBalanceYearStartAdjust',
+            actionId: 'selectVoucherEntryList',
+            actionData: {},
+            where: { 
+              financeYear: this.period.financeYear,
+              voucherName: '去年',
+              subjectId: this.serverSearchInput.subjectId,
+            },
+            orderBy: [{column: 'voucherId', order: 'asc'}]
+          }
+        }
+      });
+      const { rows } = result.data.appData.resultData;
+      this.tableDataFromBackend = rows;
+      this.isTableLoading = false;
+    },
+    // ---------- 斑马纹开关 uiAction >>>>>>>>>> --------
+    async openTableZebraLineMenu(funObj) {
+      this.tableZebraLineMenuPosition.x = funObj.x - funObj.offsetX + 10;
+      this.tableZebraLineMenuPosition.y = window.innerHeight - 50;
+      this.isTableZebraLineMenuShown = !this.isTableZebraLineMenuShown;
+    },
+    // ---------- <<<<<<<<<< 斑马纹开关 uiAction --------
+
+    async exportExcel() {
+      const params = {
+        header: this.headers.filter(header => header.text != '操作').map(header => header.text),
+        key: this.headers.filter(header => header.text != '操作').map(header => header.value),
+        data: this.tableData,
+        filename: dayjs().format('YYYYMMDDHHmmss') + '_' + '附-去年凭证&今年年初调整'
+      };
+      excelUtil.exportData(params);
+    },
+    jumpToUrl() {
+        window.open('https://cn.jianghujs.org/doc/page/article/11603', '_blank');
+      }
+  }
+})
+</script>
+
+<style>
+  .custom-input input { text-align: right;}
+</style>
+{% endblock %}
+

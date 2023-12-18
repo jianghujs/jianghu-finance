@@ -1,0 +1,1688 @@
+{% extends 'template/jhTemplateV4.html'%}
+
+{% block vueTemplate %}
+
+<!-- 3 table 下  的单表 crud 页面 -->
+
+<!-- SQL START
+-- 以下为 jianghu init 工具生成的参考 SQL，使用后删除
+-- 创建 page
+INSERT INTO `_page` (`pageId`,`pageName`,`pageType`,`sort`,`operation`,`operationByUserId`,`operationByUser`,`operationAt`) SELECT 'voucher-voucherManagement','页面','showInMenu','5','jhInsert',NULL,NULL,NULL FROM DUAL WHERE NOT EXISTS (SELECT `pageId` FROM `_page` WHERE `pageId`='voucher-voucherManagement');
+
+-- 创建 resource
+INSERT INTO `_resource` (`accessControlTable`,`resourceHook`,`pageId`,`actionId`,`desc`,`resourceType`,`appDataSchema`,`resourceData`,`requestDemo`,`responseDemo`,`operation`,`operationByUserId`,`operationByUser`,`operationAt`) SELECT NULL,NULL,'voucher-voucherManagement','selectItemList','✅查询-查询列表','sql','{}','{ \"table\": \"voucher\", \"operation\": \"select\" }','','','insert',NULL,NULL,NULL FROM DUAL WHERE NOT EXISTS (SELECT `pageId` FROM `_resource` WHERE `pageId`='voucher-voucherManagement' AND `actionId`='selectItemList');
+INSERT INTO `_resource` (`accessControlTable`,`resourceHook`,`pageId`,`actionId`,`desc`,`resourceType`,`appDataSchema`,`resourceData`,`requestDemo`,`responseDemo`,`operation`,`operationByUserId`,`operationByUser`,`operationAt`) SELECT NULL,NULL,'voucher-voucherManagement','insertItem','✅查询-添加成员','sql','{}','{ \"table\": \"voucher\", \"operation\": \"insert\" }','','','insert',NULL,NULL,NULL FROM DUAL WHERE NOT EXISTS (SELECT `pageId` FROM `_resource` WHERE `pageId`='voucher-voucherManagement' AND `actionId`='insertItem');
+INSERT INTO `_resource` (`accessControlTable`,`resourceHook`,`pageId`,`actionId`,`desc`,`resourceType`,`appDataSchema`,`resourceData`,`requestDemo`,`responseDemo`,`operation`,`operationByUserId`,`operationByUser`,`operationAt`) SELECT NULL,NULL,'voucher-voucherManagement','updateItem','✅查询-更新成员','sql','{}','{ \"table\": \"voucher\", \"operation\": \"update\" }','','','insert',NULL,NULL,NULL FROM DUAL WHERE NOT EXISTS (SELECT `pageId` FROM `_resource` WHERE `pageId`='voucher-voucherManagement' AND `actionId`='updateItem');
+INSERT INTO `_resource` (`accessControlTable`,`resourceHook`,`pageId`,`actionId`,`desc`,`resourceType`,`appDataSchema`,`resourceData`,`requestDemo`,`responseDemo`,`operation`,`operationByUserId`,`operationByUser`,`operationAt`) SELECT NULL,NULL,'voucher-voucherManagement','doDeleteItem','✅查询-删除信息','sql','{}','{ \"table\": \"voucher\", \"operation\": \"delete\" }','','','insert',NULL,NULL,NULL FROM DUAL WHERE NOT EXISTS (SELECT `pageId` FROM `_resource` WHERE `pageId`='voucher-voucherManagement' AND `actionId`='doDeleteItem');
+SQL END! -->
+<script type="text/html" id="app-template">
+<div>
+  <v-app mobile-breakpoint="sm">
+    <jh-menu />
+    <v-main class="mt-15">
+      <!-- 头部内容 >>>>>>>>>>>>> -->
+      <div class="jh-page-second-bar px-8">
+        <v-row no-gutters align="center" class="mb-2 mb-md-0">
+          <v-col cols="12" xs="12" sm="12" md="4" xl="3">
+            <div class="py-4 text-body-1 font-weight-bold d-flex align-center">发票管理
+              <!-- 帮助页按钮 -->
+              <span role="button" class="success--text font-weight-regular jh-font-size-13 mx-2" @click="jumpToUrl">
+                  <v-icon size="13" class="success--text">mdi-help-circle-outline</v-icon>帮助
+                </span>
+              <select-appaId/>
+            </div>
+          </v-col>
+          <v-spacer></v-spacer>
+          <!-- pc端的搜索条件表单 >>>>>>>> -->
+          <v-col cols="12" xs="12" sm="12" md="7" xl="7" class="d-flex pr-md-2">
+            <v-menu :close-on-content-click="false"
+                    :nudge-right="40"
+                    transition="scale-transition"
+                    max-width="500px"
+                    offset-y>
+              <template v-slot:activator="{ on, attrs }">
+                <div v-bind="attrs" v-on="on" class="v-input jh-v-input bg-white search-group-input v-input--is-label-active v-input--is-dirty v-input--is-readonly v-input--dense theme--light v-text-field v-text-field--prefix v-text-field--single-line v-text-field--filled v-text-field--is-booted v-text-field--enclosed"><div class="v-input__control"><div class="v-input__slot"><div class="v-text-field__slot"><div class="v-text-field__prefix">查询条件：</div>
+               <div class="input-text d-flex align-center flex-wrap py-1">业务类型：<v-chip x-small color="primary">{{serverSearchInput.invoiceType}}</v-chip>，凭证状态：<v-chip x-small color="primary">{{serverSearchInput.hasVoucher}}</v-chip>，发票状态：<v-chip x-small color="primary">{{serverSearchInput.invoiceStatus}}</v-chip>，发票种类：<v-chip x-small color="primary">{{serverSearchInput.invoiceDataType}}</v-chip>，开票月份：<v-chip x-small color="primary">{{serverSearchInput.period.periodId}}</v-chip></div>
+              </div></div><div class="v-text-field__details"><div class="v-messages theme--light"><div class="v-messages__wrapper"></div></div></div></div></div>
+
+                <!-- <v-text-field
+                  :value="`业务类型：[${serverSearchInput.invoiceType}]，凭证状态：[${serverSearchInput.hasVoucher}]，发票状态：[${serverSearchInput.invoiceStatus}]，发票种类：[${serverSearchInput.invoiceDataType}]，开票月份：[${serverSearchInput.period.periodId}]`"
+                  prefix="查询条件：" v-bind="attrs" v-on="on" readonly class="jh-v-input bg-white search-group-input" dense filled single-line> -->
+                </v-text-field>
+              </template>
+              <v-row class="jh-backend-form-container justify-start ma-0 py-1 pb-xs-2">
+                <v-col cols="12" xs="6" sm="6" md="6" xl="6" class="px-0 pr-2">
+                  <v-select class="jh-v-input ml-2" dense filled single-line hide-details prefix="业务类型：" :items="['全部', ...constantObj.invoiceType]"
+                            v-model="serverSearchInput.invoiceType" filled></v-select>
+                </v-col>
+                <v-col cols="12" xs="6" sm="6" md="6" xl="6" class=" px-0 pr-2">
+                  <v-select class="jh-v-input " dense filled single-line hide-details prefix="凭证状态：" :items="constantObj.hasVoucher" v-model="serverSearchInput.hasVoucher"
+                            filled></v-select>
+                </v-col>
+                <v-col cols="12" xs="6" sm="6" md="6" xl="6" class=" px-0 pr-2">
+                  <v-select class="jh-v-input ml-2" dense filled single-line hide-details prefix="发票状态：" :items="['全部', ...constantObj.invoiceStatus]"
+                            v-model="serverSearchInput.invoiceStatus" filled></v-select>
+                </v-col>
+                <v-col cols="12" xs="6" sm="6" md="6" xl="6" class=" px-0 pr-2">
+                  <v-select class="jh-v-input " dense filled single-line hide-details prefix="发票种类：" :items="['全部', ...constantObj.invoiceDataType]"
+                            v-model="serverSearchInput.invoiceDataType" filled></v-select>
+                </v-col>
+                <v-col cols="12" xs="6" sm="6" md="6" xl="6" class=" px-0 pr-md-2">
+                  <v-menu
+                    ref="invoiceTypeMenu"
+                    :close-on-content-click="false"
+                    :nudge-right="40"
+                    transition="scale-transition"
+                    offset-y
+                  >
+                    <template v-slot:activator="{ on, attrs }">
+                      <v-text-field v-model="serverSearchInput.period.periodId" prefix="开票月份：" v-bind="attrs" v-on="on" readonly class="jh-v-input ml-2" dense filled
+                                    single-line></v-text-field>
+                    </template>
+                    <v-date-picker
+                      v-model="serverSearchInput.period.periodId"
+                      type="month"
+                      locale="zh-CN"
+                    ></v-date-picker>
+                  </v-menu>
+                </v-col>
+              </v-row>
+            </v-menu>
+          </v-col>
+          <v-btn class="w-sm-full" color="success" small @click="doUiAction('refreshTableData')">
+            查询
+          </v-btn>
+          <!-- <<<<<<<< pc端的搜索条件表单 -->
+        </v-row>
+      </div>
+      <!-- <<<<<<<<<<<<< 头部内容 -->
+
+      <div class="jh-page-body-container px-8">
+
+        <!-- 页面主要内容 -->
+        <v-container class="fullScreen d-flex flex-column pa-xs-0 pa-0">
+          <v-card class="rounded-lg">
+            <v-row class="ma-0 pa-4">
+
+              <v-col cols="12" xs="4" sm="4" md="4" xl="4" class="pa-0">
+                <v-btn color="success" :disabled="!createVoucherItemList.length" class="elevation-0 mr-2 d-none d-md-inline-block" small @click="doUiAction('startCreateVoucher')">
+                  <v-progress-circular
+                    v-if="isCreateVoucherDialogLoading"
+                    :size="14"
+                    width="3"
+                    color="white"
+                    indeterminate
+                  ></v-progress-circular>
+                  <v-icon size="14">mdi-plus</v-icon>
+                  {{isCreateVoucherDialogLoading ? '加载中' : '生成凭证'}}
+                </v-btn>
+                <v-menu offset-y v-model="createInvoiceBtnStatus">
+                  <template v-slot:activator="{ on, attrs }">
+                    <v-btn color="success" v-bind="attrs" v-on="on" dark class="elevation-0 mr-2 d-none d-md-inline-block" small>
+                      <v-icon size="14">mdi-plus</v-icon>
+                      新增发票</v-btn>
+                  </template>
+                  <v-list>
+                    <template v-for="(invoiceType, index) in constantObj.invoiceType">
+                      <v-menu offset-x>
+                        <template v-slot:activator="{ on, attrs }">
+                          <v-list-item class="invoiceDataType" :key="index" v-bind="attrs" v-on="on">
+                            <v-list-item-title>{{ invoiceType }}</v-list-item-title>
+                          </v-list-item>
+                        </template>
+                        <v-list>
+                          <v-list-item v-for="(item, index) in invoiceType === '销项发票' ? constantObj.invoiceDataType : constantObj.invoiceDataTypeMin" class="invoiceDataType"
+                                       @click="doUiAction('startCreateItem', {invoiceDataType: item, invoiceType})" :key="index">
+                            <v-list-item-title>{{ item }}</v-list-item-title>
+                          </v-list-item>
+                        </v-list>
+                      </v-menu>
+                    </template>
+
+                  </v-list>
+                </v-menu>
+                <v-btn class="elevation-0 mr-2 d-none d-md-inline-block" color="error" small @click="doUiAction('deleteSelected')" :disabled="!createVoucherItemList.length">
+                  <v-icon size="14">mdi-delete</v-icon>
+                  批量删除</v-btn>
+                <v-btn class="elevation-0 mr-2" color="primary" outlined small @click="doUiAction('exportExcel')"><v-icon size="14">mdi-export-variant</v-icon>导出</v-btn>
+                <v-btn class="elevation-0 mr-2 d-none d-md-inline-block" color="primary" outlined small @click="doUiAction('importExcel')"><v-icon size="14">mdi-import</v-icon>导入</v-btn>
+              </v-col>
+
+              <v-spacer></v-spacer>
+
+              <v-col cols="12" xs="6" sm="4" md="3" xl="2" class="pa-0 d-flex align-center">
+                <!-- <v-switch v-model="isShowAllTableColumn" label="显示所有信息" class="mr-2 hidden-xs-only"></v-switch> -->
+                <v-text-field v-model="searchInput" prefix="搜索：" class="jh-v-input" dense filled single-line></v-text-field>
+              </v-col>
+            </v-row>
+            <v-data-table
+              fixed-header
+              :headers="tableHeader"
+              :items="tableData"
+              :search="searchInput"
+              :footer-props="{ itemsPerPageOptions: [20, 50, -1], itemsPerPageText: '每页行数', itemsPerPageAllText: '所有'}"
+              :items-per-page="-1"
+              mobile-breakpoint="0"
+              :loading="isTableLoading"
+              checkbox-color="success"
+              v-model="createVoucherItemList"
+              show-select
+              :class="{'zebraLine': isTableZebraLineShown }"
+              fixed-header
+              class="jh-fixed-table-height elevation-0 mt-0 mb-xs-4">
+              <!--表格 操作按钮-->
+              <template v-slot:item.action="{ item }">
+                <template v-if="!isMobile">
+
+                  <span role="button" class="success--text font-weight-medium font-size-2 mr-2" @click="doUiAction('startUpdateItem', item)">
+                    <v-icon size="14" class="success--text">mdi-note-edit-outline</v-icon>修改
+                  </span>
+                  <span role="button" class="error--text font-weight-medium font-size-2" @click="doUiAction('doDeleteItem', item)">
+                    <v-icon size="14" class="error--text">mdi-trash-can-outline</v-icon>删除
+                  </span>
+                </template>
+                <v-menu v-if="isMobile" offset-y>
+                  <v-list>
+                    <v-list-item>
+                      <div @click="doUiAction('startUpdateItem', item)">修改</div>
+                      <div @click="doUiAction('doDeleteItem', item)"><v-icon size="14">mdi-trash-can-outline</v-icon>删除</div>
+                    </v-list-item>
+                  </v-list>
+                </v-menu>
+              </template>
+              <template v-slot:item.voucherId="{ item }">
+                <voucher-paper :voucherId="item.voucherId" readonly></voucher-paper>
+              </template>
+              <template v-slot:item.invoiceTotalPriceAmount="{ item }">
+                ¥{{item.invoiceTotalPriceAmount | formatMoney}}
+              </template>
+              <template v-slot:item.invoiceTotalPriceAndTaxAmount="{ item }">
+                ¥{{item.invoiceTotalPriceAndTaxAmount | formatMoney}}
+              </template>
+              <template v-slot:item.invoiceTotalTaxAmount="{ item }">
+                ¥{{item.invoiceTotalTaxAmount | formatMoney}}
+              </template>
+              <template v-slot:footer.prepend>
+                <div class="d-none d-md-flex" style="flex: auto;">{{searchSummary}}</div>
+              </template>
+              <!-- 没有数据 -->
+              <template v-slot:loading>
+                <div class="jh-no-data">数据加载中</div>
+              </template>
+              <template v-slot:no-data>
+                <div class="jh-no-data">暂无数据</div>
+              </template>
+              <template v-slot:no-results>
+                <div class="jh-no-data">暂无数据</div>
+              </template>
+              <!-- 表格分页 -->
+              <template v-slot:footer.page-text="pagination">
+                <span>{{pagination.pageStart}}-{{pagination.pageStop}}</span>
+                <span class="ml-1">共{{pagination.itemsLength}}条</span>
+              </template>
+            </v-data-table>
+          </v-card>
+        </v-container>
+
+        <!-- 新增发票 -->
+        <v-navigation-drawer v-model="isAddDrawerShow" :permanent="isAddDrawerShow" fixed temporary right width="1100" class="elevation-24" style="background: #F9F9F9">
+          <v-row no-gutters>
+            <span class="text-h7 font-weight-bold pa-4">{{addItem.id ? '修改' : '新增'}}【{{addItem.invoiceType}}】 - 类型：{{addItem.invoiceDataType}}</span>
+          </v-row>
+          <v-divider class="jh-divider"></v-divider>
+          <v-form class="mt-4" v-model="isFormValid" v-if="isAddDrawerShow" ref="form" lazy-validation>
+           
+            <!-- 抽屉主体 -->
+            <v-skeleton-loader
+              v-if="isAddDrawerLoading"
+              type="table-heading, list-item-two-line, image"
+            ></v-skeleton-loader>
+            <template v-else>
+              <v-card class="ml-5 mr-5 py-5">
+                <v-row class="mt-0 px-4 ml-0">
+                  <span class="text-h6">基本信息</span>
+                </v-row>
+                <v-row class="mt-0 px-4">
+                  <v-col cols="12" sm="12" md="4" v-for="item of invoiceBaseForm[addItem.invoiceDataType]">
+                    <span class="jh-input-label"><span v-if="formFields[item].required" style="color: red">*</span>{{formFields[item].text}}</span>
+                    <template v-if="formFields[item].formType === 'datePick'">
+                      <v-menu
+                        v-model="formFields[item]['menuShown']"
+                        :close-on-content-click="false"
+                        :nudge-right="40"
+                        transition="scale-transition"
+                        offset-y
+                        min-width="auto"
+                      >
+                        <template v-slot:activator="{ on, attrs }">
+                          <v-text-field class="jh-v-input " readonly v-bind="attrs" v-on="on" dense filled single-line v-model="addItem[formFields[item].value]"
+                                        :rules="formFields[item].required ? validationRules.requireRules : []"></v-text-field>
+                        </template>
+                        <v-date-picker
+                          v-model="addItem[formFields[item].value]"
+                          locale="zh-CN"
+                          class="cus-date-picker"
+                          @input="formFields[item]['menuShown'] = false"
+                        ></v-date-picker>
+                      </v-menu>
+                    </template>
+                    <v-select v-else-if="formFields[item].formType === 'select'" class="jh-v-input mr-2" dense filled single-line hide-details :items="constantObj[formFields[item].value]"
+                              :rules="formFields[item].required ? validationRules.requireRules : []" v-model="addItem[formFields[item].value]" filled
+                              :label="'请选择' + formFields[item].text"></v-select>
+                    <v-text-field v-else class="jh-v-input " dense filled single-line v-model="addItem[formFields[item].value]"
+                                  :rules="formFields[item].required ? validationRules.requireRules : []"></v-text-field>
+                  </v-col>
+                </v-row>
+                <v-row class="px-4 ml-0 mt-10">
+                  <span class="text-h6">业务类型</span>
+                </v-row>
+                <v-row class="mt-0 px-4">
+                  <v-col cols="12" sm="12" md="4">
+                    <span class="jh-input-label"><span style="color: red">*</span>模板</span>
+                    <v-select class="jh-v-input mr-2" dense filled single-line hide-details :items="invoiceTemplate" item-value="voucherTemplateId" item-text="voucherTemplateName"
+                              :rules="validationRules.requireRules"
+                              v-model="addItem.invoiceTemplateId" filled label="请选择发票模板"></v-select>
+                  </v-col>
+                  <v-col cols="12" sm="12" md="4">
+                    <a href="/<$ ctx.app.config.appId $>/page/setting-voucherTemplateManagement" style="margin-top: 40px; display: block;" target="_blank">设置生成凭证模板</a>
+                  </v-col>
+                </v-row>
+                <v-row class="px-4 ml-0 mt-10">
+                  <span class="text-h6">发票数据</span>
+                </v-row>
+                <v-row class="px-4 ml-0 mt-10">
+                  <v-col cols="12" sm="12" md="12" class="d-flex align-center">
+                    <span class="jh-input-label mr-2"><span style="color: red">*</span>是否录入发票明细</span>
+                    <v-radio-group
+                      class="mt-0 pt-0"
+                      hide-details
+                      v-model="addItem.invoiceHasDetail"
+                      @change="doUiAction('calcInvoiceTotalTax')"
+                      row
+                    >
+                      <v-radio label="是" :value="true"></v-radio>
+                      <v-radio label="否" :value="false"></v-radio>
+                    </v-radio-group>
+                  </v-col>
+                  <v-col cols="12" sm="12" md="4" class="d-flex align-center">
+                    <span class="jh-input-label mr-2"><span style="color: red">*</span>不含税金额</span>
+                    <v-text-field dense outlined hide-details single-line :disabled="addItem.invoiceHasDetail" v-model="addItem.invoiceTotalPriceAmount"></v-text-field>
+                  </v-col>
+                  <v-col cols="12" sm="12" md="4" class="d-flex align-center" v-if="!addItem.invoiceHasDetail">
+                    <span class="jh-input-label mr-2"><span style="color: red">*</span>税率</span>
+                    <v-autocomplete
+                      :items="constantObj.invoiceEntryTaxRate"
+                      single-line dense outlined hide-details
+                      @change="doUiAction('calcInvoiceTotalTax')"
+                      v-model="addItem.invoiceTotalTaxRate">
+                    </v-autocomplete>
+                  </v-col>
+                  <v-col cols="12" sm="12" md="4" class="d-flex align-center">
+                    <span class="jh-input-label mr-2"><span style="color: red">*</span>税额</span>
+                    <v-text-field dense outlined hide-details single-line v-model="addItem.invoiceTotalTaxAmount"></v-text-field>
+                  </v-col>
+                  <v-col cols="12" sm="12" md="4" class="d-flex align-center">
+                    <span class="jh-input-label mr-2"><span style="color: red">*</span>价税合计</span>
+                    <v-text-field dense outlined hide-details single-line disabled v-model="addItem.invoiceTotalPriceAndTaxAmount"></v-text-field>
+                  </v-col>
+                </v-row>
+                <v-row class="px-4 ml-0 mt-10" v-if="addItem.invoiceHasDetail">
+                  <v-simple-table class="xBaseTable" dense fixed-header>
+                    <template v-slot:default>
+                      <thead>
+                      <tr>
+                        <th class="text-left" v-for="key in entryTableHeader" :class="key.cellClass" :width="key.width">
+                          <span v-if="key.required" style="color: red">*</span>{{key.text}}
+                        </th>
+                      </tr>
+                      </thead>
+                      <tbody v-if="isEditLoading">
+                      <tr>
+                        <td colspan="10">
+                          <div style="text-align: center">
+                          <span><v-progress-circular
+                            :size="20"
+                            color="primary"
+                            indeterminate
+                          ></v-progress-circular></span>
+                            <span>数据加载中</span>
+                          </div>
+                        </td>
+                      </tr>
+                      </tbody>
+                      <tbody v-else>
+                      <tr
+                        v-for="(item, index) in drawFormEntryTable"
+                        :key="item.tempId"
+                      >
+                        <td v-for="key in entryTableHeader" :key="key"
+                            :class="key.cellClass"
+                            :key="item.tempId + '_' + key.value"
+                            :contentEditable="key.formType === 'text'"
+                            @blur="blurTd(item, key, $event)"
+                            @focus="focusTd(item, key, $event)">
+                          <template v-if="key.formType === 'action'">
+                            <v-btn class="deletedBtn" icon color="green" @click="addEntryTableItem(index)" small>
+                              <v-icon dark size="14">mdi-plus-circle</v-icon>
+                            </v-btn>
+                            <v-btn class="deletedBtn" v-if="drawFormEntryTable.length > 1" icon color="error" @click="deleteEntryTableItem(index)" small>
+                              <v-icon dark size="14">mdi-close-circle</v-icon>
+                            </v-btn>
+                          </template>
+                          <template v-else-if="key.formType === 'select'">
+                            <v-autocomplete input-class="quick-focus"
+                                            :items="constantObj[key.value]"
+                                            single-line dense hide-details
+                                            :label="key.text"
+                                            @change="refreshTable(index)"
+                                            v-model="drawFormEntryTable[index][key.value]">
+                            </v-autocomplete>
+                          </template>
+                          <template v-else-if="key.formType === 'price'">
+                            {{item[key.value] | formatMoney}}
+                          </template>
+                          <template v-else>{{item[key.value]}}</template>
+                        </td>
+                      </tr>
+                      </tbody>
+                    </template>
+                  </v-simple-table>
+                </v-row>
+              </v-card>
+            </template>
+            <!-- 抽屉操作按钮 -->
+            <v-row v-if="!isAddDrawerLoading" class="justify-end mx-0 mt-8 px-6">
+              <v-btn class="elevation-0 ml-2" @click="isAddDrawerShow = false" small><v-icon size="14">mdi-close</v-icon>取消</v-btn>
+              <v-btn color="success" @click="doUiAction('doCreateItem')" small><v-icon size="14">mdi-content-save-check-outline</v-icon>提交</v-btn>
+            </v-row>
+          </v-form>
+          <!-- 抽屉关闭按钮 -->
+          <v-btn elevation="0" color="success" fab absolute top left small tile class="drawer-close-float-btn" @click="isAddDrawerShow = false">
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
+        </v-navigation-drawer>
+
+        <v-dialog
+          v-model="isCreateVoucherDialogShown"
+          persistent
+          scrollable
+        >
+          <v-card color="grey lighten-5" class="pb-5">
+            <v-card-title>
+              <span class="text-h5">发票生成凭证</span>
+            </v-card-title>
+            <v-card-text style="max-height: 70vh;">
+              <v-card v-for="(item, index) of createVoucherItemListClone" :key="item.invoiceId" class="my-3 d-flex" style="overflow: hidden">
+                <div style="max-width: 300px; min-width: 300px; border-right: 1px solid #EEEEEE">
+                  <div class="invoiceCreateCardMinTitle py-2 px-4" style="line-height: 33px">{{item.invoiceDataType}} {{item.invoiceNumber}}</div>
+                  <div class="py-2 px-4">开票日期：{{item.invoiceTime}}</div>
+                  <div class="py-2 px-4">业务类型：{{item.invoiceTemplateName}}</div>
+                  <div class="py-2 px-4">金额：{{item.invoiceTotalPriceAmount}}</div>
+                  <div class="py-2 px-4">税额：{{item.invoiceTotalTaxAmount}}</div>
+                </div>
+                <div style="flex: 1">
+                  <div class="invoiceCreateCardMinTitle py-2 px-4 d-flex align-center">
+                    <span>凭证字-</span>
+                    <div style="width: 80px; display: inline-block; ">
+                      <v-select :rules=validationRules.requireRules
+                                dense outlined hide-details single-line
+                                class="jh-v-input bg-white"
+                                :items="constantObj.voucherName"
+                                :menu-props="{ button: true, offsetY: true }"
+                                v-model="item.voucherName"></v-select>
+                    </div>
+                    <div style="width: 50px; display: inline-block">
+                      <v-text-field class="jh-v-input bg-white" dense outlined hide-details single-line type="number" min="0" v-model="item.voucherNumber"></v-text-field>
+                    </div>
+                    <span>号</span>
+                    <v-spacer></v-spacer>
+
+                    <span>日期-</span>
+                    <div style="width: 150px; display: inline-block">
+                      <v-menu
+                        v-model="item.menuShown"
+                        :close-on-content-click="false"
+                        :nudge-right="40"
+                        transition="scale-transition"
+                        offset-y
+                        min-width="auto"
+                      >
+                        <template v-slot:activator="{ on, attrs }">
+                          <v-text-field class="jh-v-input bg-white" readonly v-bind="attrs" v-on="on" dense filled single-line v-model="item.voucherAt"></v-text-field>
+                        </template>
+                        <v-date-picker
+                          v-model="item.voucherAt"
+                          locale="zh-CN"
+                          class="cus-date-picker"
+                          @input="item.menuShown = false"
+                        ></v-date-picker>
+                      </v-menu>
+                    </div>
+                  </div>
+                  <invoice-voucher-entry v-if="item.invoiceEntryList && item.invoiceEntryList.length" v-model="item.invoiceEntryList" :invoice="item" :subjectList="constantObj.subjectList" :voucherTemplate="findTemplate(item)"></invoice-voucher-entry>
+                </div>
+              </v-card>
+            </v-card-text>
+            <v-card-actions>
+              <span>制单人：{{username}}</span>
+              <v-spacer></v-spacer>
+              <v-btn @click="doUiAction('closeCreateVoucher')"><v-icon size="14">mdi-close</v-icon>取消</v-btn>
+              <v-btn @click="doUiAction('doCreateVoucher')" color="primary"><v-icon size="14">mdi-content-save-check-outline</v-icon>保存凭证</v-btn>
+            </v-card-actions>
+          </v-card>
+        </v-dialog>
+
+      </div>
+
+      <!-- 帮助页抽屉 >>>>>>>>>>>>> -->
+      <!-- <<<<<<<<<<<<< 帮助页抽屉 -->
+
+    </v-main>
+  </v-app>
+  <jh-toast />
+  <jh-mask />
+  <jh-confirm-dialog />
+</div>
+</script>
+<div id="app">
+</div>
+
+{% endblock %}
+
+{% block vueScript %}
+{% include 'component/jianghuJs/select-appaId.html' %}
+{% include 'common/jianghuJs/fixedTableHeightV4.html' %}
+{% include 'common/jianghuJs/fixedTableColV4.html' %}
+{% include 'component/invoice/invoiceVoucherEntry.html' %}
+{% include 'component/voucher/voucherPaper.html' %}
+{% include 'common/excelUtil.html' %}
+{% include 'common/vueFilters.html' %}
+{% include 'common/constantUtil.html' %}
+
+<script type="module">
+new Vue({
+  el: '#app',
+  template: '#app-template',
+  vuetify: new Vuetify(),
+  data: () => ({
+    isMobile: window.innerWidth < 500,
+
+    // 面包屑
+    breadcrumbs: [
+      {
+        text: '首页',
+        disabled: true,
+      },
+      {
+        text: '发票管理',
+        disabled: true,
+      }
+    ],
+    username: window.userInfo.username,
+    createInvoiceBtnStatus: false,
+    // 表格相关数据
+    isTableZebraLineMenuShown: false,
+    tableZebraLineMenuPosition: {x: null, y: null},
+    isTableZebraLineShown: true,
+
+    // 表格相关数据
+    isFormValid: true,
+    validationRules: {
+      requireRules: [
+        v => !!v || '必填',
+      ],
+      voucherEntryRules: [
+        v => v.length > 0 || '姓名必须少于10个字符',
+      ],
+    },
+    constantObj: {
+      voucherName: ['记', '收', '付', '转'],
+      invoiceDataType: ['未开具发票', '增值税普通发票', '增值税专用发票', '全电发票（增值税专用发票）', '全电发票（普通发票）', '税控机动车专用发票', '纳税检查调整'],
+      invoiceDataTypeMin: ['增值税普通发票', '增值税专用发票', '全电发票（增值税专用发票）', '全电发票（普通发票）', '税控机动车专用发票'],
+      invoiceBaseOutForm: {
+        "未开具发票": ['invoiceTime', 'invoiceCustomer', 'invoiceUnifiedSocialCreditCode', 'invoiceRecordTime', 'remark'],
+        "增值税普通发票": ['invoiceTime', 'invoiceCode', 'invoiceNumber', 'invoiceStatus', 'invoiceCustomer', 'invoiceUnifiedSocialCreditCode', 'invoiceAddressAndPhone', 'invoiceBankAndAccount', 'invoiceRecordTime', 'remark'],
+        "增值税专用发票": ['invoiceTime', 'invoiceCode', 'invoiceNumber', 'invoiceStatus', 'invoiceCustomer', 'invoiceUnifiedSocialCreditCode', 'invoiceAddressAndPhone', 'invoiceBankAndAccount', 'invoiceRecordTime', 'remark'],
+        "全电发票（增值税专用发票）": ['invoiceTime', 'invoiceNumber', 'invoiceStatus', 'invoiceCustomer', 'invoiceUnifiedSocialCreditCode', 'invoiceAddressAndPhone', 'invoiceBankAndAccount', 'invoiceRecordTime', 'remark'],
+        "全电发票（普通发票）": ['invoiceTime', 'invoiceNumber', 'invoiceStatus', 'invoiceCustomer', 'invoiceUnifiedSocialCreditCode', 'invoiceAddressAndPhone', 'invoiceBankAndAccount', 'invoiceRecordTime', 'remark'],
+        "税控机动车专用发票": ['invoiceTime', 'invoiceCode', 'invoiceNumber', 'invoiceStatus', 'invoiceCustomer', 'invoiceUnifiedSocialCreditCode', 'invoiceAddressAndPhone', 'invoiceBankAndAccount', 'invoiceVIN', 'invoiceMachineNo', 'invoiceTaxAuthorityCode', 'invoiceRecordTime', 'remark'],
+        "纳税检查调整": ['invoiceTime', 'invoiceRecordTime', 'remark'],
+      },
+      invoiceBaseInForm: {
+        "未开具发票": ['invoiceTime', 'invoiceSupplier', 'invoiceApproveTime', 'invoiceUnifiedSocialCreditCode', 'invoiceRecordTime', 'remark'],
+        "增值税普通发票": ['invoiceTime', 'invoiceCode', 'invoiceNumber', 'invoiceStatus', 'invoiceSupplier', 'invoiceApproveTime', 'invoiceUnifiedSocialCreditCode', 'invoiceAddressAndPhone', 'invoiceBankAndAccount', 'invoiceRecordTime', 'remark'],
+        "增值税专用发票": ['invoiceTime', 'invoiceCode', 'invoiceNumber', 'invoiceStatus', 'invoiceSupplier', 'invoiceApproveTime', 'invoiceUnifiedSocialCreditCode', 'invoiceAddressAndPhone', 'invoiceBankAndAccount', 'invoiceRecordTime', 'remark'],
+        "全电发票（增值税专用发票）": ['invoiceTime', 'invoiceNumber', 'invoiceStatus', 'invoiceSupplier', 'invoiceApproveTime', 'invoiceUnifiedSocialCreditCode', 'invoiceAddressAndPhone', 'invoiceBankAndAccount', 'invoiceRecordTime', 'remark'],
+        "全电发票（普通发票）": ['invoiceTime', 'invoiceNumber', 'invoiceStatus', 'invoiceSupplier', 'invoiceApproveTime', 'invoiceUnifiedSocialCreditCode', 'invoiceAddressAndPhone', 'invoiceBankAndAccount', 'invoiceRecordTime', 'remark'],
+        "税控机动车专用发票": ['invoiceTime', 'invoiceCode', 'invoiceNumber', 'invoiceStatus', 'invoiceSupplier', 'invoiceApproveTime', 'invoiceUnifiedSocialCreditCode', 'invoiceAddressAndPhone', 'invoiceBankAndAccount', 'invoiceVIN', 'invoiceMachineNo', 'invoiceTaxAuthorityCode', 'invoiceRecordTime', 'remark'],
+        "纳税检查调整": ['invoiceTime', 'invoiceRecordTime', 'remark'],
+      },
+      invoiceBaseEntryForm: {
+        "未开具发票": ['invoiceTime', 'invoiceCustomer', 'invoiceUnifiedSocialCreditCode', 'invoiceRecordTime', 'remark'],
+        "增值税普通发票": ['invoiceTime', 'invoiceCode', 'invoiceNumber', 'invoiceStatus', 'invoiceCustomer', 'invoiceUnifiedSocialCreditCode', 'invoiceAddressAndPhone', 'invoiceBankAndAccount', 'invoiceRecordTime', 'remark'],
+        "增值税专用发票": ['invoiceTime', 'invoiceCode', 'invoiceNumber', 'invoiceStatus', 'invoiceCustomer', 'invoiceUnifiedSocialCreditCode', 'invoiceAddressAndPhone', 'invoiceBankAndAccount', 'invoiceRecordTime', 'remark'],
+        "全电发票（增值税专用发票）": ['invoiceTime', 'invoiceNumber', 'invoiceStatus', 'invoiceCustomer', 'invoiceUnifiedSocialCreditCode', 'invoiceAddressAndPhone', 'invoiceBankAndAccount', 'invoiceRecordTime', 'remark'],
+        "全电发票（普通发票）": ['invoiceTime', 'invoiceNumber', 'invoiceStatus', 'invoiceCustomer', 'invoiceUnifiedSocialCreditCode', 'invoiceAddressAndPhone', 'invoiceBankAndAccount', 'invoiceRecordTime', 'remark'],
+        "税控机动车专用发票": ['invoiceTime', 'invoiceCode', 'invoiceNumber', 'invoiceStatus', 'invoiceCustomer', 'invoiceUnifiedSocialCreditCode', 'invoiceAddressAndPhone', 'invoiceBankAndAccount', 'invoiceVIN', 'invoiceMachineNo', 'invoiceTaxAuthorityCode', 'invoiceRecordTime', 'remark'],
+        "纳税检查调整": ['invoiceTime', 'invoiceRecordTime', 'remark'],
+      },
+      invoiceStatus: ['正常', '作废', '失控', '红冲'],
+      invoiceTemplate: [],
+      hasVoucher: ['全部', '已生成', '未生成'],
+      invoiceEntryTaxRate: ["3", "6", "9", "13"],
+      invoiceType: ['销项发票', '进项发票'],
+      invoiceEntryTaxProject: ['应税货物', '应税劳务', '应税服务、不动产、无形资产'],
+      invoiceEntryTaxMethod: ['一般计税方法-一般', '一般计税方法-即征即退', '简易计税方法-一般', '简易计税方法-即征即退', '免抵退税；免税'],
+      invoiceCustomer: [],
+      invoiceSupplier: [],
+      subjectList: []
+    },
+
+    serverSearchInput: {
+      period: {
+        periodId: dayjs().format('YYYY-MM'),
+        currentPeriodId: null,
+      },
+      hasVoucher: '全部',
+      invoiceType: '全部',
+      invoiceStatus: '全部',
+      invoiceDataType: '全部'
+    },
+    searchInput: null,
+    isTableLoading: true,
+    tableDataFromBackend: [],
+    headers: [
+      {text: "发票凭证", value: "voucherId", sortable: true, formType: 'select', cellClass: 'noWrap', export: true},
+      {text: "发票类型", value: "invoiceType", sortable: true, formType: 'select', cellClass: 'noWrap', export: true},
+      {text: "发票种类", value: "invoiceDataType", sortable: true, cellClass: 'noWrap', formType: 'select', export: true},
+      {text: "录入日期", value: "invoiceRecordTime", sortable: true, cellClass: 'noWrap', formType: 'datePick'},
+      {text: "开票日期", value: "invoiceTime", sortable: true, cellClass: 'noWrap', formType: 'datePick', required: true, export: true},
+      {text: "发票代码", value: "invoiceCode", sortable: false, cellClass: 'noWrap', formType: 'text', required: true, export: true},
+      {text: "发票号码", value: "invoiceNumber", sortable: false, cellClass: 'noWrap', formType: 'text', required: true, export: true},
+      {text: "发票状态", value: "invoiceStatus", sortable: true, cellClass: 'noWrap', formType: 'select', required: true, export: true},
+
+      {text: "合计金额(不含税)", value: "invoiceTotalPriceAmount", sortable: false, required: true, cellClass: 'noWrap', export: true},
+      {text: "合计税额", value: "invoiceTotalTaxAmount", sortable: false, required: true, cellClass: 'noWrap', export: true},
+      {text: "价税合计", value: "invoiceTotalPriceAndTaxAmount", sortable: false, required: true, cellClass: 'noWrap', export: true},
+
+      {text: "业务类型", value: "invoiceTemplateName", sortable: true, cellClass: 'noWrap', formType: 'select', export: true},
+      {text: "纳税人识别号", value: "invoiceTaxpayerNum", sortable: false, cellClass: 'noWrap', formType: 'text', export: true},
+      {text: "地址及电话", value: "invoiceAddressAndPhone", sortable: false, cellClass: 'noWrap', formType: 'text', export: true},
+      {text: "开户行及账户", value: "invoiceBankAndAccount", sortable: false, formType: 'text', cellClass: 'noWrap', export: true},
+      {text: "客户名称", value: "invoiceCustomerName", sortable: false, formType: 'select', required: true, invoiceType: '销项发票', cellClass: 'noWrap', export: true},
+      {text: "供应商名称", value: "invoiceSupplierName", sortable: false, invoiceType: '进项发票', formType: 'select', required: true, cellClass: 'noWrap', export: true},
+      {text: "认证日期", value: "invoiceApproveTime", sortable: false, invoiceType: '进项发票', formType: 'datePick', cellClass: 'noWrap', export: true},
+
+      {text: "操作者", value: "operationByUser", sortable: false, cellClass: 'noWrap'},
+      {text: "操作时间", value: "operationAt", sortable: false, cellClass: 'noWrap'},
+      {text: "操作", value: "action", align: "center", sortable: false, width: window.innerWidth > 500 ? 200 : 50, class: 'fixed', cellClass: 'fixed'},
+    ],
+    headersNotView: [
+      {text: "记账期间", value: "periodId", sortable: false, formType: 'text', export: true},
+      {text: "统一社会信用代码", value: "invoiceUnifiedSocialCreditCode", sortable: false, formType: 'text', export: true},
+      {text: "供应商名称", value: "invoiceSupplier", sortable: false, invoiceType: '进项发票', formType: 'select', required: true},
+      {text: "客户名称", value: "invoiceCustomer", sortable: false, formType: 'select', required: true, invoiceType: '销项发票',},
+      {text: "车架号", value: "invoiceVIN", sortable: false, formType: 'text', export: true},
+      {text: "机器编号", value: "invoiceMachineNo", sortable: false, formType: 'text', export: true},
+      {text: "主管税务机关代码", value: "invoiceTaxAuthorityCode", sortable: false, formType: 'text', export: true},
+      {text: "备注", value: "remark", sortable: false, formType: 'text', export: true},
+    ],
+    entryTableBaseHeader: [
+      {text: "商品名称", value: "invoiceEntryName", sortable: false, formType: 'text', required: true},
+      {text: "规格型号", value: "invoiceEntrySpec", sortable: false, formType: 'text'},
+      {text: "单位", value: "invoiceEntryUnit", sortable: false, formType: 'text'},
+      {text: "数量", value: "invoiceEntryCount", sortable: false, formType: 'text'},
+      {text: "金额", value: "invoiceEntryAmount", sortable: false, formType: 'text', width: '120px', required: true, isFullEntryData: true},
+      {text: "税率", value: "invoiceEntryTaxRate", sortable: false, formType: 'select', width: '100px', required: true, isFullEntryData: true},
+      {text: "税额", value: "invoiceEntryTaxAmount", sortable: false, formType: 'price', width: '120px', required: true, isFullEntryData: true},
+      {text: "征税项目", value: "invoiceEntryTaxProject", sortable: false, formType: 'select', width: '180px', required: true, isFullEntryData: true},
+      {text: "计税方法", value: "invoiceEntryTaxMethod", sortable: false, formType: 'select', width: '180px', required: true, isFullEntryData: true},
+      {text: "操作", value: "action", sortable: false, formType: 'action', width: '80px'},
+    ],
+    isAddDrawerLoading: false,
+    isAddDrawerShow: false,
+    addItem: {},
+    isEditLoading: false,
+
+    formFields: {},
+    drawFormEntryTable: [],
+
+    // 生成凭证
+    createVoucherItemList: [],
+    createVoucherItemListClone: [],
+    isCreateVoucherDialogShown: false,
+    isCreateVoucherDialogLoading: false,
+    baseVoucherNumber: 1,
+
+    isShowAllTableColumn: false,
+
+  }),
+  computed: {
+    tableHeader() {
+      return this.headers.filter(item => !item.invoiceType || item.invoiceType === this.serverSearchInput.invoiceType || this.serverSearchInput.invoiceType === '全部');
+    },
+    tableData() {
+      return _.cloneDeep(this.tableDataFromBackend);
+    },
+    invoiceTemplate() {
+      return this.constantObj.invoiceTemplate.filter(item => item.voucherType === this.addItem.invoiceType);
+    },
+    invoiceBaseForm() {
+      if (this.addItem.invoiceType === '销项发票') {
+        return this.constantObj.invoiceBaseOutForm;
+      }
+      return this.constantObj.invoiceBaseInForm;
+    },
+    entryTableHeader() {
+      if (this.addItem.invoiceDataType === '未开具发票' || this.addItem.invoiceDataType === '纳税检查调整') {
+        return this.entryTableBaseHeader.filter(item => item.isFullEntryData)
+      }
+      if (this.addItem.invoiceDataType === '税控机动车专用发票') {
+        return this.entryTableBaseHeader.filter(item => item.value !== 'action')
+      }
+      return this.entryTableBaseHeader;
+    },
+    searchSummary() {
+      const conditions = [];
+  
+      if (this.serverSearchInput.invoiceType) {
+        conditions.push(` 业务类型: ${this.serverSearchInput.invoiceType}`);
+      }
+      if (this.serverSearchInput.hasVoucher) {
+        conditions.push(` 凭证状态: ${this.serverSearchInput.hasVoucher}`);
+      }
+      if (this.serverSearchInput.invoiceStatus) {
+        conditions.push(` 发票状态: ${this.serverSearchInput.invoiceStatus}`);
+      }
+      if (this.serverSearchInput.invoiceDataType) {
+        conditions.push(` 发票种类: ${this.serverSearchInput.invoiceDataType}`);
+      }
+      if (this.serverSearchInput.period) {
+        conditions.push(` 开票月份: ${this.serverSearchInput.period.periodId}`);
+      }
+      return conditions.length > 0 ? `${conditions.join('，')}，共${this.tableData.length}条记录` : `共${this.tableData.length}条记录`;
+    }
+  },
+  watch: {
+    serverSearchInput: {
+      deep: true,
+      handler(value, oValue) {
+      }
+    },
+    'addItem.invoiceTotalPriceAmount'(value) {
+      this.calcInvoiceTotalTax();
+    },
+    'addItem.invoiceTotalTaxAmount'(value) {
+      this.calcInvoiceTotalTax();
+    },
+  },
+  async created() {
+    await this.doUiAction('getBaseDataList');
+    await this.doUiAction('refreshTableData');
+    // Tip: 测试代码
+    // this.createVoucherItemList = [this.tableDataFromBackend[0]];
+    // await this.doUiAction('startCreateVoucher');
+  },
+  async mounted() {
+  },
+  methods: {
+    async doUiAction(uiActionId, uiActionData) {
+      switch (uiActionId) {
+        case 'refreshTableData':
+          await this.refreshTableData();
+          break;
+        case 'getBaseDataList':
+          await this.getSubjectList();
+          await this.getTemplateList();
+          await this.getCustomerList();
+          await this.getSupplierList();
+          break;
+        case 'openTableZebraLineMenu':
+          await this.openTableZebraLineMenu(uiActionData);
+          break;
+        case 'startCreateItem':
+          await this.openCreateItemDialog();
+          await this.prepareFormProperty();
+          await this.prepareCreateItemData(uiActionData);
+          break;
+        case 'doCreateItem':
+          await this.prepareAddItemValidate();
+          await this.confirmCreateItemDialog();
+          await this.doCreateItem();
+          await this.closeCreateItem();
+          await this.refreshTableData();
+          break;
+        case 'startUpdateItem':
+          await this.openCreateItemDialog();
+          await this.prepareFormProperty();
+          await this.prepareEditItemData(uiActionData);
+          break;
+        case 'doDeleteItem':
+          await this.confirmDeleteItemDialog();
+          await this.doDeleteItem(uiActionData);
+          await this.refreshTableData();
+          break;
+        case 'deleteSelected':
+          await this.prepareDeleteSelected();
+          await this.confirmDeleteItemDialog();
+          await this.doDeleteSelected();
+          await this.refreshTableData();
+          break;
+        case 'exportExcel':
+          await this.exportExcel();
+          break;
+        case 'importExcel':
+          await this.importExcel();
+          break;
+        case 'startCreateVoucher':
+          await this.validateCreateVoucher(uiActionData);
+          await this.getLastVouCherNumber();
+          await this.prepareCreateVoucher(uiActionData);
+          await this.openCreateVoucherDialog();
+          break;
+        case 'doCreateVoucher':
+          await this.confirmCreateVoucherDialog();
+          await this.prepareDoCreateVoucher();
+          await this.doCreateVoucher();
+          await this.closeCreateVoucher();
+          await this.refreshTableData();
+          break;  
+        case 'closeCreateVoucher':
+          await this.closeCreateVoucher();
+          break;
+        case 'changeVoucherDataList':
+          await this.changeVoucherDataList(uiActionData);
+          break;
+        case 'calcInvoiceTotalTax':
+          await this.calcInvoiceTotalTax();
+          break;
+        default:
+          console.error("[doUiAction] uiActionId not find", {uiActionId});
+          break;
+      }
+    },
+    // =================================uiAction 公共方法 start ======================================
+    /**
+     * uiActionId:  prepareValidate
+     * description: ✅表单校验
+     */
+    async prepareAddItemValidate() {
+      if (this.addItem.invoiceTemplateId === null || this.addItem.invoiceTemplateId === '') {
+        window.vtoast.fail({message: "输入有误, 请选择业务类型模板!"});
+        throw new Error("[prepareValidate] false");
+      }
+      if (this.$refs.form.validate() === false) {
+        window.vtoast.fail({message: "输入有误, 请检查基本信息必填项!"});
+        throw new Error("[prepareValidate] false");
+      }
+      if (this.addItem.invoiceHasDetail) {
+        const requiredKeys = this.entryTableHeader.filter(item => item.required).map(item => item.value);
+        console.log("this.drawFormEntryTable", this.drawFormEntryTable)
+        
+        this.drawFormEntryTable.forEach(row => {
+          Object.keys(row).forEach(key => {
+            console.log(row[key], requiredKeys.includes(key), _.isEmpty(row[key]))
+            if (requiredKeys.includes(key) && (row[key] == null || row[key] === "")) {
+              window.vtoast.fail({message: "输入有误, 请检查发票数据!"});
+              throw new Error("[prepareValidate] false");
+            }
+          })
+        })
+      }
+      this.addItem.invoiceTemplateName = this.constantObj.invoiceTemplate.find(item => item.voucherTemplateId === this.addItem.invoiceTemplateId).voucherTemplateName;
+
+      debugger
+    },
+    async refreshTableData() {
+      this.isTableLoading = true;
+      const where = {};
+      let appData = {};
+      if (this.serverSearchInput.period.periodId) {
+        where.periodId = this.serverSearchInput.period.periodId;
+      }
+      if (this.serverSearchInput.invoiceType !== '全部') {
+        where.invoiceType = this.serverSearchInput.invoiceType;
+      }
+      if (this.serverSearchInput.invoiceStatus !== '全部') {
+        where.invoiceStatus = this.serverSearchInput.invoiceStatus;
+      }
+      if (this.serverSearchInput.invoiceDataType !== '全部') {
+        where.invoiceDataType = this.serverSearchInput.invoiceDataType;
+      }
+      if (this.serverSearchInput.hasVoucher === '是') {
+        appData.whereNotNull = "voucherId";
+      }
+      if (this.serverSearchInput.hasVoucher === '否') {
+        appData.whereNull = "voucherId";
+      }
+      const result = await window.jianghuAxios({
+        data: {
+          appData: {
+            pageId: 'invoice-invoiceManagement',
+            actionId: 'selectItemList',
+            actionData: {},
+            where,
+            ...appData,
+            orderBy: [{column: 'periodId', order: 'desc'}, {column: 'invoiceRecordTime', order: 'desc'}]
+          }
+        }
+      });
+
+      const {rows} = result.data.appData.resultData;
+      rows.forEach(item => {
+      })
+      this.tableDataFromBackend = rows;
+      this.isTableLoading = false;
+    },
+    // ---------- 斑马纹开关 uiAction >>>>>>>>>> --------
+    async openTableZebraLineMenu(funObj) {
+      this.tableZebraLineMenuPosition.x = funObj.x - funObj.offsetX + 10;
+      this.tableZebraLineMenuPosition.y = window.innerHeight - 50;
+      this.isTableZebraLineMenuShown = !this.isTableZebraLineMenuShown;
+    },
+    // ---------- <<<<<<<<<< 斑马纹开关 uiAction --------
+    // =================================uiAction 公共方法 end ======================================
+    async getSubjectList() {
+      const result = await window.jianghuAxios({
+        data: {
+          appData: {
+            pageId: 'voucher-voucherManagement',
+            actionId: 'selectSubjectList',
+            actionData: {},
+            where: {subjectHasChildren: '无下级科目'},
+            orderBy: [{column: 'subjectCategory', order: 'desc'}, {column: 'subjectId', order: 'asc'}]
+          }
+        }
+      });
+      const {rows} = result.data.appData.resultData;
+      rows.forEach(row => {
+        row.assistList = row.assistList ? row.assistList.split(',') : [];
+      })
+      this.constantObj.subjectList = rows;
+    },
+    async getCustomerList() {
+      const result = await window.jianghuAxios({
+        data: {
+          appData: {
+            pageId: 'invoice-invoiceManagement',
+            actionId: 'selectCustomerList',
+            actionData: {},
+            orderBy: [{column: 'operationAt', order: 'desc'}]
+          }
+        }
+      });
+      const {rows} = result.data.appData.resultData;
+      rows.forEach(item => {
+        item.text = item.assistName;
+        item.value = item.assistId;
+      })
+      this.constantObj.invoiceCustomer = rows;
+    },
+    async getSupplierList() {
+      const result = await window.jianghuAxios({
+        data: {
+          appData: {
+            pageId: 'invoice-invoiceManagement',
+            actionId: 'selectSupplierList',
+            actionData: {},
+            orderBy: [{column: 'operationAt', order: 'desc'}]
+          }
+        }
+      });
+      const {rows} = result.data.appData.resultData;
+      rows.forEach(item => {
+        item.text = item.assistName;
+        item.value = item.assistId;
+      })
+      this.constantObj.invoiceSupplier = rows;
+    },
+    async getTemplateList() {
+      const result = await window.jianghuAxios({
+        data: {
+          appData: {
+            pageId: 'invoice-invoiceManagement',
+            actionId: 'selectTemplateList',
+            actionData: {},
+            orderBy: [{column: 'operationAt', order: 'desc'}]
+          }
+        }
+      });
+      const {rows} = result.data.appData.resultData;
+      rows.forEach(item => {
+        item.voucherTemplateConfig = JSON.parse(item.voucherTemplateConfig);
+      })
+      this.constantObj.invoiceTemplate = rows;
+    },
+
+
+    // =================================uiAction 创建凭证 start ======================================
+    async prepareFormProperty() {
+      const newHeaders = [...this.headers, ...this.headersNotView];
+      this.formFields = _.keyBy(newHeaders, 'value');
+    },
+    async prepareCreateItemData(funObj) {
+      console.log(this.formFields)
+     
+      this.drawFormEntryTable = [{}];
+      this.entryTableHeader.forEach(item => {
+        if (item.value === 'action') return;
+        this.drawFormEntryTable[0][item.value] = null;
+        if (item.value === 'invoiceEntryTaxRate') {
+          this.drawFormEntryTable[0].invoiceEntryTaxRate = "3";
+        }
+        if (item.value === 'invoiceEntryTaxMethod') {
+          this.drawFormEntryTable[0].invoiceEntryTaxMethod = "一般计税方法-一般";
+        }
+        if (item.value === 'invoiceEntryTaxProject') {
+          this.drawFormEntryTable[0].invoiceEntryTaxProject = "应税货物";
+        }
+      });
+      this.addItem = {
+        invoiceType: funObj.invoiceType,
+        invoiceDataType: funObj.invoiceDataType,
+        invoiceStatus: this.constantObj.invoiceStatus.length ? this.constantObj.invoiceStatus[0] : null,
+        invoiceHasDetail: false,
+        invoiceTotalTaxRate: "3",
+        invoiceTime: dayjs().format('YYYY-MM-DD'),
+        invoiceRecordTime: dayjs().format('YYYY-MM-DD'),
+      }
+      this.addItem = {
+        ...this.addItem,
+        invoiceTemplateId: this.invoiceTemplate.length ? this.invoiceTemplate[0].voucherTemplateId : null,
+        invoiceTemplateName: this.invoiceTemplate.length ? this.invoiceTemplate[0].voucherTemplateName : null,
+      };
+
+      console.log(this.addItem)
+    },
+    async prepareEditItemData(item) {
+      this.isEditLoading = true;
+      this.addItem = _.cloneDeep(item);
+      this.addItem.invoiceHasDetail =  this.addItem.invoiceHasDetail == '是';
+      if (!this.addItem.invoiceTemplateId) {
+        const findInvoiceTemplate = this.invoiceTemplate.length ? this.invoiceTemplate[0] : null;
+        this.addItem = {
+          ...this.addItem,
+          invoiceTemplateId: findInvoiceTemplate && findInvoiceTemplate.voucherTemplateId,
+          invoiceTemplateName: findInvoiceTemplate && findInvoiceTemplate.voucherTemplateName,
+        };
+      } else {
+        const findInvoiceTemplate = this.invoiceTemplate.length ? this.invoiceTemplate.find(item => item.voucherTemplateId === this.addItem.invoiceTemplateId) : null;
+        this.addItem = {
+          ...this.addItem,
+          invoiceTemplateName: findInvoiceTemplate && findInvoiceTemplate.voucherTemplateName
+        };
+      }
+
+      this.drawFormEntryTable = [{}];
+      this.drawFormEntryTable = (await window.jianghuAxios({
+        data: {
+          appData: {
+            pageId: 'invoice-invoiceManagement',
+            actionId: 'selectEntryList',
+            actionData: {},
+            where: {invoiceId: item.invoiceId}
+          }
+        }
+      })).data.appData.resultData.rows;
+      this.isEditLoading = false;
+    },
+
+    async openCreateItemDialog() {
+      this.createInvoiceBtnStatus = false;
+      this.isAddDrawerShow = true;
+    },
+
+    async confirmCreateItemDialog() {
+      if (await window.confirmDialog({title: "新增", content: "确定新增吗？"}) === false) {
+        throw new Error("取消");
+      }
+    },
+    async doCreateItem() {
+      if (this.addItem.invoiceCustomer != null) {
+        const invoiceCustomer = this.constantObj.invoiceCustomer.find(item => item.assistId === this.addItem.invoiceCustomer);
+        this.addItem.invoiceCustomerName = invoiceCustomer.assistName;
+      }
+      if (this.addItem.invoiceSupplier != null) {
+        const invoiceSupplier = this.constantObj.invoiceSupplier.find(item => item.assistId === this.addItem.invoiceSupplier);
+        this.addItem.invoiceSupplierName = invoiceSupplier.assistName;
+      }
+      await window.vtoast.loading({message: "正在保存发票数据", time: -1});
+      this.drawFormEntryTable.forEach(item => {
+        delete item.tempId;
+      })
+      await window.jianghuAxios({
+        data: {
+          appData: {
+            pageId: 'invoice-invoiceManagement',
+            actionId: this.addItem.id ? 'updateItem' : 'createItem',
+            actionData: {
+              ...this.addItem,
+              invoiceHasDetail: this.addItem.invoiceHasDetail ? '是': '否',
+              invoiceEntryList: this.drawFormEntryTable
+            }
+          }
+        }
+      })
+      await window.vtoast.success("录入凭证成功");
+    },
+    async closeCreateItem() {
+      this.isAddDrawerShow = false;
+    },
+    // =================================uiAction 创建凭证 end ======================================
+    async prepareDeleteSelected() {
+      if (!this.createVoucherItemList.length) {
+        window.vtoast.fail("请选择要删除的凭证");
+        throw new Error("请选择要删除的凭证");
+      }
+    },
+    async confirmDeleteItemDialog() {
+      if (await window.confirmDialog({title: "删除凭证", content: `确定删除该发票吗？`}) === false) {
+        throw new Error("取消");
+      }
+    },
+
+    async doDeleteSelected() {
+      window.vtoast.loading({message: '删除全中的凭证', time: -1});
+      await window.jianghuAxios({
+        data: {
+          appData: {
+            pageId: 'invoice-invoiceManagement',
+            actionId: 'deleteSelected',
+            where: {idList: this.createVoucherItemList.map(item => item.id)},
+          }
+        }
+      });
+      window.vtoast.success("删除凭证成功");
+    },
+
+    async doDeleteItem({id}) {
+      window.vtoast.loading({message: '删除凭证', time: -1});
+      await window.jianghuAxios({
+        data: {
+          appData: {
+            pageId: 'invoice-invoiceManagement',
+            actionId: 'deleteItem',
+            where: {id},
+          }
+        }
+      });
+      window.vtoast.success("删除凭证成功");
+    },
+
+    async importExcel() {
+      const excelData = await excelUtil.importData();
+      const keyValueLink = {
+        'invoiceTemplateId': '业务类型',
+        'invoiceTemplateName': '业务类型',
+        'invoiceTotalPriceAndTaxAmount': '价税合计',
+        'invoiceCode': '发票代码',
+        'voucherId': '发票凭证',
+        'periodId': '记账期间',
+        'invoiceNumber': '发票号码',
+        'invoiceStatus': '发票状态',
+        'invoiceDataType': '发票种类',
+        'invoiceType': '发票类型',
+        'invoiceUnifiedSocialCreditCode': '统一社会信用代码',
+        'invoiceTotalTaxAmount': '合计税额',
+        'invoiceTotalPriceAmount': '合计金额(不含税)',
+        'invoiceAddressAndPhone': '地址及电话',
+        'invoiceTaxpayerNum': '纳税人识别号',
+        'invoiceCustomer': '客户ID',
+        'invoiceCustomerName': '客户名称',
+        'invoiceSupplier': '供应商ID',
+        'invoiceSupplierName': '供应商名称',
+        'invoiceApproveTime': '认证日期',
+        'invoiceVIN': '机器编号',
+        'invoiceMachineNo': '机器编号',
+        'invoiceTaxAuthorityCode': '主管税务机关代码',
+        'invoiceBankAndAccount': '开户行及账户',
+        'invoiceTime': '开票日期',
+        'invoiceRecordTime': '录入日期',
+        'invoiceHasDetail': '是否录入发票明细',
+        'remark': '备注',
+      }
+      // vtoast
+      if (!excelData.length) {
+        window.vtoast.error("导入数据为空");
+        return;
+      }
+      let count = 1;
+      // 开始导入的 vtoast
+      for (const excelItem of excelData) {
+        window.vtoast.loading({message: `正在导入数据${count}/${excelData.length}`, time: -1});
+        const cloneKeyValueLink = _.cloneDeep(keyValueLink);
+        const zhKeyList = Object.keys(excelItem);
+        const willInsertData = {};
+        for (const enKey in cloneKeyValueLink) {
+          const zhValue = cloneKeyValueLink[enKey];
+          if(zhKeyList.includes(zhValue)) {
+            willInsertData[enKey] = excelItem[zhValue];
+          }
+        }
+        // 检查 willInsertData 的模板是否存在，并赋值模板ID
+        const findInvoiceTemplate = this.invoiceTemplate.length ? this.constantObj.invoiceTemplate.find(item => item.voucherTemplateName === willInsertData.invoiceTemplateName) : null;
+        if(findInvoiceTemplate) {
+          willInsertData.invoiceTemplateId = findInvoiceTemplate.voucherTemplateId;
+        }
+        // 检查 invoiceCustomerName 是否存在，并赋值客户ID
+        const findInvoiceCustomer = this.constantObj.invoiceCustomer.find(item => item.assistName === willInsertData.invoiceCustomerName);
+        if(findInvoiceCustomer) {
+          willInsertData.invoiceCustomer = findInvoiceCustomer.assistId;
+        }
+        // 检查 invoiceSupplierName 是否存在，并赋值供应商ID
+        const findInvoiceSupplier = this.constantObj.invoiceSupplier.find(item => item.assistName === willInsertData.invoiceSupplierName);
+        if(findInvoiceSupplier) {
+          willInsertData.invoiceSupplier = findInvoiceSupplier.assistId;
+        }
+        // 补全信息
+        willInsertData.invoiceHasDetail = false;
+        // 补充录入日期
+        willInsertData.invoiceRecordTime = dayjs().format('YYYY-MM-DD');
+        // 如果没有记账期间，补充上
+        if(!willInsertData.periodId) {
+          willInsertData.periodId = dayjs().format('YYYY-MM');
+        }
+        // 如果没有 invoiceEntryList, 填充个空数组
+        if(!willInsertData.invoiceEntryList) {
+          willInsertData.invoiceEntryList = [];
+        }
+        // 开始保存到数据库
+        await window.jianghuAxios({
+          data: {
+            appData: {
+              pageId: 'invoice-invoiceManagement',
+              actionId: 'createItem',
+              actionData: willInsertData,
+            }
+          }
+        });
+        count++;
+      }
+      // 成功的 vtoast
+      window.vtoast.success("导入成功");
+      // 刷新数据
+      this.doUiAction('refreshTableData');
+    },
+
+    async exportExcel() {
+      if(!this.createVoucherItemList.length) {
+        return window.vtoast.fail('请先选择要导出的数据');
+      }
+      const params = {
+        header: [...this.headers, ...this.headersNotView].filter(header => header.export).map(header => header.text),
+        key: [...this.headers, ...this.headersNotView].filter(header => header.export).map(header => header.value),
+        data: this.createVoucherItemList,
+        filename: dayjs().format('YYYYMMDDHHmmss') + '_' + '发票列表',
+      };
+      excelUtil.exportData(params);
+      this.createVoucherItemList = [];
+    },
+    // =================================uiAction 创建凭证 start ======================================
+    async getLastVouCherNumber() {
+      this.isCreateVoucherDialogLoading = true;
+      const periodId = dayjs().format("YYYY-MM");
+      // Tip: 当会计期间 没有改变时 ===> 不触发更新
+      const result = await window.jianghuAxios({
+        data: {
+          appData: {
+            pageId: 'voucher-voucherManagement',
+            actionId: 'selectNextVoucherNumber',
+            actionData: {periodId},
+          }
+        }
+      });
+      const {voucherNumber} = result.data.appData.resultData;
+      this.baseVoucherNumber = voucherNumber;
+    },
+    async validateCreateVoucher(item) {
+      if (item) {
+        this.createVoucherItemListClone = [_.cloneDeep(item)];
+      }
+      this.createVoucherItemListClone = _.cloneDeep(this.createVoucherItemList);
+      if (!this.createVoucherItemListClone.length) {
+        window.vtoast.fail({message: "操作失败，请先选择待生成项目！"});
+        throw new Error("操作失败，请先选择待生成项目！");
+      }
+      this.createVoucherItemListClone = this.createVoucherItemListClone.filter(item => !item.voucherId);
+      if (!this.createVoucherItemListClone.length) {
+        window.vtoast.fail({message: "所选项目已全部生成凭证，请不要重复生成！"});
+        throw new Error("所选项目已全部生成凭证，请不要重复生成！");
+      }
+    },
+    async prepareCreateVoucher(item) {
+      const entryList = (await window.jianghuAxios({
+        data: {
+          appData: {
+            pageId: 'invoice-invoiceManagement',
+            actionId: 'selectEntryList',
+            actionData: {},
+            whereIn: {invoiceId: this.createVoucherItemListClone.map(item => item.invoiceId)}
+          }
+        }
+      })).data.appData.resultData.rows;
+      this.createVoucherItemListClone.forEach((item, index) => {
+        item.invoiceEntryList = entryList.filter(entry => entry.invoiceId === item.invoiceId);
+        item.voucherNumber = this.baseVoucherNumber + index;
+        item.voucherName = '记';
+        item.voucherAt = dayjs().format('YYYY-MM-DD');
+      })
+    },
+    async openCreateVoucherDialog() {
+      this.isCreateVoucherDialogLoading = false;
+      this.isCreateVoucherDialogShown = true;
+    },
+    async confirmCreateVoucherDialog() {
+      if (await window.confirmDialog({title: "创建凭证", content: "确定创建凭证吗？"}) === false) {
+        throw new Error("取消");
+      }
+    },
+    async prepareDoCreateVoucher() {
+      this.createVoucherItemListClone.forEach(item => {
+        debugger
+        // 凭证信息补全
+        if (!item.voucherType) {
+          item.voucherType = item.invoiceType + '凭证';
+        }
+        if (!item.voucherTemplateId) {
+          item.voucherTemplateId = item.invoiceTemplateId;
+        }
+        if (!item.voucherTemplateName) {
+          item.voucherTemplateName = item.invoiceTemplateName;
+        }
+        if (!item.voucherAccountant) {
+          item.voucherAccountant = this.username;
+        }
+        if (!item.voucherAt) {
+          item.voucherAt = dayjs().format('YYYY-MM-DD');
+        }
+        if (!item.periodId) {
+          item.periodId = dayjs().format('YYYY-MM');
+        }
+        // 凭证信息验证
+        if (!item.voucherName) {
+          window.vtoast.fail({message: "保存失败，请完善凭证字！"});
+          throw new Error("请完善凭证信息");
+        }
+        if (!item.voucherNumber) {
+          window.vtoast.fail({message: "保存失败，请完善凭证号！"});
+          throw new Error("请完善凭证信息");
+        }
+        item.invoiceEntryList.forEach(entry => {
+          if (!entry.entryAbstract) {
+            window.vtoast.fail({message: "保存失败，请完善凭证的摘要！"});
+            throw new Error("请完善凭证的摘要");
+          }
+          if (!entry.subjectId) {
+            window.vtoast.fail({message: "保存失败，请完善凭证的科目ID！"});
+            throw new Error("请完善凭证的科目ID");
+          }
+        })
+        item.invoiceEntryList.forEach(v => {
+          v.debit = v.debit || 0;
+          v.credit = v.credit || 0;
+        })
+        // 借贷平衡验证
+        const creditTotal = parseFloat(item.invoiceEntryList.reduce((total, item) => {
+          return total + parseFloat(item.credit || '0')
+        }, 0));
+        const debitTotal = parseFloat(item.invoiceEntryList.reduce((total, item) => {
+          return total + parseFloat(item.debit || '0')
+        }, 0));
+        if (creditTotal !== debitTotal) {
+          window.vtoast.fail({message: "保存失败，借贷不平衡！"});
+          throw new Error("错误");
+        }
+      })
+    },
+    async doCreateVoucher() {
+      window.vtoast.loading({message: "正在录入凭证", time: -1});
+      for (const voucherItem of this.createVoucherItemListClone) {
+        const {invoiceEntryList, ...data} = voucherItem;
+        await this.doCreateVoucherForItem(invoiceEntryList, data);
+      }
+      window.vtoast.success("录入凭证成功");
+    },
+    async doCreateVoucherForItem(invoiceEntryList, data) {
+      const voucherEntryList = invoiceEntryList
+        .filter(v => v.subjectId)
+        .map(voucherEntry => {
+          const pickKey = [
+            'entryAbstract', 'subjectId', 'debit', 'credit',
+            'assistIdOfCustomer', 'assistIdOfSupplier', 'assistIdOfStaff', 'assistIdOfProject', 'assistIdOfDepart', 'assistIdOfExtend1', 'assistIdOfExtend2',
+            'assistNameOfSupplier', 'assistNameOfCustomer',
+          ];
+          return _.pick(voucherEntry, pickKey)
+        })
+      await window.jianghuAxios({
+        data: {
+          appData: {
+            pageId: 'invoice-invoiceManagement',
+            actionId: 'createVoucherAndVoucherEntry',
+            actionData: {
+              ...data,
+              voucherEntryList
+            }
+          }
+        }
+      })
+    },
+    async closeCreateVoucher() {
+      this.createVoucherItemList = [];
+      this.createVoucherItemListClone = [];
+      this.isCreateVoucherDialogShown = false;
+    },
+    async changeVoucherDataList({list, invoiceId}) {
+      this.createVoucherItemListClone.forEach(item => {
+        if (item.invoiceId === invoiceId) {
+          item.invoiceEntryList = [...list];
+        }
+      })
+      this.createVoucherItemListClone = [...this.createVoucherItemListClone];
+    },
+    async calcInvoiceTotalTax() {
+      this.addItem.invoiceTotalTaxAmount = currency(parseFloat(this.addItem.invoiceTotalPriceAmount || 0) * parseFloat(this.addItem.invoiceTotalTaxRate || 0) / 100).value;
+      this.addItem.invoiceTotalPriceAndTaxAmount = currency(parseFloat(this.addItem.invoiceTotalPriceAmount || 0) + parseFloat(this.addItem.invoiceTotalTaxAmount || 0)).value;
+    },
+    // =================================uiAction 创建凭证 end ======================================
+
+    blurTd(item, key, $event) {
+      let diff = false;
+      if (['invoiceEntryAmount'].includes(key.value)) {
+        diff = `${isNaN(item[key.value]) ? 0 : item[key.value]}` !== `${isNaN($event.target.innerText) ? 0 : $event.target.innerText}`
+        item[key.value] = parseFloat($event.target.innerText);
+        item.invoiceEntryTaxAmount = parseFloat(item.invoiceEntryAmount || 0) * parseFloat(item.invoiceEntryTaxRate || 0) / 100;
+      } else {
+        diff = `${item[key.value] || ''}` !== `${$event.target.innerText || ''}`
+        item[key.value] = $event.target.innerText;
+      }
+      this.hasEdit = this.hasEdit || diff;
+      if (diff) {
+        $event.target.classList.add('changed');
+      }
+      $event.target.classList.remove('active');
+      this.drawFormEntryTable = [...this.drawFormEntryTable];
+      this.addItem.invoiceTotalPriceAmount = this.drawFormEntryTable.reduce((prev, next) => prev + parseFloat(next.invoiceEntryAmount || 0), 0);
+      this.addItem.invoiceTotalTaxAmount = this.drawFormEntryTable.reduce((prev, next) => prev + parseFloat(next.invoiceEntryTaxAmount || 0), 0);
+      this.addItem.invoiceTotalPriceAndTaxAmount = parseFloat(this.addItem.invoiceTotalPriceAmount) + parseFloat(this.addItem.invoiceTotalTaxAmount);
+      this.addItem = {...this.addItem}
+    },
+    focusTd(item, key, $event) {
+      $event.target.innerText = $event.target.innerText || '';
+      $event.target.classList.add('active');
+      if (key === 'adjustCreditFormula' || key === 'adjustDebitFormula' || key === 'adjustAmountFormula') {
+
+      }
+    },
+    addEntryTableItem(index) {
+      this.drawFormEntryTable.splice(index + 1, 0, {
+        tempId: +new Date()
+      });
+      this.entryTableHeader.map(item => {
+        if (item.value === 'action') return;
+        this.drawFormEntryTable[index + 1][item.value] = null;
+        if (item.value === 'invoiceEntryTaxRate') {
+          this.drawFormEntryTable[index + 1].invoiceEntryTaxRate = "3";
+        }
+        if (item.value === 'invoiceEntryTaxMethod') {
+          this.drawFormEntryTable[index + 1].invoiceEntryTaxMethod = "一般计税方法-一般";
+        }
+        if (item.value === 'invoiceEntryTaxProject') {
+          this.drawFormEntryTable[index + 1].invoiceEntryTaxProject = "应税货物";
+        }
+      });
+      this.refreshTable();
+    },
+    deleteEntryTableItem(index) {
+      this.drawFormEntryTable.splice(index, 1);
+      this.refreshTable();
+    },
+    refreshTable(index) {
+      if (index) {
+        this.drawFormEntryTable[index].invoiceEntryTaxAmount = currency(parseFloat(this.drawFormEntryTable[index].invoiceEntryAmount || 0) * parseFloat(this.drawFormEntryTable[index].invoiceEntryTaxRate) / 100).value;
+      }
+      this.drawFormEntryTable = [...this.drawFormEntryTable];
+      this.addItem.invoiceTotalPriceAmount = this.drawFormEntryTable.reduce((prev, next) => prev + parseFloat(next.invoiceEntryAmount || 0), 0);
+      this.addItem.invoiceTotalTaxAmount = this.drawFormEntryTable.reduce((prev, next) => prev + parseFloat(next.invoiceEntryTaxAmount || 0), 0);
+      this.addItem.invoiceTotalPriceAndTaxAmount = parseFloat(this.addItem.invoiceTotalPriceAmount) + parseFloat(this.addItem.invoiceTotalTaxAmount);
+
+      this.addItem = {...this.addItem}
+    },
+    findTemplate(invoice) {
+      // 返回对应的模板
+      return this.constantObj.invoiceTemplate.find(item => item.voucherTemplateId === invoice.invoiceTemplateId);
+    },
+    jumpToUrl() {
+        window.open('https://cn.jianghujs.org/doc/page/article/11603', '_blank');
+      }
+  }
+})
+</script>
+
+<style scoped>
+  .invoiceDataType:hover {
+    background: #ebecf0;
+    cursor: pointer;
+  }
+
+  .noWrap {
+    white-space: nowrap !important;
+  }
+
+  .xBaseTable.v-data-table--fixed-header > .v-data-table__wrapper {
+    border-top: 1px solid #cccccc;
+  }
+
+  .xBaseTable.v-data-table--fixed-header table {
+    position: relative;
+    transform: translateY(-1px);
+  }
+
+  body .xBaseTable.v-data-table--fixed-header thead th {
+    border: 1px solid #cccccc !important;
+  }
+
+  .xBaseTable {
+    padding: 10px;
+    min-width: 100%;
+  }
+
+  .xBaseTable table {
+    border-collapse: collapse;
+  }
+
+  .xBaseTable tbody {
+    padding-top: 30px;
+  }
+
+  body .xBaseTable td.changed {
+    background: aliceblue;
+  }
+
+  body .xBaseTable td.active {
+    background: aliceblue;
+    line-height: 40px;
+  }
+
+  body .xBaseTable td:not(body .xBaseTable td[contenteditable="true"]):not(body .xBaseTable tr.isFull td) {
+    color: #666;
+  }
+
+  body .xBaseTable td {
+    cursor: text;
+  }
+
+  body .xBaseTable tr td:last-child .deletedBtn {
+    display: none;
+  }
+
+  body .xBaseTable tr:hover td:last-child .deletedBtn {
+    display: inline-block;
+  }
+
+  body .xBaseTable tr.isFull {
+    background: rgba(76, 175, 80, 0.13) !important;
+  }
+
+  body .xBaseTable th {
+    position: sticky;
+    line-height: 40px;
+    top: 0;
+  }
+
+  body .theme--light.v-data-table.xBaseTable.v-data-table--fixed-header thead th {
+    background: #eaeaea !important;
+  }
+
+  body .xBaseTable table tr th,
+  body .xBaseTable table tr td {
+    border: 1px solid #cccccc !important;
+    border-bottom: 1px solid #cccccc !important;
+  }
+
+  .cus-date-picker.v-picker table td,
+  .cus-date-picker.v-picker table th {
+    border: none !important;
+  }
+
+  .invoiceCreateCardMinTitle {
+    background: #EEEEEE;
+    height: 50px;
+  }
+
+  @media screen and (max-width: 960px) {
+    .jh-backend-search-btn-group {
+      position: absolute;
+      top: 50px;
+      right: 30px;
+    }
+
+    .search-group-input {
+      margin-bottom: 10px !important;
+    }
+  }
+
+  .enhancer-voucher {
+    overflow-x: auto;
+  }
+
+  .enhancer-voucher .v-card {
+    margin: 0 20px;
+  }
+
+  .enhancer-voucher .v-card.hasError {
+    border-color: red
+  }
+
+  .enhancer-voucher-table {
+    width: 100%;
+    background: #fff;
+    color: #333;
+    text-align: center;
+  }
+
+  .enhancer-voucher-table td {
+    position: relative;
+    border: 1px solid #eee;
+  }
+
+  .enhancer-voucher-table thead td:nth-child(1), .enhancer-voucher-table thead td:nth-child(2) {
+    width: 200px;
+  }
+
+  .enhancer-voucher-digit .enhancer-voucher-digit-wrap {
+    display: flex;
+  }
+
+  .enhancer-voucher-digit .enhancer-voucher-digit-wrap div {
+    position: relative;
+    padding: 2px 4px;
+    flex: 1;
+    border-right: 1px solid #eee;
+  }
+
+  .enhancer-voucher-digit .enhancer-voucher-digit-wrap div:nth-child(3)::after,
+  .enhancer-voucher-digit .enhancer-voucher-digit-wrap div:nth-child(6)::after,
+  .enhancer-voucher-digit .enhancer-voucher-digit-wrap div:nth-child(9)::after {
+    content: '';
+    background-color: #0070ee;
+    height: 31px;
+    width: 1px;
+    position: absolute;
+    top: -3px;
+    right: -1px;
+  }
+
+  .enhancer-voucher-digit .enhancer-voucher-digit-wrap div:nth-child(9)::after {
+    background-color: #ff107e;
+  }
+
+  .enhancer-voucher-digit .enhancer-voucher-digit-wrap div:last-child {
+    border-right: none;
+  }
+
+  .enhancer-voucher-digit.enhancer-voucher-digit-value .enhancer-voucher-digit-wrap div {
+    height: 29px;
+    padding: 6px 0;
+    font-weight: 900;
+    font-family: 'Helvetica Neue', Helvetica, 'Microsoft Yahei', sans-serif;
+  }
+
+  .enhancer-voucher-digit.enhancer-voucher-digit-value .enhancer-voucher-digit-wrap div::after {
+    height: 35px;
+  }
+
+  .enhancer-voucher-table .enhancer-voucher-item-row .enhancer-voucher-digit.enhancer-voucher-digit-value input {
+    display: none;
+  }
+
+  .enhancer-voucher-table .enhancer-voucher-item-row .enhancer-voucher-digit.enhancer-voucher-digit-value.focus .enhancer-voucher-digit-wrap {
+    display: none;
+  }
+
+  .enhancer-voucher-table .enhancer-voucher-item-row .enhancer-voucher-digit.enhancer-voucher-digit-value.focus input {
+    display: block;
+  }
+
+  .enhancer-voucher-table .enhancer-voucher-item-row .v-input {
+    padding: 0;
+    margin: 0;
+    height: 32px;
+  }
+
+  .enhancer-voucher-table .enhancer-voucher-item-row input {
+    padding: 6px;
+    border: none;
+    outline: none;
+    width: 100%;
+    text-align: left;
+  }
+
+  .enhancer-voucher-table .enhancer-voucher-item-row .operate-btn {
+    opacity: 0;
+    pointer-events: revert;
+    position: absolute;
+    left: -20px;
+    top: 50%;
+    transform: translateY(-50%);
+    flex-direction: column;
+  }
+
+  .enhancer-voucher-table .enhancer-voucher-item-row .operate-btn i {
+    color: black;
+    font-size: 17px;
+    cursor: pointer;
+    padding-right: 10px;
+    text-align: center;
+  }
+
+  .enhancer-voucher-table .enhancer-voucher-item-row:hover .operate-btn {
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  .total-title {
+    padding-right: 6px !important;
+    text-align: right;
+  }
+</style>
+{% endblock %}

@@ -1,0 +1,202 @@
+<template id="report-cashFlow-assist">
+  <div>
+    <v-row class="pa-4" no-gutters>
+      <v-col>
+        <span class="text-h7 font-weight-bold">科目现金流量--对照明细</span>
+      </v-col>
+      <v-spacer></v-spacer>
+      <v-col cols="2" md="2">
+        <v-autocomplete v-model="serverSearchInput.computeTime" :items="computeTimeList" class="jh-v-input"
+          @change="doUiAction('changeComputeTime', $event)" dense filled single-line></v-autocomplete>
+      </v-col>
+    </v-row>
+    <v-divider class="jh-divider"></v-divider>
+
+    <v-container>
+      <v-row>
+        <v-col cols="12" md="3">
+          <v-text-field v-model="searchInput" class="jh-v-input bg-white mb-4" dense single-line filled></v-text-field>
+          <!-- <v-list flat nav dense style="height: 100vh;overflow-y: scroll;">
+            <v-list-item-group v-model="selectedItem" color="primary">
+              <v-list-item link @click="doUiAction('refreshTableData')" v-for="(item, index) in items" :key="index"
+                v-text="item.itemName" />
+            </v-list-item-group>
+          </v-list> -->
+          <v-treeview @update:active="doUiAction('changeItemId', $event)" style="height:90vh; overflow-x: hidden;" :search="searchInput" hoverable activatable dense :items="assistList"
+            color="primary">
+          </v-treeview>
+
+        </v-col>
+        <v-col cols="12" md="9">
+          <v-data-table fixed-header :headers="headers" :items="tableData"
+            :footer-props="{ itemsPerPageOptions: [20, 50, -1], itemsPerPageText: '每页行数', itemsPerPageAllText: '所有'}"
+            :items-per-page="-1" mobile-breakpoint="0" :loading="isTableLoading" checkbox-color="success"
+            :class="{'zebraLine': isTableZebraLineShown }" class="jh-fixed-table-height elevation-0 mt-0 mb-xs-4 pa-2">
+          
+            <template v-slot:item.voucher-id="{item}">
+              <voucher-paper :voucher-id="item.voucherId" :currentPeriodId="periodId" readonly>
+              </voucher-paper>
+            </template>
+            <template v-slot:item.subject-id="{item}">
+              <span>{{item.subjectId}} {{item.subjectLabel}}</span>
+            </template>
+            
+            <template v-slot:item.cashFlowIn="{item}">
+              <span>{{item.cashFlowIn | formatMoney}}</span>
+            </template>
+            <template v-slot:item.cashFlowOut="{item}">
+              <span>{{item.cashFlowOut | formatMoney}}</span>
+            </template>
+            <!-- 没有数据 -->
+            <template v-slot:loading>
+              <div class="jh-no-data">数据加载中</div>
+            </template>
+            <template v-slot:no-data>
+              <div class="jh-no-data">暂无数据</div>
+            </template>
+            <template v-slot:no-results>
+              <div class="jh-no-data">暂无数据</div>
+            </template>
+            <!-- 表格分页 -->
+            <template v-slot:footer.page-text="pagination">
+              <span>{{pagination.pageStart}}-{{pagination.pageStop}}</span>
+              <span class="ml-1">共{{pagination.itemsLength}}条</span>
+            </template>
+          </v-data-table>
+        </v-col>
+      </v-row>
+    </v-container>
+  </div>
+</template>
+
+<script type="module">
+  Vue.component("report-cashFlow-assist", {
+    template: '#report-cashFlow-assist',
+    props: {
+      items: {
+        type: Array,
+        default: () => [],
+      },
+      periodId: {
+        type: String,
+        default: '',
+      },
+    },
+    data: () => ({
+      isMobile: window.innerWidth < 500,
+
+      validationRules: {
+        requireRules: [
+          v => !!v || '必填',
+        ],
+      },
+      constantObj: {
+        
+      },
+      serverSearchInput: {
+        computeTime: 'current',
+      },
+      searchInput: null,
+      assistList: [],
+      selectedItem: null,
+      selectedItemId: null,
+
+      tableDataFromBackend: [],
+      headers: [
+        { text: "日期", value: "voucherAt", width: 100, class: 'fixed', cellClass: 'fixed' },
+        { text: "摘要", value: "entryAbstract", width: 180 },
+        { text: "凭证字号", value: "voucher-id", width: 100 },
+        { text: "科目", value: "subject-id", width: 200 },
+        { text: "流入", value: "cashFlowIn", align: 'end', width: 50 },
+        { text: "流出", value: "cashFlowOut", align: 'end', width: 50 },
+      ],
+      isTableZebraLineShown: true,
+      isTableLoading: false,
+    }),
+    computed: {
+      tableData() {
+        return this.tableDataFromBackend
+      },
+      computeTimeList() {
+        const list = [
+          { text: `本期(=${this.periodId})`, value: 'current' },
+          { text: `本年(<=${this.periodId})`, value: 'year' },
+        ]
+
+        return list
+      }
+    },
+    watch: {
+      items: {
+        handler(newValue, oldValue) {
+          const result = [];
+          newValue.filter(item => item.level != 0 && !item.itemName.includes('：')).forEach((item, index) => {
+            const newObj = { id: item.itemId, name: `${index + 1}.${item.itemName}` };
+            result.push(newObj);
+          });
+          this.assistList = result
+          if (result && result.length > 0) {
+            // Bug：选中后 没有高亮
+            this.selectedItemId = result[0].id
+            // Tip：测试代码
+            // this.selectedItemId = result[2].id
+            this.doUiAction('refreshTableData');
+          }
+        },
+        immediate: true,
+      },
+    },
+    async created() {
+    },
+    methods: {
+      async doUiAction(uiActionId, uiActionData) {
+        switch (uiActionId) {
+          case 'refreshTableData':
+            await this.refreshTableData();
+            break;
+          case 'changeItemId':
+            this.selectedItemId = uiActionData[0];
+            await this.refreshTableData()
+            break;
+          case 'changeComputeTime':
+            this.selectedItemTimeType = uiActionData;
+            await this.refreshTableData()
+            break;
+          default:
+            console.error("[doUiAction] uiActionId not find", { uiActionId });
+            break;
+        }
+      },
+      async refreshTableData() {
+        this.isTableLoading = true;
+        const result = await window.jianghuAxios({
+          data: {
+            appData: {
+              pageId: 'report-cashFlow',
+              actionId: 'getSubjectCashflowVoucherList',
+              actionData: {
+                itemId: this.selectedItemId,
+                periodId: this.periodId,
+                periodTimeType: this.selectedItemTimeType,
+              },
+            }
+          }
+        });
+        const { rows } = result.data.appData.resultData;
+        this.tableDataFromBackend = rows;
+        this.isTableLoading = false;
+      },
+    },
+  })
+</script>
+<style>
+  .add-btn {
+    width: 100%;
+    margin-top: 5px;
+    padding: 5px;
+  }
+
+  .custom-input input {
+    text-align: right;
+  }
+</style>
