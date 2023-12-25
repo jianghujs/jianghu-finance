@@ -529,15 +529,15 @@ Vue.component("jh-layout-v4", {
           }
         })
         vtoast.success('注销成功');
-        localStorage.removeItem(`${window.appInfo.appId}_authToken`);
+        localStorage.removeItem(`${window.appInfo.authTokenKey}_authToken`);
         setTimeout(() => {
-          location.href = `/${window.appInfo.appId}/page/login`;
+          location.href = '<$ ctx.app.config.loginPage $>';
         }, 700);
       } catch (error) {
         vtoast.fail(error.errorReason);
-        localStorage.removeItem(`${window.appInfo.appId}_authToken`);
+        localStorage.removeItem(`${window.appInfo.authTokenKey}_authToken`);
         setTimeout(() => {
-          location.href = `/${window.appInfo.appId}/page/login`;
+          location.href = '<$ ctx.app.config.loginPage $>';
         }, 700);
       }
     }

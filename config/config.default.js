@@ -19,7 +19,7 @@ module.exports = appInfo => {
     jianghuConfig: {
       ignoreTableListOfAppaId: [ '_cache','_constant','_group','_page','_record_history',
         '_resource','_role','_test_case','_ui','_user','_user_group_role','_user_group_role_page',
-        '_user_group_role_resource','_user_session','_view01_user', '_view02_user_app', '_app_account'
+        '_user_group_role_resource','_user_session','_view01_user', '_view02_user_app', '_app_account', '_directory_user_session'
       ],
     },
     // 禁用编辑的帐套; 避免数据被删除
