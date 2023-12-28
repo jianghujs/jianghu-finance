@@ -76,8 +76,8 @@
                   
                 </v-col>
                 <v-spacer></v-spacer>
-                  <v-switch v-model="showSignificantValueSubject" label="只显示有数值的科目"></v-switch>
-                  <v-text-field color="success" v-model="searchInput" prefix="搜索：" class="jh-v-input ml-2" dense filled single-line></v-text-field>
+                <v-switch hide-actions hide-controls hide-details class="mt-0" v-model="showSignificantValueSubject" label="只显示有数值的科目"></v-switch>
+                <v-text-field color="success" v-model="searchInput" prefix="搜索：" class="jh-v-input ml-2" dense filled single-line></v-text-field>
                 </v-col>
               </v-row>
               <v-data-table 
