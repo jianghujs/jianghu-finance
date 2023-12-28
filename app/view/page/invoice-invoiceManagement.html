@@ -290,8 +290,8 @@ SQL END! -->
                 <v-row class="px-4 ml-0 mt-10">
                   <span class="text-h6">发票数据</span>
                 </v-row>
-                <v-row class="px-4 ml-0 mt-10">
-                  <v-col cols="12" sm="12" md="12" class="d-flex align-center">
+                <v-row class="px-4 ml-0">
+                  <v-col cols="12" sm="12" md="12">
                     <span class="jh-input-label mr-2"><span style="color: red">*</span>是否录入发票明细</span>
                     <v-radio-group
                       class="mt-0 pt-0"
@@ -304,26 +304,27 @@ SQL END! -->
                       <v-radio label="否" :value="false"></v-radio>
                     </v-radio-group>
                   </v-col>
-                  <v-col cols="12" sm="12" md="4" class="d-flex align-center">
+                  <v-col cols="12" sm="12" md="4">
                     <span class="jh-input-label mr-2"><span style="color: red">*</span>不含税金额</span>
-                    <v-text-field dense outlined hide-details single-line :disabled="addItem.invoiceHasDetail" v-model="addItem.invoiceTotalPriceAmount"></v-text-field>
+                    <v-text-field class="jh-v-input" dense filled single-line :rules="validationRules.requireRules" v-model="addItem.invoiceTotalPriceAmount"></v-text-field>
                   </v-col>
-                  <v-col cols="12" sm="12" md="4" class="d-flex align-center" v-if="!addItem.invoiceHasDetail">
+                  <v-col cols="12" sm="12" md="4" v-if="!addItem.invoiceHasDetail">
                     <span class="jh-input-label mr-2"><span style="color: red">*</span>税率</span>
                     <v-autocomplete
+                      class="jh-v-input" dense filled single-line :rules="validationRules.requireRules"
                       :items="constantObj.invoiceEntryTaxRate"
-                      single-line dense outlined hide-details
+                      hide-details
                       @change="doUiAction('calcInvoiceTotalTax')"
                       v-model="addItem.invoiceTotalTaxRate">
                     </v-autocomplete>
                   </v-col>
-                  <v-col cols="12" sm="12" md="4" class="d-flex align-center">
+                  <v-col cols="12" sm="12" md="4">
                     <span class="jh-input-label mr-2"><span style="color: red">*</span>税额</span>
-                    <v-text-field dense outlined hide-details single-line v-model="addItem.invoiceTotalTaxAmount"></v-text-field>
+                    <v-text-field class="jh-v-input" dense filled single-line :rules="validationRules.requireRules" v-model="addItem.invoiceTotalTaxAmount"></v-text-field>
                   </v-col>
-                  <v-col cols="12" sm="12" md="4" class="d-flex align-center">
+                  <v-col cols="12" sm="12" md="4">
                     <span class="jh-input-label mr-2"><span style="color: red">*</span>价税合计</span>
-                    <v-text-field dense outlined hide-details single-line disabled v-model="addItem.invoiceTotalPriceAndTaxAmount"></v-text-field>
+                    <v-text-field class="jh-v-input" dense filled single-line :rules="validationRules.requireRules" disabled v-model="addItem.invoiceTotalPriceAndTaxAmount"></v-text-field>
                   </v-col>
                 </v-row>
                 <v-row class="px-4 ml-0 mt-10" v-if="addItem.invoiceHasDetail">
@@ -415,30 +416,37 @@ SQL END! -->
               <v-card v-for="(item, index) of createVoucherItemListClone" :key="item.invoiceId" class="my-3 d-flex" style="overflow: hidden">
                 <div style="max-width: 300px; min-width: 300px; border-right: 1px solid #EEEEEE">
                   <div class="invoiceCreateCardMinTitle py-2 px-4" style="line-height: 33px">{{item.invoiceDataType}} {{item.invoiceNumber}}</div>
-                  <div class="py-2 px-4">开票日期：{{item.invoiceTime}}</div>
-                  <div class="py-2 px-4">业务类型：{{item.invoiceTemplateName}}</div>
-                  <div class="py-2 px-4">金额：{{item.invoiceTotalPriceAmount}}</div>
-                  <div class="py-2 px-4">税额：{{item.invoiceTotalTaxAmount}}</div>
+                  
+                  <div class="px-4">
+                    <div class="py-2">开票日期：{{item.invoiceTime}}</div>
+                    <v-divider></v-divider>
+                    <div class="py-2">业务类型：{{item.invoiceTemplateName}}</div>
+                    <v-divider></v-divider>
+                    <div class="py-2">金额：{{item.invoiceTotalPriceAmount}}</div>
+                    <v-divider></v-divider>
+                    <div class="py-2">税额：{{item.invoiceTotalTaxAmount}}</div>
+                  </div>
                 </div>
                 <div style="flex: 1">
                   <div class="invoiceCreateCardMinTitle py-2 px-4 d-flex align-center">
-                    <span>凭证字-</span>
-                    <div style="width: 80px; display: inline-block; ">
+                    <span class="mt-2">凭证字-</span>
+                    <div class="ml-1" style="width: 80px; ">
                       <v-select :rules=validationRules.requireRules
-                                dense outlined hide-details single-line
+                                dense single-line
                                 class="jh-v-input bg-white"
                                 :items="constantObj.voucherName"
+                                hide-actions hide-controls hide-details
                                 :menu-props="{ button: true, offsetY: true }"
                                 v-model="item.voucherName"></v-select>
                     </div>
-                    <div style="width: 50px; display: inline-block">
-                      <v-text-field class="jh-v-input bg-white" dense outlined hide-details single-line type="number" min="0" v-model="item.voucherNumber"></v-text-field>
+                    <div class="ml-1" style="width: 50px;">
+                      <v-text-field hide-actions hide-controls hide-details class="jh-v-input bg-white" dense single-line type="number" min="0" v-model="item.voucherNumber"></v-text-field>
                     </div>
-                    <span>号</span>
+                    <span class="mt-2">号</span>
                     <v-spacer></v-spacer>
 
-                    <span>日期-</span>
-                    <div style="width: 150px; display: inline-block">
+                    <span class="mt-1">日期-</span>
+                    <div style="width: 150px;">
                       <v-menu
                         v-model="item.menuShown"
                         :close-on-content-click="false"

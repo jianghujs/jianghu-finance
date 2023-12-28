@@ -19,7 +19,7 @@
           </div>
         </v-col>
         <!-- 搜索条件表单 >>>>>>>> -->
-        <v-col cols="12" xs="12" sm="12" md="8" xl="9">
+        <!-- <v-col cols="12" xs="12" sm="12" md="8" xl="9">
           <v-row class="jh-backend-form-container justify-end ma-0 py-1 pb-xs-2">
             <v-col cols="12" xs="6" sm="6" md="4" xl="3" class="pa-xs-0 pb-2 pl-1">
               <v-select v-model="serverSearchInput.appaStatus" color="success" prefix="账套状态：" class="jh-v-input bg-white" :items="constantObj.appaStatus" dense filled single-line></v-select>
@@ -28,7 +28,7 @@
               查询
             </v-btn>
           </v-row>
-        </v-col>
+        </v-col> -->
         <!-- <<<<<<<< 搜索条件表单 -->
       </v-row>
     </div>
@@ -42,6 +42,17 @@
           <v-btn color="success" class="elevation-0 mr-2" @click="doUiAction('startCreateItem')" small>新增账套</v-btn>
           <v-btn v-if="isAdmin" color="success" class="elevation-0 mr-2" @click="doUiAction('updateAppAccountData')" small>账套数据更新</v-btn>
           <v-spacer></v-spacer>
+
+          <v-switch
+            class="jh-v-input mt-0 mr-2"
+            v-model="serverSearchInput.appaStatus"
+            label="显示启用账套"
+            true-value="账套启用"
+            false-value="账套停用"
+            hide-details
+            @change="doUiAction('getTableData')"
+            dense filled single-line>
+          </v-switch>
           <!-- 搜索过滤 -->
           <v-col cols="12" xs="8" sm="4" md="3" xl="2" class="pa-0">
             <v-text-field color="success" v-model="searchInput" prefix="搜索：" class="jh-v-input" dense filled single-line></v-text-field>
@@ -118,8 +129,7 @@
         <v-form ref="createForm" lazy-validation>
           <!-- 抽屉表单 -->
           <!-- <v-text-field class="jh-v-input" dense single-line filled v-model="createItem.xxxId" :rules="validationRules.requireRules"></v-text-field> -->
-          <v-row class="mt-0 px-4">
-             
+          <v-row class="mt-0 px-4 pt-3">
             <v-col cols="12" sm="12" md="4">
               <span class="jh-input-label">账套ID(设置后不可修改)</span>
               <v-text-field :rules="validationRules.requireRules" class="jh-v-input" placeholder="公司名缩写" dense single-line filled v-model="createItem.appaId"></v-text-field>
@@ -131,15 +141,11 @@
             </v-col>
              
             <v-col cols="12" class="pa-0"></v-col>
-
             <v-col cols="12" sm="12" md="4">
-              <span class="jh-input-label">账套启用年月
-                
-
-              </span>
+              <span class="jh-input-label">账套启用年月</span>
               <v-menu transition="scale-transition" offset-y min-width="auto">
                 <template v-slot:activator="{ on, attrs }">
-                  <v-text-field :rules="validationRules.requireRules" dense single-line filled v-model="createItem.periodIdStart" readonly v-bind="attrs" v-on="on"></v-text-field>
+                  <v-text-field class="jh-v-input" :rules="validationRules.requireRules" dense single-line filled v-model="createItem.periodIdStart" readonly v-bind="attrs" v-on="on"></v-text-field>
                 </template>
                 <v-date-picker locale="zh" v-model="createItem.periodIdStart" type="month"></v-date-picker>
               </v-menu>
@@ -511,7 +517,7 @@
       isTableZebraLineShown: true,
       validationRules: {
         requireRules: [
-          v => !!v || 'This is required',
+          v => !!v || '必填',
         ],
       },
       // 下拉选项

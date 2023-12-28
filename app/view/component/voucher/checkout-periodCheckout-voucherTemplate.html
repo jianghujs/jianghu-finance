@@ -38,7 +38,7 @@
               <template v-slot:item.amount="{ item }">
                 <span v-if="item.voucherTemplateName === '结转损益-本期'">利润:</span>
                 <span v-if="item.voucherTemplateName === '计提地税'">地税:</span>
-                <a>{{ item.voucherNew.amountSum }}</a>
+                <span>{{ item.voucherNew.amountSum }}</span>
               </template>               
               <template v-slot:item.voucher="{ item }">
                 <voucher-paper :voucher-id="item.voucherOld.voucher.voucherId" readonly></voucher-paper>
@@ -165,8 +165,8 @@
           </v-card-text>
         </v-form>
         <v-card-actions class="justify-end pb-4">
+          <v-btn class="mr-2" @click="isEditDrawerShow = false"><v-icon size="14">mdi-close</v-icon>取消</v-btn>
           <v-btn color="success" @click="doUiAction('updateItem')"><v-icon size="14">mdi-content-save-check-outline</v-icon>保存</v-btn>
-          <v-btn class="ml-2" @click="isEditDrawerShow = false"><v-icon size="14">mdi-close</v-icon>取消</v-btn>
         </v-card-actions>
       </v-card>
     </template>

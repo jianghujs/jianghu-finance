@@ -136,10 +136,10 @@ SQL END! -->
                         :width="key.width">
                       <template v-if="key.value === 'action'">
                         <v-checkbox
-                          class="ma-0"
+                          class="ma-0 jh-v-input"
                           hide-details
                           v-model="tableAllSelected"
-                          label=""
+                          dense filled single-line
                         ></v-checkbox>
                       </template>
                       <template v-else>{{key.text}}</template>
@@ -1362,7 +1362,7 @@ new Vue({
   }
 
   body .salaryTable.v-data-table--fixed-header thead th {
-    border: 1px solid #cccccc !important;
+    /* border: 1px solid #cccccc !important; */
   }
 
   .salaryTable {

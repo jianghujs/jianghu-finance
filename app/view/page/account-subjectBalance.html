@@ -38,7 +38,7 @@
 
         <!-- 页面主要内容 -->
           <v-card class="rounded-lg">
-            <v-row class="ma-0 pa-4">
+            <v-row class="ma-0 pa-4 d-flex align-center">
               <v-col cols="12" xs="4" sm="4" md="4" xl="4" class="pa-0">
                 <v-btn class="elevation-0 mr-2 " color="primary" small outlined @click="doUiAction('exportExcel')">
                   <v-icon size="14">mdi-export-variant</v-icon>
@@ -52,15 +52,14 @@
 
               <v-spacer></v-spacer>
 
-              <v-col cols="12" xs="4" sm="3" md="2" xl="2" class="pa-0">
-                <v-select
-                  class="jh-v-input"
-                  v-model="isShownInput"
-                  :items="constantObj.isShown"
-                  prefix="科目显示设置："
-                  dense filled single-line>
-                </v-select>
-              </v-col>
+              <v-switch
+                class="jh-v-input mt-0"
+                v-model="isShownInput"
+                :items="constantObj.isShown"
+                label="显示科目"
+                hide-details
+                dense filled single-line>
+              </v-switch>
               <v-col cols="12" xs="12" sm="4" md="3" xl="2" class="pa-0 pl-md-2 pr-0 mt-2 mt-md-0">
                 <v-text-field v-model="searchInput" prefix="搜索：" class="jh-v-input" dense filled single-line></v-text-field>
               </v-col>
@@ -110,6 +109,9 @@
               </template> -->
               <!-- 处理显示列 -->
               <template v-slot:item.subjectTag="{ item }"></template>
+              <template v-slot:item.isShown="{item}">
+                <v-icon>{{item.isShown == '显示' ? 'mdi-check' : 'mdi-close'}}</v-icon>
+              </template>
 
               <template v-slot:item.action="{ item }">
                   <template v-if="!isMobile">
@@ -154,6 +156,8 @@
               <template v-slot:item.startAmount="{item}">
                 <span>{{ (item.startAmount) | formatMoney}}</span>
               </template>
+              
+              
               <template v-slot:item.occurDebit="{item}">
                 <span>{{item.occurDebit | formatMoney}}</span>
               </template>
@@ -281,7 +285,7 @@
       tableDataFromBackend: [],
       headers: [
         // { text: "", value: "data-table-expand", width: 50, class: 'fixed', cellClass: 'fixed' },
-        {text: "科目编码", value: "subjectId", width: window.innerWidth > 500 ? 50 : 50, class: 'fixed', cellClass: 'fixed'}, 
+        {text: "科目编码", value: "subjectId", width: window.innerWidth > 500 ? 150 : 50, class: 'fixed', cellClass: 'fixed'}, 
         {text: "科目名称", value: "subjectName", width: window.innerWidth > 500 ? 150 : 100, class: 'fixed', cellClass: 'fixed'}, 
         { text: "科目显示", value: "isShown", align: 'center', width: 80 },
         { text: "余额方向", value: "subjectBalanceDirection", align: 'center', width: 80 },

@@ -15,10 +15,15 @@
       max-width="80%"
     >
       <v-card>
-        <v-card-title class="text-h5 justify-center">
-          记账凭证
-          <v-img class="jh-paid-img" max-width="80" height="50" :src="`/<$ ctx.app.config.appId $>/public/icon/paid.png`" class="d-inline-block" >
+        <v-card-title class="text-h5 justify-center d-flex justify-content-between">
+          <div style="flex: 1" class="text-center">
+            记账凭证
+            <v-img class="jh-paid-img" max-width="80" height="50" :src="`/<$ ctx.app.config.appId $>/public/icon/paid.png`" class="d-inline-block" >
           </v-img>
+          </div>
+          <v-btn @click="isVoucherDialogShown=false" icon>
+            <v-icon size="30">mdi-close</v-icon>
+          </v-btn>
         </v-card-title>
         <v-card-text>
           <v-skeleton-loader
@@ -34,7 +39,7 @@
                   class="enhancer-voucher-char white"
                   :items="constantObj.voucherName" 
                   :menu-props="{ button: true, offsetY: true }"
-                  :readonly="readonly"
+                  :disabled="readonly"
                   single-line v-model="editItem['voucherName']"></v-select>
                 <input v-model="editItem.voucherNumber" :disabled="readonly" class="enhancer-voucher-no ui-widget-content white" type="number" min="0" value="1">
                 号
@@ -57,7 +62,7 @@
                       single-line
                       v-model="editItem['voucherAt']"
                       label=""
-                      readonly
+                      :disabled="readonly"
                       v-bind="attrs"
                       v-on="on"
                     ></v-text-field>
@@ -314,5 +319,8 @@
     position: absolute;
     right: 250px;
     top: 20px;
+  }
+  input[disabled],textarea[disabled] {
+    color: rgba(0, 0, 0, .28) !important;
   }
 </style>

@@ -79,7 +79,7 @@
                     <td>
                       <span style="width:15px; display: inline-block;">{{item.formulaCount || ''}}</span>
                       <v-icon v-if="item.editable === '是'" small @click="doUiAction('startEditFormula', {item})">
-                        mdi-clipboard-edit-outline
+                        mdi-square-edit-outline
                       </v-icon>
                     </td>  
                     <td v-if="showItemStartAmountPeriod">
@@ -154,7 +154,7 @@
                     <td>
                       <span style="width:15px; display: inline-block;">{{item.formulaCount2 || ''}}</span>
                       <v-icon v-if="item.editable2 === '是'" small @click="doUiAction('startEditFormula', {item: item.item2})">
-                        mdi-clipboard-edit-outline
+                        mdi-square-edit-outline
                       </v-icon>
                     </td>  
                     <td v-if="showItemStartAmountPeriod">

@@ -104,11 +104,11 @@
               <!-- 处理显示列 -->
               <template v-slot:item.periodId="{ item }">
                 {{ item.periodId }} 
-                <v-chip x-small v-if="item.isPeriodStart === '是'" color="#fb8c00" text-color="white"> 初始会计期间 </v-chip>
-                <v-chip x-small v-if="item.isCheckout === '待结账'" color="green" text-color="white"> 当前会计期间 </v-chip>
+                <v-chip small v-if="item.isPeriodStart === '是'" color="#fb8c00" text-color="white"> 初始会计期间 </v-chip>
+                <v-chip small v-if="item.isCheckout === '待结账'" color="green" text-color="white"> 当前会计期间 </v-chip>
               </template>
               <template v-slot:item.isCheckout="{ item }">
-                <v-chip :color="getStatusColor(item.isCheckout)" x-small> {{item.isCheckout}} </v-chip>
+                <v-chip :color="getStatusColor(item.isCheckout)" small> {{item.isCheckout}} </v-chip>
               </template>
               <!-- 表格底部右侧功能按钮 -->
               <!-- <template v-slot:footer.prepend>
@@ -337,7 +337,7 @@
                                     <v-icon small>mdi-help-circle</v-icon>
                                   </v-btn>
                                 </span>
-                                <span v-if="checkResult.periodStartAmount == 0" class="green--text">平</span>
+                                <v-chip v-if="checkResult.periodStartAmount == 0" label small color="primary">平</v-chip>
                               </td>
                             </tr>
                             <tr v-if="currentPeriod.isPeriodStart === '是'">
@@ -365,7 +365,7 @@
                                     <v-icon small>mdi-help-circle</v-icon>
                                   </v-btn>
                                 </span>
-                                <span v-if="checkResult.occurAmountYear == 0" class="green--text">平</span>
+                                <v-chip v-if="checkResult.occurAmountYear == 0" color="primary" label small>平</v-chip>
                               </td>
                             </tr>
                             <tr>
@@ -381,7 +381,7 @@
                                     <v-icon small>mdi-help-circle</v-icon>
                                   </v-btn>
                                 </span>
-                                <span v-if="checkResult.occurAmount == 0" class="green--text">平</span>
+                                <v-chip v-if="checkResult.occurAmount == 0"  color="primary" label small>平</v-chip>
                               </td>
                             </tr>
                             
@@ -410,7 +410,7 @@
                                     <v-icon small>mdi-help-circle</v-icon>
                                   </v-btn>
                                 </span>
-                                <span v-if="checkResult.assetLiabilityTotalDiff == 0" class="green--text">平</span>
+                                <v-chip v-if="checkResult.assetLiabilityTotalDiff == 0"  color="primary" label small>平</v-chip>
                               </td>
                             </tr>
 

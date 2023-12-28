@@ -75,7 +75,7 @@
                     :loading="isTableLoading"
                     checkbox-color="success"
                     :class="{'zebraLine': isTableZebraLineShown }"
-                    class="jh-fixed-table-height elevation-0 mt-0 mb-xs-4 pa-2">
+                    class="jh-fixed-table-height elevation-0 mt-0 mb-xs-4">
                     <!-- 处理显示列 -->
                     <template v-slot:item.voucherId="{item}">
                       <voucher-paper :voucher-id="item.voucherId" :currentPeriodId="currentPeriodId" readonly>
@@ -154,6 +154,7 @@
 {% include 'component/voucher/voucherPaper.html' %}
 {% include 'common/vueFilters.html' %}
 {% include 'common/excelUtil.html' %}
+{% include 'common/constantUtil.html' %}
 
 <script type="module">
 new Vue({
@@ -176,8 +177,7 @@ new Vue({
     ],
     
     // 下拉选项
-    constantObj: {
-    },
+    constantObj: constantObj,
     // 表格相关数据
     isTableZebraLineMenuShown: false,
     tableZebraLineMenuPosition: {x: null, y: null},
@@ -187,8 +187,6 @@ new Vue({
       requireRules: [
         v => !!v || '必填',
       ],
-    },
-    constantObj: {
     },
 
     serverSearchInput: {

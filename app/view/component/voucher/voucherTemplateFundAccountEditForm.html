@@ -16,7 +16,10 @@
       </v-col>
       <v-col cols="6">
         <span class="jh-input-label">收支类别</span>
-        <v-select v-model="editItem.voucherTemplateConfig.incomeExpendType" color="success" class="jh-v-input" :items="constantObj.incomeExpendType" dense filled single-line :rules="validationRules.requireRules"></v-select>
+        <v-radio-group hide-controls class="jh-v-input mt-0" hide-details hide-actions v-model="editItem.voucherTemplateConfig.incomeExpendType" row>
+          <v-radio label="收入" value="收入" ></v-radio>
+          <v-radio label="支出" value="支出"></v-radio>
+        </v-radio-group>
       </v-col>
 
       <v-col cols="12">

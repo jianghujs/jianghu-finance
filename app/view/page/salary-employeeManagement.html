@@ -43,8 +43,7 @@ SQL END! -->
         <!-- 页面主要内容 -->
         <v-container class="fullScreen d-flex flex-column pa-xs-0 pa-0">
           <v-card class="rounded-lg">
-            <v-row class="ma-0 pa-4 align-center">
-
+            <v-row class="ma-0 px-4 align-center">
               <v-col cols="12" xs="4" sm="4" md="4" xl="4" class="pa-0">
                 <v-btn class="elevation-0 mr-2" color="primary" small @click="doUiAction('startCreateItem')">
                   <v-icon size="14">mdi-plus</v-icon>
@@ -229,7 +228,7 @@ SQL END! -->
                 </v-row>
                 <v-row class="mt-0 px-4">
                   <v-col cols="12" sm="12" md="4" v-for="item of baseFormFields">
-                    <span class="jh-input-label">{{item.text}}</span>
+                    <span class="jh-input-label"><span v-if="item.required" class="red--text">*</span>{{item.text}}</span>
                     <template v-if="item.formType === 'datePick'">
                       <v-menu
                         v-model="item['menuShown']"
@@ -240,7 +239,7 @@ SQL END! -->
                         min-width="auto"
                       >
                         <template v-slot:activator="{ on, attrs }">
-                          <v-text-field class="jh-v-input" :class="{'required': item.required}" readonly v-bind="attrs" v-on="on" dense filled single-line v-model="addItem[item.value]"
+                          <v-text-field class="jh-v-input" readonly v-bind="attrs" v-on="on" dense filled single-line v-model="addItem[item.value]"
                                         :rules="item.required ? validationRules.requireRules : []"></v-text-field>
                         </template>
                         <v-date-picker
@@ -251,9 +250,9 @@ SQL END! -->
                         ></v-date-picker>
                       </v-menu>
                     </template>
-                    <v-autocomplete v-else-if="item.formType === 'select'" class="jh-v-input" :class="{'required': item.required}" dense filled single-line hide-details :items="constantObj[item.value]"
+                    <v-autocomplete v-else-if="item.formType === 'select'" class="jh-v-input" dense filled single-line hide-details :items="constantObj[item.value]"
                               :rules="item.required ? validationRules.requireRules : []" v-model="addItem[item.value]"></v-autocomplete>
-                    <v-text-field v-else class="jh-v-input " :class="{'required': item.required}" dense filled single-line v-model="addItem[item.value]" :readonly="item.readonly"
+                    <v-text-field v-else class="jh-v-input " dense filled single-line v-model="addItem[item.value]" :readonly="item.readonly"
                                   :rules="item.required ? validationRules.requireRules : []" @input="onFieldChange($event, item.value)"></v-text-field>
                   </v-col>
                 </v-row>
@@ -262,7 +261,7 @@ SQL END! -->
                 </v-row>
                 <v-row class="px-4 ml-0 pl-1">
                   <v-col cols="12" sm="12" md="12" class="d-flex align-center">
-                    <span class="jh-input-label mr-2"><span style="color: red">*</span>是否缴纳五险一金</span>
+                    <span class="jh-input-label mr-2"><span class="red--text">*</span>是否缴纳五险一金</span>
                     <v-radio-group
                       class="mt-0 pt-0"
                       hide-details
@@ -280,7 +279,7 @@ SQL END! -->
                       <thead>
                       <tr>
                         <th class="text-left" v-for="key in memberInsuranceHeader" :class="key.cellClass" :width="key.width">
-                          <span v-if="key.required" style="color: red">*</span>{{key.text}}
+                          <span v-if="key.required" class="red--text">*</span>{{key.text}}
                         </th>
                       </tr>
                       </thead>

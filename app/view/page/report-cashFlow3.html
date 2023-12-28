@@ -86,19 +86,6 @@
                           <span :title="`${item.itemId}.${item.itemName}  ${item.computeFormula||''}`" class="item-name" :style="{'margin-left': (item.level * 20) + 'px'}">{{item.itemName}}</span>
                         </td>  
                         <td >
-                          <v-menu :close-on-content-click="false" v-if="item.id==showFormulaId" offset-x location="end">
-                            <template v-slot:activator="{ on, attrs }">
-                              <v-icon v-bind="attrs" v-on="on" color="success" size="16">mdi-equal-box</v-icon>
-                            </template>
-                      
-                            <div class="pa-2" @mouseleave="showFormulaId=null">
-                              <p class="pa-0 ma-0">公式：{{item.formulaListStr2 || item.computeFormula}}</p>
-                              <p class="pa-0 ma-0 mb-1">{{item.itemName}}(报表底稿，{{item.itemAmountPeriod | formatMoney2}})</p>
-                              <p class="pa-0 ma-0" v-for="formula in item.formulaList">
-                                {{formula.countDirection}}{{formula.formulaName}}({{formula.itemAmountPeriodDesc}}，{{formula.itemAmountPeriod | formatMoney2}})
-                              </p>
-                            </div>
-                          </v-menu>
                           <span class="float-right">{{item.itemAmountPeriod | formatMoney}}</span>
                         </td>  
                         <td>
@@ -166,6 +153,7 @@
               mobile-breakpoint="0"
               :sort-desc="true"
               :loading="isTableLoading" checkbox-color="success"
+              :class="{'zebraLine': isTableZebraLineShown }"
               class="jh-fixed-table-height elevation-0 mt-0 mb-xs-4 ma-4">
               <template v-slot:header.itemAmountMidYear="{ header }">
                 1月-{{ startPeriodObj.periodMonth-1 }}月数-累计金额
@@ -247,8 +235,8 @@
       isTableLoading: true,
       tableDataFromBackend: [],
       headers: [
-        { text: "行次", value: "row", sortable: false, width: 20 },
-        { text: "项目", value: "itemName", sortable: false },
+        { text: "行次", value: "row", align: 'start', sortable: false, width: 20 },
+        { text: "项目", value: "itemName", align: 'start', sortable: false },
         { text: "本期数", value: "itemAmountPeriod", align: 'end', sortable: false, width: 150 },
         { text: "本年数", value: "itemAmountYear", align: 'end', sortable: false, width: 150 },
       ],
@@ -408,6 +396,18 @@
     text-overflow: ellipsis;
     white-space: nowrap;
     overflow: hidden;
+  }
+  .v-data-table>.v-data-table__wrapper>table>tbody>tr>td:first-child, .v-data-table>.v-data-table__wrapper>table>tfoot>tr>td:first-child, .v-data-table>.v-data-table__wrapper>table>thead>tr>th:first-child {
+    padding-left: 8px !important;
+  }
+  .v-treeview-node__level {
+    width: 0;
+  }
+  .v-treeview-node__root {
+    padding-left: 0 !important;
+  }
+  .v-treeview-node__content {
+    margin-left: 0;
   }
 </style>
 {% endblock %}

@@ -35,7 +35,7 @@
             <td>
               <v-autocomplete :items="subjectList.filter(row => row.isShown == '显示')" item-text="subjectIdLabel"
                 item-value="subjectId" single-line
-                :readonly="readonly" v-model="item.subjectId">
+                :disabled="readonly" v-model="item.subjectId">
               </v-autocomplete>
             </td>
             <td>

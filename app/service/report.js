@@ -127,10 +127,11 @@ const calculateOccurAmountByVoucherList = (voucherList, subjectBalanceDirection)
 
 const calculateSumByFormulaList = (formulaList, key) => {
   if (!formulaList || formulaList.length == 0) { return null; };
-  return formulaList.reduce((sum, formula) => {
+  const sum = formulaList.reduce((sum, formula) => {
     if (formula.countDirection === '+') { return sum + formula[key]; };
     if (formula.countDirection === '-') { return sum - formula[key]; };
   }, 0)
+  return parseFloat(sum.toFixed(2));
 }
 
 /**

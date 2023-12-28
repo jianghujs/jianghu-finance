@@ -107,11 +107,9 @@ SQL END!-->
                             <span role="button" class="success--text jh-font-size-3 pr-2" v-if="editLineActiveMap[item.lineId]" text color="green" @click="doUiAction('createOrUpdateItem', item)">
                               <v-icon class="success--text" size="14">mdi-content-save-check</v-icon>
                               提交 </span>
-                            <span role="button" class=" jh-font-size-3 pr-2" v-if="editLineActiveMap[item.lineId]" text color="green" @click="doUiAction('cancelEntryTableItem', item, index)" > 
-                              <v-icon  class="" size="14">mdi-close</v-icon>
-                              取消 </span>
-                            <span role="button" class="blue--text jh-font-size-3 pr-2" text color="blue" @click="addEntryTableItem(index)" > 
-                              <v-icon  class="blue--text" size="14">mdi-plus</v-icon>
+                        
+                            <span role="button" class="success--text jh-font-size-3 pr-2" text color="success" @click="addEntryTableItem(index)" > 
+                              <v-icon  class="success--text" size="14">mdi-plus</v-icon>
                               插入 </span>
                             <span role="button" class="red--text jh-font-size-3 pr-2" v-if="tableData.length > 1" text color="error" @click="doUiAction('deleteItem', item, index)" > 
                               <v-icon  class="red--text" size="14">mdi-delete</v-icon>
@@ -127,9 +125,7 @@ SQL END!-->
                             <v-list-item v-if="editLineActiveMap[item.lineId]" @click="doUiAction('createOrUpdateItem', item)">
                               <v-list-item-title><v-icon size="14">mdi-content-save-check-outline</v-icon>提交</v-list-item-title>
                             </v-list-item>
-                            <v-list-item v-if="editLineActiveMap[item.lineId]" @click="doUiAction('cancelEntryTableItem', item, index)">
-                              <v-list-item-title><v-icon size="14">mdi-close</v-icon>取消</v-list-item-title>
-                            </v-list-item>
+                   
                             <v-list-item @click="addEntryTableItem(index)">
                               <v-list-item-title>插入</v-list-item-title>
                             </v-list-item>
@@ -335,7 +331,7 @@ SQL END!-->
       isTableZebraLineShown: true,
       validationRules: {
         requireRules: [
-          v => !!v || 'This is required',
+          v => !!v || '必填',
         ],
         voucherEntryRules: [
           v => v.length > 0 || '姓名必须少于10个字符',
@@ -1056,5 +1052,7 @@ SQL END!-->
 </script>
 
 <style scoped>
-
+.v-text-field--outlined fieldset {
+  border: 1px solid #cccccc;
+}
 </style>{% endblock %}

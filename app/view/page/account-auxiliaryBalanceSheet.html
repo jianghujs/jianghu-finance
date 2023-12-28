@@ -338,7 +338,10 @@ new Vue({
         }
       });
       
-      const { rows } = result.data.appData.resultData;
+      let { rows } = result.data.appData.resultData;
+
+      // 过滤assistName为空
+      rows = rows.filter(row => row.assistName);
       this.tableDataFromBackend = rows;
       this.isTableLoading = false;
     },

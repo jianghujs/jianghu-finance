@@ -31,7 +31,7 @@
               <v-col cols="12" md="2">
                 <v-card>
                   <v-treeview :active="selectedPeriodId" @update:active="doUiAction('refreshTableData', $event)" style="height:90vh; overflow-x: hidden;"
-                  :open="periodListYear.map(item=> item.id)" :search="searchInput" rounded hoverable activatable dense item-key="id" :items="periodListYear"
+                  :open="periodListYear.map(item=> item.id)" :search="searchInput" hoverable activatable dense item-key="id" :items="periodListYear"
                   color="primary">
                   <template v-slot:prepend="{ item, open }">
                     <v-icon v-if="!item.children">
@@ -65,7 +65,7 @@
                   <v-data-table v-else fixed-header :headers="headers" :items="tableData"
                     :footer-props="{ itemsPerPageOptions: [20, 50, -1], itemsPerPageText: '每页行数', itemsPerPageAllText: '所有'}"
                     :items-per-page="-1" mobile-breakpoint="0" :loading="isTableLoading" checkbox-color="success"
-                    :class="{'zebraLine': isTableZebraLineShown }" class="jh-fixed-table-height elevation-0 mt-0 mb-xs-4 pa-2">
+                    :class="{'zebraLine': isTableZebraLineShown }" class="jh-fixed-table-height elevation-0 mt-0 mb-xs-4">
                     <template v-slot:item.fileSize="{ item }">
                       {{item.fileSize}}k
                       </template>

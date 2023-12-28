@@ -185,8 +185,8 @@
 
               </v-form>
               <v-card-actions class="justify-end pb-4">
+                <v-btn class="mr-2" @click="isEditDrawerShow = false"><v-icon size="14">mdi-close</v-icon>取消</v-btn>
                 <v-btn color="success" @click="doUiAction('updateItem')"><v-icon size="14">mdi-content-save-check-outline</v-icon>保存</v-btn>
-                <v-btn class="ml-2" @click="isEditDrawerShow = false"><v-icon size="14">mdi-close</v-icon>取消</v-btn>
               </v-card-actions>
             </v-card>
           </template>
@@ -216,8 +216,8 @@
                 </v-card-text>
               </v-form>
               <v-card-actions class="justify-end pb-4">
+                <v-btn class="mr-2" @click="isCreateDrawerShow = false"><v-icon size="14">mdi-close</v-icon>取消</v-btn>
                 <v-btn color="success" @click="doUiAction('doCreateItem')"><v-icon size="14">mdi-content-save-check-outline</v-icon>保存</v-btn>
-                <v-btn class="ml-2" @click="isCreateDrawerShow = false"><v-icon size="14">mdi-close</v-icon>取消</v-btn>
               </v-card-actions>
             </v-card>
           </template>

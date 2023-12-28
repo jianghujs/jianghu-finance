@@ -164,8 +164,8 @@
 
           <!-- 抽屉操作按钮 -->
           <v-row class="justify-end mx-0 mt-8 px-6">
+            <v-btn class="elevation-0 mr-2" @click="isCreateDrawerShown = false" small><v-icon size="14">mdi-close</v-icon>取消</v-btn>
             <v-btn color="success" @click="doUiAction('createItem')" small><v-icon size="14">mdi-content-save-check-outline</v-icon>保存</v-btn>
-            <v-btn class="elevation-0 ml-2" @click="isCreateDrawerShown = false" small><v-icon size="14">mdi-close</v-icon>取消</v-btn>
           </v-row>
         </v-form>
         <!-- 抽屉关闭按钮 -->
@@ -230,8 +230,8 @@
           </v-row>
           <!-- 抽屉操作按钮 -->
           <v-row class="justify-end mx-0 mt-8 px-6">
+            <v-btn class="elevation-0 mr-2" @click="isUpdateDrawerShown = false" small><v-icon size="14">mdi-close</v-icon>取消</v-btn>
             <v-btn color="success" @click="doUiAction('updateItem')" small><v-icon size="14">mdi-content-save-check-outline</v-icon>保存</v-btn>
-            <v-btn class="elevation-0 ml-2" @click="isUpdateDrawerShown = false" small><v-icon size="14">mdi-close</v-icon>取消</v-btn>
           </v-row>
         </v-form>
         <!-- 抽屉关闭按钮 -->
@@ -286,7 +286,7 @@ new Vue({
     isTableZebraLineShown: true,
     validationRules: {
       requireRules: [
-        v => !!v || 'This is required',
+        v => !!v || '必填',
       ],
     },
     // 下拉选项

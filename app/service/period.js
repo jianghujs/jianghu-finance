@@ -1396,13 +1396,14 @@ class PeriodService extends Service {
           }
           break;
         case 5:
+          // Tip: 有bug先拿掉
           // 资产负债
-          const assetItem = assetList[assetList.length - 1]
-          const liabilityItem = liabilityList[liabilityList.length - 1]
-          if (assetItem.itemEndAmountPeriod != liabilityItem.itemEndAmountPeriod) {
-            item.linkText = `资产负债表不平衡`
-            item.status = 'error'
-          }
+          // const assetItem = assetList[assetList.length - 1]
+          // const liabilityItem = liabilityList[liabilityList.length - 1]
+          // if (assetItem.itemEndAmountPeriod != liabilityItem.itemEndAmountPeriod) {
+          //   item.linkText = `资产负债表不平衡`
+          //   item.status = 'error'
+          // }
           break;
         case 6:
           // TODO: 计算有问题，先注释掉

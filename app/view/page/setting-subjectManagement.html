@@ -36,8 +36,7 @@
            
             <v-card class="rounded-lg">
               <v-row class="ma-0 pa-4 align-center">
-
-                <v-col cols="auto" class="d-flex">
+                <v-col cols="auto" class="d-flex pa-0">
                   <v-btn color="success" dark class="elevation-0 mr-2" @click="doUiAction('startCreateItem', {})" small>
                     <v-icon size="14">mdi-plus</v-icon>
                     新增科目</v-btn>
@@ -53,7 +52,7 @@
 
                 <v-spacer></v-spacer>
       
-                <v-col cols="auto" class="mt-2 mt-md-0">
+                <v-col cols="auto" class="mt-2 mt-md-0 pa-0">
                   <v-text-field color="success" v-model="searchInput" prefix="搜索：" class="jh-v-input" dense filled single-line></v-text-field>
                 </v-col>
               </v-row>
@@ -104,7 +103,7 @@
                     <v-menu offset-y>
                       <template v-slot:activator="{ on, attrs }">
                         <span v-bind="attrs" v-on="on" role="button" class="success--text jh-font-size-3">
-                          <v-icon size="14" class="success--text">mdi-chevron-down</v-icon>更多
+                          操作<v-icon size="14" class="success--text">mdi-chevron-down</v-icon>
                         </span>
                       </template>
                       <v-list dense class="pb-0">

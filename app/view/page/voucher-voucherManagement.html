@@ -96,7 +96,7 @@ SQL END! -->
               <voucher-paper :voucher-id="item.voucherId" readonly>
                 <span role="button" class="success--text">
                   {{item.voucherName}}-{{item.voucherNumber}}
-                  <v-chip v-if="item.voucherTemplateName" x-small color="#fb8c00" text-color="white"> {{item.voucherTemplateName}}</v-chip>
+                  <v-chip v-if="item.voucherTemplateName" small color="#fb8c00" text-color="white"> {{item.voucherTemplateName}}</v-chip>
                   
                 </span>
               </voucher-paper>
@@ -139,7 +139,7 @@ SQL END! -->
                 :color="item.voucherFileCount > 0 ? 'green' : 'grey'"
                 x-small
                 >
-                <v-btn x-small
+                <v-btn color="primary" x-small
                   :disabled="item.periodId !== serverSearchInput.period[0].currentPeriodId"
                   @click="doUiAction('startUploadFileItem', {item: item})">
                   上传单据
@@ -169,10 +169,12 @@ SQL END! -->
                     </voucher-paper>
                   </span>
                 </span>
-  
+                <span role="button" class="error--text jh-font-size-3 pr-2" @click="doUiAction('doDeleteItem', {item: item})">
+                  <v-icon size="14" class="error--text">mdi-trash-can-outline</v-icon>删除
+                </span>
                 <v-menu offset-y>
                   <template v-slot:activator="{ on, attrs }">
-                    <span role="button" class="success--text font-weight-medium font-size-2"
+                    <span role="button" class="success--text font-size-2"
                       v-bind="attrs" v-on="on">
                       操作<v-icon size="14" class="success--text">mdi-chevron-down</v-icon>
                     </span>
@@ -190,13 +192,11 @@ SQL END! -->
                   </v-list>
                 </v-menu>
                 
-                <span role="button" class="error--text jh-font-size-3 pr-2" @click="doUiAction('doDeleteItem', {item: item})">
-                  <v-icon size="14" class="error--text">mdi-trash-can-outline</v-icon>删除
-                </span>
+                
               </template>
               <v-menu offset-y v-if="isMobile">
                 <template v-slot:activator="{ on, attrs }">
-                  <span role="button" class="success--text font-weight-medium font-size-2"
+                  <span role="button" class="success--text font-size-2"
                     v-bind="attrs" v-on="on">
                     操作<v-icon size="14" class="success--text">mdi-chevron-down</v-icon>
                   </span>
@@ -441,7 +441,7 @@ SQL END! -->
                 <span class="title">记账凭证</span>
               </div>
               <v-row class="mt-0 px-6">
-                <div class="enhancer-voucher-header">
+                <div class="enhancer-voucher-header px-5">
                   <span class="enhancer-voucher-char-wrap">
                     凭证字
                     <v-select :rules=validationRules.requireRules 
@@ -487,7 +487,7 @@ SQL END! -->
                   </div>
                 </div>
                 <voucher-entry ref="editEntryRef" v-model="voucherEntryList" :subject-list="subjectList" :rules="validationRules.voucherEntryRules"/>
-                <v-row no-gutters class="pt-3 d-flex justify-space-between align-center">
+                <v-row no-gutters class="pt-3 d-flex justify-space-between align-center px-5">
                   <v-col>制单人: {{ username }}</v-col>
   
                   <v-btn
@@ -725,7 +725,7 @@ SQL END! -->
         { text: "借方金额", value: "debit", align: 'end', sortable: false, width: 100 },
         { text: "贷方金额", value: "credit", align: 'end', sortable: false, width: 100 },
         { text: "附单据张数", value: "voucherFileCount", sortable: false, width: 0 },
-        { text: "制单人", value: "voucherAccountant", sortable: false, width: 0 },
+        { text: "制单人", value: "voucherAccountant", sortable: false, width: 80 },
         // Tip: 支持过滤
         { text: "", value: "subjectIdNameListStr", sortable: false, width: 5 },
         { text: "", value: "entryAbstractListStr", sortable: false, width: 5 },
