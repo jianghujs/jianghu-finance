@@ -443,19 +443,42 @@ class SubjectService extends Service {
       periodIdList = periodList.map(period => period.periodId);
     }
 
-    // 查view01_subject_cash_flow对应科目，注入和流出
-    const subjectIds = (await jianghuKnex(tableEnum.subject, this.ctx)
-      .whereRaw('cashFlowInItemId = ? or cashFlowOutItemId = ?', [itemId, itemId])
-      .select())
-      .map(item => item.subjectId)
+    const xianjinSubjectList = await jianghuKnex(tableEnum.subject, this.ctx).where({'cashFlowInItemName':'现金及现金等价物'}).select();
+    const xianjinSubjectIdList = xianjinSubjectList.map(s => s.subjectId);
 
-    // 查凭证view01_voucher_entry
-    const rows = await jianghuKnex(tableEnum.view01_voucher_entry, this.ctx)
-      .whereIn('subjectId', subjectIds)
+    const cashFlowSubjectList = await jianghuKnex(tableEnum.subject, this.ctx).whereRaw('cashFlowInItemId = ? or cashFlowOutItemId = ?', [itemId, itemId]).select();
+    const cashFlowSubjectIdList = cashFlowSubjectList.map(item => item.subjectId);
+
+
+    let rows = await jianghuKnex(tableEnum.view01_voucher_entry, this.ctx)
+      .whereIn('subjectId', cashFlowSubjectIdList)
       .whereIn('periodId', periodIdList)
       .whereRaw(`ifnull(voucherTemplateName,'') not like '结转损益%'`)
-      .select()
+      .select();
 
+    const voucherIdList = rows.map(item => item.voucherId);
+    const voucherEntryList = await jianghuKnex(tableEnum.view01_voucher_entry, this.ctx)
+      .whereIn('voucherId', voucherIdList)
+      .select();
+    const voucherEntryListGroup = _.groupBy(voucherEntryList, 'voucherId');
+    rows = rows.filter(row => {
+      const {voucherId} = row;
+      const rowDirection = row.debit == 0 ? '贷': '借';
+      const entryList = voucherEntryListGroup[voucherId];
+      const xianjinEntry = entryList.find(entry => xianjinSubjectIdList.includes(entry.subjectId));
+      if (!xianjinEntry) { return false; }
+      const xianjinDirection = xianjinEntry.debit == 0 ? '贷': '借';
+      if (rowDirection == xianjinDirection) { return false; }
+      if (rowDirection == '借') {
+        row.debit = row.debit > xianjinEntry.credit ? xianjinEntry.credit : row.debit;
+      }
+      if (rowDirection == '贷') {
+        row.credit = row.credit > xianjinEntry.debit ? xianjinEntry.debit : row.credit;
+      }
+      return true;
+    })  
+
+    // TODO: xianjin科目的 金额< total 时，通过计算定位到 真正的 目标金额
     return { rows }
   }
 }

@@ -88,37 +88,43 @@
                         </td>  
                         <td>{{ item.row | empty }}</td>  
                         <td >
-                          <v-menu :close-on-content-click="false" v-if="item.id==showFormulaId" offset-x location="end">
+                          <v-menu v-if="item.computeFormula && item.id==showFormulaId" :close-on-content-click="false" offset-y="25" location="end">
                             <template v-slot:activator="{ on, attrs }">
                               <v-icon v-bind="attrs" v-on="on" color="success" size="16">mdi-equal-box</v-icon>
                             </template>
                       
                             <div class="pa-2" @mouseleave="showFormulaId=null">
                               <p class="pa-0 ma-0">公式：{{item.formulaListStr2 || item.computeFormula}}</p>
-                              <p class="pa-0 ma-0">{{item.itemName}}(本期数，{{item.itemAmountPeriod | formatMoney2}})</p>
+                              <p class="pa-0 ma-0">{{item.itemAmountPeriod | formatMoney2}}=</p>
                               <p class="pa-0 ma-0" v-for="formula in item.formulaList">
-                                {{formula.countDirection}}{{formula.formulaName}}(本期数，{{formula.itemAmountPeriod | formatMoney2}})
+                                &nbsp;&nbsp;{{formula.countDirection}}{{formula.formulaName}}({{formula.accessRule}}，{{formula.itemAmountPeriod | formatMoney2}})
                               </p>
                             </div>
                           </v-menu>
-                          <span class="float-right">{{item.itemAmountPeriod | formatMoney}}</span>
-                        </td>  
-                        <td>
-                          <v-menu :close-on-content-click="false" v-if="item.id==showFormulaId" offset-x location="end">
+                          <span v-if="item.computeFormula" class="float-right">{{item.itemAmountPeriod | formatMoney}}</span>
+                          <a v-if="!item.computeFormula" class="float-right">
+                            {{item.itemAmountPeriod | formatMoney}}
+                          </a>
+                        </td>
+                        <td >
+                          <v-menu v-if="item.computeFormula && item.id==showFormulaId" :close-on-content-click="false" offset-y="25" location="end">
                             <template v-slot:activator="{ on, attrs }">
                               <v-icon v-bind="attrs" v-on="on" color="success" size="16">mdi-equal-box</v-icon>
                             </template>
                       
                             <div class="pa-2" @mouseleave="showFormulaId=null">
                               <p class="pa-0 ma-0">公式：{{item.formulaListStr2 || item.computeFormula}}</p>
-                              <p class="pa-0 ma-0">{{item.itemName}}(本年数，{{item.itemAmountYear | formatMoney2}})</p>
+                              <p class="pa-0 ma-0">{{item.itemAmountYear | formatMoney2}}=</p>
                               <p class="pa-0 ma-0" v-for="formula in item.formulaList">
-                                {{formula.countDirection}}{{formula.formulaName}}(本年数，{{formula.itemAmountYear | formatMoney2}})
+                                &nbsp;&nbsp;{{formula.countDirection}}{{formula.formulaName}}({{formula.accessRule}}，{{formula.itemAmountYear | formatMoney2}})
                               </p>
                             </div>
                           </v-menu>
-                          <span class="float-right">{{item.itemAmountYear | formatMoney}}</span>
-                        </td>  
+                          <span v-if="item.computeFormula" class="float-right">{{item.itemAmountYear | formatMoney}}</span>
+                          <a v-if="!item.computeFormula" class="float-right">
+                            {{item.itemAmountYear | formatMoney}}
+                          </a>
+                        </td>
                       </tr>  
                     </template> 
 

@@ -502,16 +502,23 @@ class ReportService extends Service {
     return { rows: quarterProfitList };
   }
 
-  async getItemListOfCashFlow3({ periodId }) {
+  async getItemListOfCashFlow3({ periodId, periodIdList }) {
     const { jianghuKnex } = this.app;
-    const financeYear = dayjs(periodId).year();
-    const firstPeriodIdOfFinanceYear = `${financeYear}-00`;
-    const periodStart = await jianghuKnex(tableEnum.period, this.ctx)
-      .where({ financeYear, isPeriodStart: '是' }).first();
-    const periodMonth = periodStart ? dayjs(periodStart.periodId, "YYYY-MM").month() + 1 : null;
+    // Tip: 适配 现金流量表季报
+    let periodIdStart = periodId;
+    let periodIdEnd = periodId;
+    if (!periodId) {
+      periodIdStart = periodIdList[0];
+      periodIdEnd = periodIdList[periodIdList.length - 1];
+    }
+    const financeYear = dayjs(periodIdStart).year();
+
+    // 检查当前是否是 期中启用会计期间
+    const periodStart = await jianghuKnex(tableEnum.period, this.ctx).where({ financeYear, isPeriodStart: '是' }).first();
+    const periodMonth = periodStart ? dayjs(periodIdStart, "YYYY-MM").month() + 1 : null;
       
     const itemList = await jianghuKnex(tableEnum.report_cash_flow_item3, this.ctx).select();
-    const subjectBalancePeriodList = await jianghuKnex(tableEnum.view01_subject_balance_period, this.ctx).where({periodId}).select();
+    const subjectBalancePeriodList = await jianghuKnex(tableEnum.view01_subject_balance_period, this.ctx).where({periodId: periodIdStart}).select();
    
     const subjectCashFlowList = await jianghuKnex(tableEnum.subject, this.ctx).select();
     const cashFlowInItemIdMap = Object.fromEntries(subjectCashFlowList.map(subjectCashFlow => [`${subjectCashFlow.subjectId}`, subjectCashFlow.cashFlowInItemId]));
@@ -521,18 +528,37 @@ class ReportService extends Service {
       .map(subjectCashFlow => {
         return subjectBalancePeriodList.find(sbp => sbp.subjectId == subjectCashFlow.subjectId);
       });
+    const xianjinSubjectIdList = xianjinSubjectBalanceList.map(s => s.subjectId);
 
     const periodDataList = await jianghuKnex(tableEnum.view01_voucher_entry, this.ctx)
-      .where({ periodId })
+      .whereRaw('? <= periodId and periodId <= ?', [periodIdStart, periodIdEnd])
       .whereRaw(`ifnull(voucherTemplateName,'') not like '结转损益%'`)
-      .groupBy('subjectId')
-      .select(jianghuKnex.raw(`subjectId, subjectLabel, subjectBalanceDirection, sum(debit) as debit, sum(credit) credit`));
+      .select(jianghuKnex.raw(`voucherId, subjectId, subjectLabel, subjectBalanceDirection, debit, credit`));
     const yearDataList = await jianghuKnex(tableEnum.view01_voucher_entry, this.ctx)
-      .whereRaw('? <= periodId and periodId <= ?', [`${financeYear}-01`, periodId])
+      .whereRaw('? <= periodId and periodId <= ?', [`${financeYear}-01`, periodIdEnd])
       .whereRaw(`ifnull(voucherTemplateName,'') not like '结转损益%'`)
-      .groupBy('subjectId')
-      .select(jianghuKnex.raw(`subjectId, subjectLabel, subjectBalanceDirection, sum(debit) as debit, sum(credit) credit`));  
-
+      .select(jianghuKnex.raw(`voucherId, subjectId, subjectLabel, subjectBalanceDirection, debit, credit`));  
+    const entryListGroup = _.groupBy(yearDataList, 'voucherId');
+    const entryListFilterFunc = (entryList) =>{
+      const entryListNew = entryList.filter(row => {
+        const {voucherId} = row;
+        const rowDirection = row.debit == 0 ? '贷': '借';
+        const entryList = entryListGroup[voucherId];
+        const xianjinEntry = entryList.find(entry => xianjinSubjectIdList.includes(entry.subjectId));
+        if (!xianjinEntry) { return false; }
+        const xianjinDirection = xianjinEntry.debit == 0 ? '贷': '借';
+        if (rowDirection == xianjinDirection) { return false; }
+        if (rowDirection == '借') {
+          row.debit = row.debit > xianjinEntry.credit ? xianjinEntry.credit : row.debit;
+        }
+        if (rowDirection == '贷') {
+          row.credit = row.credit > xianjinEntry.debit ? xianjinEntry.debit : row.credit;
+        }
+        return true;
+      });
+      return entryListNew;
+    }
+    
     periodDataList.forEach(subjectBalance => {
       subjectBalance.cashFlowInItemId = cashFlowInItemIdMap[subjectBalance.subjectId];
       subjectBalance.cashFlowOutItemId = cashFlowOutItemIdMap[subjectBalance.subjectId];
@@ -546,19 +572,21 @@ class ReportService extends Service {
     const cashFlowInSubjectYearGroup = _.groupBy(yearDataList, 'cashFlowInItemId');
     const cashFlowOutSubjectYearGroup = _.groupBy(yearDataList, 'cashFlowOutItemId');
     itemList.forEach(item => {
-      const cashFlowInSubjectPeriodList = cashFlowInSubjectPeriodGroup[item.itemId] || [];
-      const cashFlowOutSubjectPeriodList = cashFlowOutSubjectPeriodGroup[item.itemId] || [];
-      const cashFlowInSubjectYearList = cashFlowInSubjectYearGroup[item.itemId] || [];
-      const cashFlowOutSubjectYearList = cashFlowOutSubjectYearGroup[item.itemId] || [];
-      
-      // item.itemAmountPeriod = _.sumBy(cashFlowInSubjectPeriodList, (sb) => sb.credit) + _.sumBy(cashFlowOutSubjectPeriodList, (sb) => sb.debit);
-      // item.itemAmountYear = _.sumBy(cashFlowInSubjectYearList, (sb) => sb.credit) + _.sumBy(cashFlowOutSubjectYearList, (sb) => sb.debit);
-      // TODO: 算的还是不对，需要调整
+      const cashFlowInSubjectPeriodList = entryListFilterFunc(cashFlowInSubjectPeriodGroup[item.itemId] || []);
+      const cashFlowOutSubjectPeriodList = entryListFilterFunc(cashFlowOutSubjectPeriodGroup[item.itemId] || []);
+      const cashFlowInSubjectYearList = entryListFilterFunc(cashFlowInSubjectYearGroup[item.itemId] || []);
+      const cashFlowOutSubjectYearList = entryListFilterFunc(cashFlowOutSubjectYearGroup[item.itemId] || []);
       item.itemAmountPeriod = _.sumBy(cashFlowInSubjectPeriodList, (sb) => sb.credit) - _.sumBy(cashFlowOutSubjectPeriodList, (sb) => sb.debit);
       item.itemAmountYear = _.sumBy(cashFlowInSubjectYearList, (sb) => sb.credit) - _.sumBy(cashFlowOutSubjectYearList, (sb) => sb.debit);
+      if(item.itemName.includes("支付的现金")) {
+        item.itemAmountPeriod = -item.itemAmountPeriod;
+        item.itemAmountYear = -item.itemAmountYear;
+      }
       item.itemAmountYear = item.itemAmountYear + (periodMonth > 1 ? item.itemAmountMidYear : 0);
       // Tip: 调试用
-      // if ([1,3,8].indexOf(item.row) > -1) {
+      // if (item.row == 1) {
+      //   // TODO: cashFlowInSubjectPeriodList/cashFlowOutSubjectPeriodList
+      //   //     - 按照期初明细 处理数据
       //   console.log(`>>>>>>>>>>>>>>>>>>>>>>>>${item.row}  ${item.itemName}>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>`);
       //   console.log({ '流入凭证': cashFlowInSubjectPeriodList, '流出凭证': cashFlowOutSubjectPeriodList });
       //   console.log(`>>>>>>>>>>>>>>>>>>>>>>>>`);
@@ -594,15 +622,25 @@ class ReportService extends Service {
       .filter(month => !([1, 2, 4, 5, 7, 8, 10, 11].includes(month) && month != periodLastMonth));
 
     const periodFlowList = [];
-    for (const month of monthFlowList) {
+    const monthGroup = {
+      0: [1, 2, 3],
+      1: [4, 5, 6],
+      2: [7, 8, 9],
+      3: [10, 11, 12],
+    };
+    for (let i = 0; i < monthFlowList.length; i++) {
+      const month = monthFlowList[i];
       const periodId = dayjs().year(financeYear).month(month - 1).format('YYYY-MM');
       if (month < periodFirstMonth) {
         periodFlowList.push({ periodId, rows: [] });
         continue;
       }
-      const { rows } = await this.getItemListOfCashFlow3({ periodId });
+      const monthList = monthGroup[i].filter(m => m <= month);
+      const periodIdList = monthList.map(m => dayjs().year(financeYear).month(m - 1).format('YYYY-MM'));
+      const { rows } = await this.getItemListOfCashFlow3({ periodIdList });
       periodFlowList.push({ periodId, rows });
     }
+    
 
     const quarterFlowList = [];
     for (let i = 0; i < periodFlowList.length; i++) {

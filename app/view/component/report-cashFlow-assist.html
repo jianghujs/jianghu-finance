@@ -9,6 +9,7 @@
         <v-autocomplete v-model="serverSearchInput.computeTime" :items="computeTimeList" class="jh-v-input"
           @change="doUiAction('changeComputeTime', $event)" dense filled single-line></v-autocomplete>
       </v-col>
+      <v-btn class="elevation-0 w-sm-full ml-2" color="success" small @click="doUiAction('refreshTableData')">查询</v-btn>
     </v-row>
     <v-divider class="jh-divider"></v-divider>
 
@@ -22,7 +23,13 @@
                 v-text="item.itemName" />
             </v-list-item-group>
           </v-list> -->
-          <v-treeview @update:active="doUiAction('changeItemId', $event)" style="height:90vh; overflow-x: hidden;" :search="searchInput" hoverable activatable dense :items="assistList"
+
+          <!-- TODO: 显示每个条目的 关联数据个数 -->
+          <v-treeview 
+            :active="selectedItemIds"
+            @update:active="doUiAction('changeItemId', $event)"
+            item-text="name" item-key="id"
+            style="height:90vh; overflow-x: hidden;" :search="searchInput" hoverable activatable dense :items="assistList"
             color="primary">
           </v-treeview>
 
@@ -41,11 +48,11 @@
               <span>{{item.subjectId}} {{item.subjectLabel}}</span>
             </template>
             
-            <template v-slot:item.cashFlowIn="{item}">
-              <span>{{item.cashFlowIn | formatMoney}}</span>
+            <template v-slot:item.cash-flow-in="{item}">
+              <span>{{item.credit | formatMoney}}</span>
             </template>
-            <template v-slot:item.cashFlowOut="{item}">
-              <span>{{item.cashFlowOut | formatMoney}}</span>
+            <template v-slot:item.cash-flow-out="{item}">
+              <span>{{item.debit | formatMoney}}</span>
             </template>
             <!-- 没有数据 -->
             <template v-slot:loading>
@@ -99,16 +106,16 @@
       searchInput: null,
       assistList: [],
       selectedItem: null,
-      selectedItemId: null,
+      selectedItemIds: [],
 
       tableDataFromBackend: [],
       headers: [
         { text: "日期", value: "voucherAt", width: 100, class: 'fixed', cellClass: 'fixed' },
-        { text: "摘要", value: "entryAbstract", width: 180 },
+        { text: "摘要", value: "entryAbstract", width: 150 },
         { text: "凭证字号", value: "voucher-id", width: 100 },
         { text: "科目", value: "subject-id", width: 200 },
-        { text: "流入", value: "cashFlowIn", align: 'end', width: 50 },
-        { text: "流出", value: "cashFlowOut", align: 'end', width: 50 },
+        { text: "流入", value: "cash-flow-in", align: 'end', width: 70 },
+        { text: "流出", value: "cash-flow-out", align: 'end', width: 80 },
       ],
       isTableZebraLineShown: true,
       isTableLoading: false,
@@ -130,16 +137,15 @@
       items: {
         handler(newValue, oldValue) {
           const result = [];
-          newValue.filter(item => item.level != 0 && !item.itemName.includes('：')).forEach((item, index) => {
+          newValue.filter(item => item.level != 0 && !item.computeFormula && item.itemName != '加：期初现金余额').forEach((item, index) => {
             const newObj = { id: item.itemId, name: `${index + 1}.${item.itemName}` };
             result.push(newObj);
           });
           this.assistList = result
           if (result && result.length > 0) {
-            // Bug：选中后 没有高亮
-            this.selectedItemId = result[0].id
-            // Tip：测试代码
-            // this.selectedItemId = result[2].id
+            this.selectedItemIds = [result[0].id]
+            // Tip: 测试代码
+            // this.selectedItemIds = [result[7].id]
             this.doUiAction('refreshTableData');
           }
         },
@@ -155,7 +161,7 @@
             await this.refreshTableData();
             break;
           case 'changeItemId':
-            this.selectedItemId = uiActionData[0];
+            this.selectedItemIds = uiActionData;
             await this.refreshTableData()
             break;
           case 'changeComputeTime':
@@ -175,7 +181,7 @@
               pageId: 'report-cashFlow',
               actionId: 'getSubjectCashflowVoucherList',
               actionData: {
-                itemId: this.selectedItemId,
+                itemId: this.selectedItemIds[0],
                 periodId: this.periodId,
                 periodTimeType: this.selectedItemTimeType,
               },

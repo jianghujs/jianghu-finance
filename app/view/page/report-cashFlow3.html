@@ -86,7 +86,24 @@
                           <span :title="`${item.itemId}.${item.itemName}  ${item.computeFormula||''}`" class="item-name" :style="{'margin-left': (item.level * 20) + 'px'}">{{item.itemName}}</span>
                         </td>  
                         <td >
-                          <span class="float-right">{{item.itemAmountPeriod | formatMoney}}</span>
+                          <v-menu v-if="item.computeFormula && item.id==showFormulaId" :close-on-content-click="false" offset-y="25" location="end">
+                            <template v-slot:activator="{ on, attrs }">
+                              <v-icon v-bind="attrs" v-on="on" color="success" size="16">mdi-equal-box</v-icon>
+                            </template>
+                      
+                            <div class="pa-2" @mouseleave="showFormulaId=null">
+                              <p class="pa-0 ma-0">公式：{{item.formulaListStr2 || item.computeFormula}}</p>
+                              <p class="pa-0 ma-0">{{item.itemAmountPeriod | formatMoney2}}=</p>
+                              <p class="pa-0 ma-0" v-for="formula in item.formulaList">
+                                &nbsp;&nbsp;{{formula.countDirection}}{{formula.formulaName}}({{formula.accessRule}}，{{formula.itemAmountPeriod | formatMoney2}})
+                              </p>
+                            </div>
+                          </v-menu>
+                          <span v-if="item.computeFormula" class="float-right">{{item.itemAmountPeriod | formatMoney}}</span>
+                          
+                          <a v-if="!item.computeFormula" @click="doUiAction('openFormulaDrawer', item.itemId)" class="float-right">
+                            {{item.itemAmountPeriod | formatMoney}}
+                          </a>
                         </td>  
                         <td>
                           <span class="float-right">{{item.itemAmountYear | formatMoney}}</span>
@@ -129,9 +146,12 @@
           </v-container>
 
 
-          <v-navigation-drawer v-if="isDrawerShow" v-model="isDrawerShow" :permanent="isDrawerShow" fixed temporary right width="80%" class="elevation-24">
-            <report-cashFlow-assist :items="tableDataFromBackend" :period-id="serverSearchInput.period.periodId" />
-            <v-btn elevation="0" color="success" fab absolute top left small tile class="drawer-close-float-btn" @click="isDrawerShow = false; doUiAction('refreshTableData');">
+          <v-navigation-drawer v-model="isDrawerShow" :permanent="isDrawerShow" fixed temporary right width="80%" class="elevation-24">
+            <report-cashFlow-assist
+              ref="reportCashFlowAssistRef"
+              :items="tableDataFromBackend" 
+              :period-id="serverSearchInput.period.periodId"/>
+            <v-btn elevation="0" color="success" fab absolute top left small tile class="drawer-close-float-btn" @click="isDrawerShow = false;">
               <v-icon>mdi-close</v-icon>
             </v-btn>
           </v-navigation-drawer>
@@ -288,7 +308,7 @@
             await this.openTableZebraLineMenu(uiActionData);
             break;
           case 'openFormulaDrawer':
-            await this.openFormulaDrawer();
+            await this.openFormulaDrawer(uiActionData);
             break;
           case 'openStartPeriodDrawer':
             await this.openStartPeriodDrawer();
@@ -324,11 +344,14 @@
         this.isTableLoading = false;
 
         this.startPeriodObj.periodMonth = periodMonth;
-        this.startPeriodObj.tableData = rows.filter(item => item.level != 0 && !item.itemName.includes('：'))
+        this.startPeriodObj.tableData = rows.filter(item => item.level != 0 && !item.computeFormula && item.itemName != '加：期初现金余额')
         this.startPeriodObj.tableData.forEach(item => { item.itemAmountMidYear = item.itemAmountMidYear||null });
       },
-      async openFormulaDrawer() {
+      async openFormulaDrawer(itemId) {
         this.isDrawerShow = true;
+        if (itemId) {
+          this.$refs.reportCashFlowAssistRef.doUiAction('changeItemId', [itemId]);
+        }
       },
       async exportExcel() {
         const excelDataList = _.cloneDeep(this.tableData);
