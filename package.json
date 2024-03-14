@@ -8,7 +8,7 @@
     "framework": "@jianghujs/jianghu"
   },
   "dependencies": {
-    "@jianghujs/jianghu": "5.1.4",
+    "@jianghujs/jianghu": "5.1.11",
     "currency.js": "^2.0.4",
     "egg": "^2.15.1",
     "egg-scripts": "^2.11.0",
